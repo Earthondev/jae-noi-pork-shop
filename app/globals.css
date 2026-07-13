@@ -14,6 +14,7 @@
   --line: #ead6b5;
   --white: #fffdf8;
   --success: #237343;
+  --warning: #a75200;
   --shadow-sm: 0 8px 24px rgb(79 8 10 / 10%);
   --shadow-lg: 0 24px 70px rgb(79 8 10 / 20%);
   --radius-sm: 14px;
@@ -155,6 +156,7 @@ footer a { color: var(--gold-500); }
 .submit-order:disabled { opacity: .55; cursor: not-allowed; box-shadow: none; }
 .success-card { min-height: 440px; display: grid; place-content: center; justify-items: center; text-align: center; padding: 30px; }
 .success-card > span { width: 70px; height: 70px; display: grid; place-items: center; border-radius: 50%; background: var(--success); color: white; font-size: 2rem; }
+.success-card.invalid > span { background: var(--warning); }
 .success-card h3 { color: var(--red-800); font-family: var(--font-display), serif; font-size: 2rem; margin-bottom: 8px; }
 .success-card p { color: var(--muted); }
 .success-card > strong { font-size: 1.5rem; color: var(--red-700); }

@@ -1,11 +1,17 @@
 import { env } from "cloudflare:workers";
 import { NextResponse } from "next/server";
 import { appendOrder, findOrderByIdempotencyKey, getStorefrontData } from "../../../lib/google-sheets";
+import { createSecureOrderId } from "../../../lib/order-id";
+import {
+  clientPaymentStatus,
+  paymentDecisionFromVerification,
+  type ClientPaymentStatus,
+  type SheetPaymentStatus,
+} from "../../../lib/order-workflow";
 import { verifySlipWithSlipOk } from "../../../lib/slipok";
 
 type OrderItemInput = { productId?: string; quantity?: number };
 type UploadBindings = { UPLOADS?: R2Bucket };
-type ClientPaymentStatus = "waiting" | "review" | "verified";
 type IdempotencyReceipt = {
   state: "processing" | "completed";
   orderId: string;
@@ -25,25 +31,6 @@ class OrderRequestError extends Error {
 async function sha256Hex(value: string): Promise<string> {
   const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(value));
   return Array.from(new Uint8Array(digest), (byte) => byte.toString(16).padStart(2, "0")).join("");
-}
-
-async function createSecureOrderId(idempotencyKey: string): Promise<string> {
-  const date = new Intl.DateTimeFormat("en-CA", {
-    timeZone: "Asia/Bangkok",
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-  }).format(new Date()).replaceAll("-", "");
-  const alphabet = "23456789ABCDEFGHJKLMNPQRSTUVWXYZ";
-  const digest = new Uint8Array(await crypto.subtle.digest("SHA-256", new TextEncoder().encode(idempotencyKey)));
-  const suffix = Array.from(digest.slice(0, 10), (byte) => alphabet[byte & 31]).join("");
-  return `JN-${date}-${suffix}`;
-}
-
-function clientPaymentStatus(paymentStatus: string): ClientPaymentStatus {
-  if (paymentStatus === "ชำระแล้ว") return "verified";
-  if (paymentStatus === "รอตรวจสลิป") return "review";
-  return "waiting";
 }
 
 function pendingResponse() {
@@ -83,7 +70,8 @@ export async function POST(request: Request) {
     }
 
     const storefront = await getStorefrontData();
-    if (!storefront.rounds.some((round) => round.id === roundId)) return NextResponse.json({ error: "รอบพรีออเดอร์นี้ยังไม่เปิดรับหรือปิดรับแล้ว" }, { status: 400 });
+    const selectedRound = storefront.rounds.find((round) => round.id === roundId);
+    if (!selectedRound) return NextResponse.json({ error: "รอบพรีออเดอร์นี้ยังไม่เปิดรับหรือปิดรับแล้ว" }, { status: 400 });
     if (fulfilment === "postal" && storefront.shippingFee === null) return NextResponse.json({ error: "ค่าจัดส่งไปรษณีย์ยังรอข้อมูล" }, { status: 400 });
     if (fulfilment === "pickup" && !storefront.pickupAddress) {
       return NextResponse.json({ error: "ไม่สามารถรับเองหน้าร้านได้จนกว่าจะมีที่อยู่ร้าน" }, { status: 400 });
@@ -116,7 +104,7 @@ export async function POST(request: Request) {
       items: [...items].sort((left, right) => left.id.localeCompare(right.id)),
       slip: slip instanceof File && slip.size > 0 ? { name: slip.name, size: slip.size, type: slip.type } : null,
     }));
-    let orderId = await createSecureOrderId(idempotencyKey);
+    let orderId = await createSecureOrderId(selectedRound.id, idempotencyKey);
     const createdAt = new Date().toISOString();
     receiptKey = `idempotency/orders/${await sha256Hex(idempotencyKey)}.json`;
     let receipt: IdempotencyReceipt = { state: "processing", orderId, fingerprint, createdAt };
@@ -158,7 +146,7 @@ export async function POST(request: Request) {
       orderId = existingReceipt.orderId;
     }
 
-    let paymentStatus: "รอชำระเงิน" | "รอตรวจสลิป" | "ชำระแล้ว" = "รอชำระเงิน";
+    let paymentStatus: SheetPaymentStatus = "รอชำระเงิน";
     const orderStatus = "รับออเดอร์แล้ว" as const;
     let adminNote = "";
 
@@ -167,14 +155,9 @@ export async function POST(request: Request) {
       await uploads.put(slipKey, slip.stream(), { httpMetadata: { contentType: slip.type }, customMetadata: { orderId } });
       const clientKey = request.headers.get("cf-connecting-ip") ?? request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ?? "local";
       const verification = await verifySlipWithSlipOk(slip, subtotal + shippingFee, clientKey);
-      if (verification.status === "rejected") throw new OrderRequestError(verification.reason, 400);
-      if (verification.status === "verified") {
-        paymentStatus = "ชำระแล้ว";
-        adminNote = `SlipOK ยืนยันแล้ว · Ref ${verification.transactionReference} · ${verification.verifiedAt}`;
-      } else {
-        paymentStatus = "รอตรวจสลิป";
-        if (verification.status === "pending") adminNote = `SlipOK รอตรวจ · ${verification.reason}`;
-      }
+      const decision = paymentDecisionFromVerification(verification);
+      paymentStatus = decision.paymentStatus;
+      adminNote = decision.adminNote;
     }
 
     await appendOrder({

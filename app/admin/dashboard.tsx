@@ -33,7 +33,7 @@ export function AdminDashboard({ initialOrders, userName }: { initialOrders: Adm
   async function changeStatus(id: string, status: OrderStatus) {
     setSaving(id);
     const response = await fetch(`/api/admin/orders/${encodeURIComponent(id)}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ status }) });
-    if (response.ok) setOrders((current) => current.map((order) => order.id === id ? { ...order, status } : order));
+    if (response.ok) setOrders((current) => current.map((order) => order.id === id ? { ...order, order_status: status } : order));
     setSaving(null);
   }
 
@@ -47,7 +47,7 @@ export function AdminDashboard({ initialOrders, userName }: { initialOrders: Adm
           <article className="admin-order" key={order.id}>
             <div className="admin-order-top"><div><small>{new Date(order.created_at).toLocaleString("th-TH")}</small><h2>{order.id}</h2></div><div className="status-stack"><span className={`status-pill payment-${order.payment_status}`}>{paymentStatusLabels[order.payment_status]}</span><span className={`status-pill status-${order.order_status}`}>{statusLabels[order.order_status]}</span></div></div>
             <div className="admin-order-grid"><div><span>ลูกค้า</span><strong>{order.customer_name}</strong><a href={`tel:${order.phone}`}>{order.phone}</a></div><div><span>สินค้า</span><strong>{order.items}</strong><small>ค่าสินค้า {order.subtotal} บาท · ค่าส่ง {order.shipping_fee ?? 0} บาท</small></div><div className="full"><span>ที่อยู่</span><p>{order.address}</p>{order.note && <small>หมายเหตุ: {order.note}</small>}{order.admin_note && <small className="verification-note">ผลตรวจสลิป: {order.admin_note}</small>}</div></div>
-            <div className="admin-actions">{order.slip_key ? <a className="slip-link" href={`/api/admin/slips/${encodeURIComponent(order.id)}`} target="_blank" rel="noreferrer">เปิดดูสลิป</a> : <span className="no-slip">ยังไม่มีสลิป</span>}<label><span>สถานะออเดอร์</span><select value={order.order_status} disabled={saving === order.id} onChange={(event) => changeStatus(order.id, event.target.value as OrderStatus)}>{Object.entries(statusLabels).map(([value, label]) => <option value={value} key={value}>{label}</option>)}</select></label></div>
+            <div className="admin-actions">{order.slip_key ? <a className="slip-link" href={`/api/admin/slips/${encodeURIComponent(order.id)}`} target="_blank" rel="noreferrer">เปิดดูสลิป</a> : <span className="no-slip">ยังไม่มีสลิป</span>}<label><span>สถานะออเดอร์</span><select value={order.order_status} disabled={saving === order.id} onChange={(event) => changeStatus(order.id, event.target.value as OrderStatus)}>{Object.entries(statusLabels).map(([value, label]) => <option value={value} key={value} disabled={order.payment_status !== "paid" && !["received", "cancelled"].includes(value)}>{label}</option>)}</select>{order.payment_status !== "paid" && <small>ยืนยันชำระเงินก่อนเริ่มเตรียมหรือจัดส่ง</small>}</label></div>
           </article>
         ))}
       </section>

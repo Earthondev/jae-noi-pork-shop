@@ -73,7 +73,7 @@ export function Shop() {
   const [cartOpen, setCartOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [orderId, setOrderId] = useState<string | null>(null);
-  const [orderPaymentStatus, setOrderPaymentStatus] = useState<"waiting" | "verified" | "review">("waiting");
+  const [orderPaymentStatus, setOrderPaymentStatus] = useState<"waiting" | "verified" | "review" | "invalid">("waiting");
   const [notice, setNotice] = useState<string | null>(null);
   const drawerRef = useRef<HTMLElement>(null);
   const idempotencyKeyRef = useRef<string | null>(null);
@@ -189,7 +189,7 @@ export function Shop() {
 
     try {
       const response = await fetch("/api/orders", { method: "POST", body: form });
-      const result = (await response.json()) as { orderId?: string; paymentStatus?: "waiting" | "verified" | "review"; error?: string };
+      const result = (await response.json()) as { orderId?: string; paymentStatus?: "waiting" | "verified" | "review" | "invalid"; error?: string };
       if (!response.ok || !result.orderId) throw new Error(result.error ?? "บันทึกออเดอร์ไม่สำเร็จ");
       setOrderId(result.orderId);
       setOrderPaymentStatus(result.paymentStatus ?? "waiting");
@@ -296,7 +296,7 @@ export function Shop() {
           <aside ref={drawerRef} className="cart-drawer" role="dialog" aria-modal="true" aria-labelledby="cart-title">
             <div className="drawer-heading"><div><p className="eyebrow">รายการของคุณ</p><h2 id="cart-title">ตะกร้าสินค้า</h2></div><button type="button" onClick={() => setCartOpen(false)} aria-label="ปิดตะกร้า">×</button></div>
             {orderId ? (
-              <div className="success-card" role="status"><span>✓</span><h3>รับคำสั่งซื้อแล้ว</h3><p>เลขที่ออเดอร์</p><strong>{orderId}</strong><p>{orderPaymentStatus === "verified" ? "ตรวจสลิปและยอดชำระเรียบร้อยแล้ว ร้านจะเริ่มเตรียมสินค้า" : orderPaymentStatus === "review" ? "สลิปอยู่ระหว่างตรวจสอบ ร้านจะยืนยันอีกครั้งก่อนเตรียมสินค้า" : "ยังไม่ได้แนบสลิป ออเดอร์อยู่ในสถานะรอชำระเงิน"}</p><button type="button" onClick={() => { setOrderId(null); setOrderPaymentStatus("waiting"); setCartOpen(false); }}>กลับหน้าร้าน</button></div>
+              <div className={`success-card${orderPaymentStatus === "invalid" ? " invalid" : ""}`} role={orderPaymentStatus === "invalid" ? "alert" : "status"}><span>{orderPaymentStatus === "invalid" ? "!" : "✓"}</span><h3>{orderPaymentStatus === "invalid" ? "บันทึกคำสั่งซื้อแล้ว" : "รับคำสั่งซื้อแล้ว"}</h3><p>เลขที่ออเดอร์</p><strong>{orderId}</strong><p>{orderPaymentStatus === "verified" ? "ตรวจสลิปและยอดชำระเรียบร้อยแล้ว ร้านจะเริ่มเตรียมสินค้า" : orderPaymentStatus === "review" ? "สลิปอยู่ระหว่างตรวจสอบ ร้านจะยืนยันอีกครั้งก่อนเตรียมสินค้า" : orderPaymentStatus === "invalid" ? "ยังยืนยันสลิปไม่ได้ ร้านเก็บออเดอร์ไว้แล้วและจะตรวจสอบหรือติดต่อกลับ กรุณาอย่าโอนซ้ำจนกว่าร้านจะแจ้ง" : "ยังไม่ได้แนบสลิป ออเดอร์อยู่ในสถานะรอชำระเงิน"}</p><button type="button" onClick={() => { setOrderId(null); setOrderPaymentStatus("waiting"); setCartOpen(false); }}>กลับหน้าร้าน</button></div>
             ) : (
               <form onSubmit={submitOrder}>
                 <div className="cart-list">

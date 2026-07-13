@@ -316,11 +316,16 @@ export async function findOrderByIdempotencyKey(idempotencyKey: string): Promise
   return { orderId: row[0], paymentStatus: paymentStatus as SheetPaymentStatus };
 }
 
-export async function updateOrderStatus(id: string, status: OrderStatus): Promise<boolean> {
-  const response = await sheetsRequest(`/values/${encodeURIComponent("ออเดอร์!A2:A")}`);
+export type UpdateOrderStatusResult = "updated" | "not_found" | "payment_required";
+
+export async function updateOrderStatus(id: string, status: OrderStatus): Promise<UpdateOrderStatusResult> {
+  const response = await sheetsRequest(`/values/${encodeURIComponent("ออเดอร์!A2:M")}`);
   const result = await response.json() as SheetsValuesResponse;
   const index = result.values?.findIndex((row) => row[0] === id) ?? -1;
-  if (index < 0) return false;
+  if (index < 0) return "not_found";
+  const currentOrder = result.values?.[index];
+  const canAdvanceWithoutPayment = status === "received" || status === "cancelled";
+  if (!canAdvanceWithoutPayment && currentOrder?.[11] !== "ชำระแล้ว") return "payment_required";
   const rowNumber = index + 2;
   await sheetsRequest("/values:batchUpdate", {
     method: "POST",
@@ -332,7 +337,7 @@ export async function updateOrderStatus(id: string, status: OrderStatus): Promis
       ],
     }),
   });
-  return true;
+  return "updated";
 }
 
 export async function getOrderSlipKey(id: string): Promise<string | null> {
