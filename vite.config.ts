@@ -14,6 +14,14 @@ const isCodexSeatbeltSandbox = process.env.CODEX_SANDBOX === "seatbelt";
 const localBindingConfig = {
   main: "./worker/index.ts",
   compatibility_flags: ["nodejs_compat"],
+  vars: {
+    GOOGLE_SHEET_ID: process.env.GOOGLE_SHEET_ID ?? "",
+    GOOGLE_SERVICE_ACCOUNT_EMAIL: process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL ?? "",
+    GOOGLE_PRIVATE_KEY: process.env.GOOGLE_PRIVATE_KEY ?? "",
+    SLIPOK_ENABLED: process.env.SLIPOK_ENABLED ?? "false",
+    SLIPOK_BRANCH_ID: process.env.SLIPOK_BRANCH_ID ?? "",
+    SLIPOK_API_KEY: process.env.SLIPOK_API_KEY ?? "",
+  },
   d1_databases: d1
     ? [
         {

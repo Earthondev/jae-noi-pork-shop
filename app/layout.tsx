@@ -17,6 +17,7 @@ export async function generateMetadata(): Promise<Metadata> {
     metadataBase,
     title,
     description,
+    icons: { icon: "/favicon.svg" },
     openGraph: { title, description, type: "website", locale: "th_TH", images: [{ url: "/og.png", width: 1536, height: 909, alt: "เจ้น้อย เขียงหมูตะคร้อ อร่อยถึงเครื่อง สั่งง่ายถึงบ้าน" }] },
     twitter: { card: "summary_large_image", title, description, images: ["/og.png"] },
   };

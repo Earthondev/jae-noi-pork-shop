@@ -2,15 +2,23 @@
 
 import { useMemo, useState } from "react";
 import Link from "next/link";
-import type { AdminOrder, OrderStatus } from "../../db/orders";
+import type { AdminOrder, OrderStatus, PaymentStatus } from "../../db/orders";
 
 const statusLabels: Record<OrderStatus, string> = {
-  waiting_for_payment_info: "รอข้อมูลชำระเงิน",
+  received: "รับออเดอร์แล้ว",
+  preparing: "กำลังเตรียม",
+  ready_for_pickup: "พร้อมรับหน้าร้าน",
+  shipped: "จัดส่งแล้ว",
+  completed: "สำเร็จ",
+  cancelled: "ยกเลิก",
+};
+
+const paymentStatusLabels: Record<PaymentStatus, string> = {
+  waiting_for_payment: "รอชำระเงิน",
   waiting_for_slip_review: "รอตรวจสลิป",
   paid: "ชำระแล้ว",
-  preparing: "กำลังเตรียมสินค้า",
-  shipped: "จัดส่งแล้ว",
-  cancelled: "ยกเลิก",
+  invalid_slip: "สลิปไม่ถูกต้อง",
+  refunded: "คืนเงินแล้ว",
 };
 
 export function AdminDashboard({ initialOrders, userName }: { initialOrders: AdminOrder[]; userName: string }) {
@@ -32,14 +40,14 @@ export function AdminDashboard({ initialOrders, userName }: { initialOrders: Adm
   return (
     <main className="admin-shell">
       <header className="admin-header"><div><p className="eyebrow">เจ้น้อย เขียงหมูตะคร้อ</p><h1>จัดการออเดอร์</h1></div><div className="admin-user"><span>{userName}</span><Link href="/">กลับหน้าร้าน</Link></div></header>
-      <section className="admin-stats" aria-label="สรุปออเดอร์"><div><span>ออเดอร์ทั้งหมด</span><strong>{orders.length}</strong></div><div><span>รอตรวจสลิป</span><strong>{orders.filter((order) => order.status === "waiting_for_slip_review").length}</strong></div><div><span>รอจัดส่ง</span><strong>{orders.filter((order) => ["paid", "preparing"].includes(order.status)).length}</strong></div></section>
+      <section className="admin-stats" aria-label="สรุปออเดอร์"><div><span>ออเดอร์ทั้งหมด</span><strong>{orders.length}</strong></div><div><span>รอตรวจสลิป</span><strong>{orders.filter((order) => order.payment_status === "waiting_for_slip_review").length}</strong></div><div><span>รอจัดส่ง</span><strong>{orders.filter((order) => order.payment_status === "paid" && ["received", "preparing"].includes(order.order_status)).length}</strong></div></section>
       <label className="admin-search"><span>ค้นหาออเดอร์</span><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="เลขออเดอร์ ชื่อ หรือเบอร์โทร" type="search" /></label>
       <section className="order-cards" aria-live="polite">
         {filtered.length === 0 ? <p className="admin-empty">ยังไม่พบออเดอร์</p> : filtered.map((order) => (
           <article className="admin-order" key={order.id}>
-            <div className="admin-order-top"><div><small>{new Date(order.created_at).toLocaleString("th-TH")}</small><h2>{order.id}</h2></div><span className={`status-pill status-${order.status}`}>{statusLabels[order.status]}</span></div>
-            <div className="admin-order-grid"><div><span>ลูกค้า</span><strong>{order.customer_name}</strong><a href={`tel:${order.phone}`}>{order.phone}</a></div><div><span>สินค้า</span><strong>{order.items}</strong><small>ค่าสินค้า {order.subtotal} บาท · ค่าส่งรอข้อมูล</small></div><div className="full"><span>ที่อยู่</span><p>{order.address}</p>{order.note && <small>หมายเหตุ: {order.note}</small>}</div></div>
-            <div className="admin-actions">{order.slip_key ? <a className="slip-link" href={`/api/admin/slips/${encodeURIComponent(order.id)}`} target="_blank" rel="noreferrer">เปิดดูสลิป</a> : <span className="no-slip">ยังไม่มีสลิป</span>}<label><span>สถานะ</span><select value={order.status} disabled={saving === order.id} onChange={(event) => changeStatus(order.id, event.target.value as OrderStatus)}>{Object.entries(statusLabels).map(([value, label]) => <option value={value} key={value}>{label}</option>)}</select></label></div>
+            <div className="admin-order-top"><div><small>{new Date(order.created_at).toLocaleString("th-TH")}</small><h2>{order.id}</h2></div><div className="status-stack"><span className={`status-pill payment-${order.payment_status}`}>{paymentStatusLabels[order.payment_status]}</span><span className={`status-pill status-${order.order_status}`}>{statusLabels[order.order_status]}</span></div></div>
+            <div className="admin-order-grid"><div><span>ลูกค้า</span><strong>{order.customer_name}</strong><a href={`tel:${order.phone}`}>{order.phone}</a></div><div><span>สินค้า</span><strong>{order.items}</strong><small>ค่าสินค้า {order.subtotal} บาท · ค่าส่ง {order.shipping_fee ?? 0} บาท</small></div><div className="full"><span>ที่อยู่</span><p>{order.address}</p>{order.note && <small>หมายเหตุ: {order.note}</small>}{order.admin_note && <small className="verification-note">ผลตรวจสลิป: {order.admin_note}</small>}</div></div>
+            <div className="admin-actions">{order.slip_key ? <a className="slip-link" href={`/api/admin/slips/${encodeURIComponent(order.id)}`} target="_blank" rel="noreferrer">เปิดดูสลิป</a> : <span className="no-slip">ยังไม่มีสลิป</span>}<label><span>สถานะออเดอร์</span><select value={order.order_status} disabled={saving === order.id} onChange={(event) => changeStatus(order.id, event.target.value as OrderStatus)}>{Object.entries(statusLabels).map(([value, label]) => <option value={value} key={value}>{label}</option>)}</select></label></div>
           </article>
         ))}
       </section>

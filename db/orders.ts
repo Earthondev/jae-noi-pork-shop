@@ -2,7 +2,8 @@ import { env } from "cloudflare:workers";
 
 type RuntimeBindings = { DB?: D1Database; UPLOADS?: R2Bucket };
 
-export type OrderStatus = "waiting_for_payment_info" | "waiting_for_slip_review" | "paid" | "preparing" | "shipped" | "cancelled";
+export type PaymentStatus = "waiting_for_payment" | "waiting_for_slip_review" | "paid" | "invalid_slip" | "refunded";
+export type OrderStatus = "received" | "preparing" | "ready_for_pickup" | "shipped" | "completed" | "cancelled";
 
 export type AdminOrder = {
   id: string;
@@ -10,11 +11,13 @@ export type AdminOrder = {
   phone: string;
   address: string;
   note: string;
+  admin_note: string;
   subtotal: number;
   shipping_fee: number | null;
   total: number | null;
   slip_key: string | null;
-  status: OrderStatus;
+  payment_status: PaymentStatus;
+  order_status: OrderStatus;
   created_at: string;
   items: string;
 };
