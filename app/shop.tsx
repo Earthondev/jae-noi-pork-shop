@@ -13,9 +13,12 @@ type Product = {
   badge: string;
 };
 
-const products: Product[] = [
+type PreorderRound = { id: string; deliveryDate: string; closesAt: string; label: string; note: string };
+type StorefrontResponse = { products: Array<Omit<Product, "badge"> & { unit?: string; status?: string }>; rounds: PreorderRound[]; shippingFee: number | null; pickupAddress: string | null; secureWriteReady: boolean; error?: string };
+
+const fallbackProducts: Product[] = [
   {
-    id: "naem-pork",
+    id: "NAEM250",
     name: "แหนมหมู",
     detail: "250 กรัม · รสจัดจ้านแบบตะคร้อ",
     price: 50,
@@ -23,7 +26,7 @@ const products: Product[] = [
     badge: "ขายดี",
   },
   {
-    id: "isan-sausage",
+    id: "SAUSAGE10",
     name: "ไส้กรอกอีสาน",
     detail: "แพ็กละ 10 ชิ้น · ราคาอยู่ระหว่างยืนยัน",
     price: null,
@@ -31,7 +34,7 @@ const products: Product[] = [
     badge: "แพ็ก 10 ชิ้น",
   },
   {
-    id: "pork-rinds",
+    id: "PORKRIND1",
     name: "แคปหมู",
     detail: "1 กล่อง · กรอบ หอม ทำสด",
     price: 150,
@@ -43,12 +46,39 @@ const products: Product[] = [
 type Quantities = Record<string, number>;
 
 export function Shop() {
+  const [products, setProducts] = useState<Product[]>(fallbackProducts);
+  const [rounds, setRounds] = useState<PreorderRound[]>([]);
+  const [selectedRound, setSelectedRound] = useState("");
+  const [fulfilment, setFulfilment] = useState<"pickup" | "postal">("pickup");
+  const [shippingFee, setShippingFee] = useState<number | null>(null);
+  const [pickupAddress, setPickupAddress] = useState<string | null>(null);
+  const [secureWriteReady, setSecureWriteReady] = useState(false);
+  const [storeLoading, setStoreLoading] = useState(true);
   const [quantities, setQuantities] = useState<Quantities>({});
   const [cartOpen, setCartOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [orderId, setOrderId] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const drawerRef = useRef<HTMLElement>(null);
+
+  useEffect(() => {
+    let active = true;
+    fetch("/api/storefront", { cache: "no-store" })
+      .then(async (response) => {
+        const data = (await response.json()) as StorefrontResponse;
+        if (!response.ok) throw new Error(data.error ?? "โหลดข้อมูลร้านไม่สำเร็จ");
+        if (!active) return;
+        setProducts(data.products.map((product) => ({ ...product, badge: product.status === "รอข้อมูล" ? "รอข้อมูล" : product.unit ?? "พร้อมสั่ง" })));
+        setRounds(data.rounds);
+        setSelectedRound(data.rounds[0]?.id ?? "");
+        setShippingFee(data.shippingFee);
+        setPickupAddress(data.pickupAddress);
+        setSecureWriteReady(data.secureWriteReady);
+      })
+      .catch((error: unknown) => active && setNotice(error instanceof Error ? error.message : "โหลดข้อมูลร้านไม่สำเร็จ"))
+      .finally(() => active && setStoreLoading(false));
+    return () => { active = false; };
+  }, []);
 
   useEffect(() => {
     if (!cartOpen) return;
@@ -83,7 +113,7 @@ export function Shop() {
         (sum, product) => sum + (product.price ?? 0) * (quantities[product.id] ?? 0),
         0,
       ),
-    [quantities],
+    [products, quantities],
   );
   const hasPendingPrice = cartItems.some((product) => product.price === null);
 
@@ -104,6 +134,9 @@ export function Shop() {
       setNotice("ไส้กรอกอีสานยังรอข้อมูลราคา จึงยังยืนยันออเดอร์รายการนี้ไม่ได้");
       return;
     }
+    if (!selectedRound) { setNotice("ขณะนี้ยังไม่มีรอบพรีออเดอร์ที่เปิดรับ"); return; }
+    if (fulfilment === "postal" && shippingFee === null) { setNotice("ค่าจัดส่งไปรษณีย์ยังรอข้อมูล"); return; }
+    if (!secureWriteReady) { setNotice("โหมดดูตัวอย่าง: การบันทึกออเดอร์อย่างปลอดภัยกำลังรอเชื่อมบัญชีระบบ Google"); return; }
 
     setSubmitting(true);
     setNotice(null);
@@ -119,6 +152,8 @@ export function Shop() {
         })),
       ),
     );
+    form.set("roundId", selectedRound);
+    form.set("fulfilment", fulfilment);
 
     try {
       const response = await fetch("/api/orders", { method: "POST", body: form });
@@ -155,6 +190,9 @@ export function Shop() {
           <p className="eyebrow">ของอร่อยจากตะคร้อ · ทำสดทุกวัน</p>
           <h1>อร่อยถึงเครื่อง<br /><span>สั่งง่ายถึงบ้าน</span></h1>
           <p className="hero-lead">แหนมหมู ไส้กรอกอีสาน และแคปหมูสูตรร้านเจ้น้อย เลือกของอร่อย ใส่ตะกร้า แล้วสั่งได้เลย</p>
+          <div className="round-callout" role="status">
+            {storeLoading ? <span>กำลังโหลดรอบพรีออเดอร์...</span> : rounds[0] ? <><strong>{rounds[0].label}</strong><span>ปิดตะกร้า {rounds[0].closesAt}</span></> : <><strong>ยังไม่มีรอบที่เปิดรับ</strong><span>ติดตามรอบถัดไปเร็ว ๆ นี้</span></>}
+          </div>
           <div className="hero-actions">
             <a className="primary-action" href="#products">เลือกสินค้า</a>
             <span>☎ 087-2416773 · 087-8755479</span>
@@ -233,17 +271,20 @@ export function Shop() {
                   ))}
                 </div>
                 <div className="summary-row"><span>รวมค่าสินค้า</span><strong>{subtotal} บาท</strong></div>
-                <div className="summary-row pending-row"><span>ค่าจัดส่ง</span><strong>รอข้อมูล</strong></div>
+                <div className="summary-row pending-row"><span>{fulfilment === "pickup" ? "รับเองหน้าร้าน" : "ค่าจัดส่งไปรษณีย์"}</span><strong>{fulfilment === "pickup" ? "ฟรี" : shippingFee === null ? "รอข้อมูล" : `${shippingFee} บาท`}</strong></div>
                 <div className="form-grid">
+                  <label className="full">เลือกรอบจัดส่ง<select name="roundId" required value={selectedRound} onChange={(event) => setSelectedRound(event.target.value)} disabled={rounds.length === 0}><option value="">เลือกรอบ</option>{rounds.map((round) => <option value={round.id} key={round.id}>{round.label} · ปิดรับ {round.closesAt}</option>)}</select></label>
+                  <fieldset className="fulfilment-choice full"><legend>วิธีรับสินค้า</legend><label className={fulfilment === "pickup" ? "selected" : ""}><input type="radio" name="fulfilment" value="pickup" checked={fulfilment === "pickup"} onChange={() => setFulfilment("pickup")} /><span><strong>รับเองหน้าร้าน</strong><small>{pickupAddress ?? "ที่อยู่ร้านรอข้อมูล"}</small></span></label><label className={fulfilment === "postal" ? "selected" : ""}><input type="radio" name="fulfilment" value="postal" checked={fulfilment === "postal"} onChange={() => setFulfilment("postal")} /><span><strong>จัดส่งไปรษณีย์</strong><small>{shippingFee === null ? "ค่าส่งรอข้อมูล" : `ค่าส่ง ${shippingFee} บาท`}</small></span></label></fieldset>
                   <label>ชื่อผู้รับ<input name="customerName" required autoComplete="name" placeholder="ชื่อ–นามสกุล" /></label>
                   <label>เบอร์โทร<input name="phone" required inputMode="tel" autoComplete="tel" placeholder="08x-xxx-xxxx" /></label>
-                  <label className="full">ที่อยู่จัดส่ง<textarea name="address" required autoComplete="street-address" rows={3} placeholder="บ้านเลขที่ หมู่ ตำบล อำเภอ จังหวัด รหัสไปรษณีย์" /></label>
+                  {fulfilment === "postal" && <label className="full">ที่อยู่จัดส่ง<textarea name="address" required autoComplete="street-address" rows={3} placeholder="บ้านเลขที่ หมู่ ตำบล อำเภอ จังหวัด รหัสไปรษณีย์" /></label>}
                   <label className="full">หมายเหตุ<textarea name="note" rows={2} placeholder="เช่น เวลาที่สะดวกรับสินค้า (ถ้ามี)" /></label>
                   <div className="payment-waiting full"><strong>QR พร้อมเพย์</strong><span>รอข้อมูลพร้อมเพย์จากร้าน</span></div>
                   <label className="full file-label">แนบสลิป (ส่งภายหลังได้)<input name="slip" type="file" accept="image/jpeg,image/png,image/webp" /></label>
                 </div>
                 {notice && <p className="form-notice" role="alert">{notice}</p>}
-                <button className="submit-order" type="submit" disabled={submitting || cartItems.length === 0}>{submitting ? "กำลังบันทึก..." : "ยืนยันคำสั่งซื้อ"}</button>
+                {!secureWriteReady && <p className="preview-mode">โหมดดูตัวอย่าง · ยังไม่รับข้อมูลลูกค้าจนกว่าจะเชื่อมบัญชีระบบที่ปลอดภัย</p>}
+                <button className="submit-order" type="submit" disabled={submitting || cartItems.length === 0 || rounds.length === 0}>{submitting ? "กำลังบันทึก..." : "ยืนยันคำสั่งซื้อ"}</button>
               </form>
             )}
           </aside>
