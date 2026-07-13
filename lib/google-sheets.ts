@@ -1,5 +1,6 @@
 import { env } from "cloudflare:workers";
 import type { AdminOrder, OrderStatus, PaymentStatus } from "../db/orders";
+import { maskPhone, matchesPhoneLast4, type PublicOrderTracking } from "./order-tracking";
 
 type GoogleBindings = {
   GOOGLE_SHEET_ID?: string;
@@ -304,6 +305,39 @@ export async function getAdminOrders(): Promise<AdminOrder[]> {
     order_status: sheetOrderStatusToApp[row[12]] ?? "received",
     created_at: row[2] ?? "", items: (itemsByOrder.get(row[0]) ?? []).join(", "),
   }));
+}
+
+export async function getPublicOrderTracking(orderId: string, phoneLast4: string): Promise<PublicOrderTracking | null> {
+  const [orderRows, itemRows, roundRows] = await readRanges(["ออเดอร์!A2:R", "รายการออเดอร์!A2:H", "รอบจัดส่ง!A2:B"]);
+  const row = orderRows.find((candidate) => candidate[0] === orderId);
+  if (!row || !matchesPhoneLast4(row[4] ?? "", phoneLast4)) return null;
+  const fulfilment = row[5] === "รับเองหน้าร้าน" ? "pickup" : "postal";
+  const paymentStatus = sheetPaymentStatusToApp[row[11]] ?? (row[10] ? "waiting_for_slip_review" : "waiting_for_payment");
+  const orderStatus = sheetOrderStatusToApp[row[12]] ?? "received";
+  const deliveryDate = roundRows.find((round) => round[0] === row[1])?.[1] ?? "";
+  const items = itemRows.filter((item) => item[1] === orderId).map((item) => ({
+    name: item[3] ?? "สินค้า",
+    quantity: numberValue(item[4]),
+    unitPrice: numberValue(item[5]),
+    lineTotal: numberValue(item[6]),
+  }));
+
+  return {
+    orderId: row[0],
+    maskedPhone: maskPhone(row[4] ?? ""),
+    createdAt: row[2] ?? "",
+    updatedAt: row[15] || row[2] || "",
+    deliveryDate,
+    fulfilment,
+    fulfilmentLabel: fulfilment === "pickup" ? "รับเองหน้าร้าน" : "จัดส่งไปรษณีย์ · ซ่อนที่อยู่เพื่อความเป็นส่วนตัว",
+    subtotal: numberValue(row[7]),
+    shippingFee: numberValue(row[8]),
+    total: numberValue(row[9]),
+    paymentStatus,
+    orderStatus,
+    trackingNumber: row[16] || null,
+    items,
+  };
 }
 
 export async function findOrderByIdempotencyKey(idempotencyKey: string): Promise<{ orderId: string; paymentStatus: SheetPaymentStatus } | null> {

@@ -211,6 +211,7 @@ export function Shop() {
         <nav aria-label="เมนูหลัก">
           <a href="#products">สินค้า</a>
           <a href="#how-to-order">วิธีสั่ง</a>
+          <Link href="/track">ติดตามออเดอร์</Link>
           <a href="#story">เรื่องของร้าน</a>
         </nav>
         <button className="cart-button" type="button" onClick={() => setCartOpen(true)} aria-label={`เปิดตะกร้า มีสินค้า ${cartCount} ชิ้น`}>
@@ -284,19 +285,21 @@ export function Shop() {
         <div><span>3</span><h3>ชำระเงิน</h3><p>สแกน QR พร้อมยอดออเดอร์ แล้วแนบสลิป</p></div>
       </section>
 
+      <section className="track-promo" aria-labelledby="track-promo-title"><div><p className="eyebrow">สั่งแล้วไม่ต้องทักถาม</p><h2 id="track-promo-title">เช็กออเดอร์ได้ด้วยตัวเอง</h2><p>ใช้เลขออเดอร์กับเบอร์โทร 4 ตัวท้าย ดูสถานะชำระเงิน การเตรียมสินค้า และเลขพัสดุได้ตลอดเวลา</p></div><Link href="/track">ติดตามออเดอร์</Link></section>
+
       <section className="story" id="story">
         <Image src="/images/products/jae-noi-presenting-pork-rinds-large-tubs.jpg" alt="เจ้น้อยนำเสนอแคปหมูบรรจุกล่อง" width={760} height={960} />
         <div><p className="eyebrow">ทำเอง ขายเอง ใส่ใจทุกกล่อง</p><h2>ของดีจากเขียงหมูตะคร้อ</h2><p>รสชาติคุ้นเคยจากร้านท้องถิ่น ส่งต่อด้วยวัตถุดิบที่คัดแล้วและความตั้งใจในทุกแพ็ก จากมือเจ้น้อยถึงมือลูกค้า</p><blockquote>“ให้ลูกค้าได้ของอร่อย เหมือนมาซื้อถึงหน้าร้าน”</blockquote></div>
       </section>
 
-      <footer><Image src="/images/products/jae-noi-shop-logo.jpg" alt="เจ้น้อย เขียงหมูตะคร้อ" width={150} height={90} /><p>โทร 087-2416773, 087-8755479</p><Link href="/admin">หลังบ้านร้านค้า</Link></footer>
+      <footer><Image src="/images/products/jae-noi-shop-logo.jpg" alt="เจ้น้อย เขียงหมูตะคร้อ" width={150} height={90} /><p>โทร 087-2416773, 087-8755479</p><Link href="/track">ติดตามออเดอร์</Link><Link href="/admin">หลังบ้านร้านค้า</Link></footer>
 
       {cartOpen && (
         <div className="drawer-backdrop" role="presentation" onMouseDown={(event) => event.target === event.currentTarget && setCartOpen(false)}>
           <aside ref={drawerRef} className="cart-drawer" role="dialog" aria-modal="true" aria-labelledby="cart-title">
             <div className="drawer-heading"><div><p className="eyebrow">รายการของคุณ</p><h2 id="cart-title">ตะกร้าสินค้า</h2></div><button type="button" onClick={() => setCartOpen(false)} aria-label="ปิดตะกร้า">×</button></div>
             {orderId ? (
-              <div className={`success-card${orderPaymentStatus === "invalid" ? " invalid" : ""}`} role={orderPaymentStatus === "invalid" ? "alert" : "status"}><span>{orderPaymentStatus === "invalid" ? "!" : "✓"}</span><h3>{orderPaymentStatus === "invalid" ? "บันทึกคำสั่งซื้อแล้ว" : "รับคำสั่งซื้อแล้ว"}</h3><p>เลขที่ออเดอร์</p><strong>{orderId}</strong><p>{orderPaymentStatus === "verified" ? "ตรวจสลิปและยอดชำระเรียบร้อยแล้ว ร้านจะเริ่มเตรียมสินค้า" : orderPaymentStatus === "review" ? "สลิปอยู่ระหว่างตรวจสอบ ร้านจะยืนยันอีกครั้งก่อนเตรียมสินค้า" : orderPaymentStatus === "invalid" ? "ยังยืนยันสลิปไม่ได้ ร้านเก็บออเดอร์ไว้แล้วและจะตรวจสอบหรือติดต่อกลับ กรุณาอย่าโอนซ้ำจนกว่าร้านจะแจ้ง" : "ยังไม่ได้แนบสลิป ออเดอร์อยู่ในสถานะรอชำระเงิน"}</p><button type="button" onClick={() => { setOrderId(null); setOrderPaymentStatus("waiting"); setCartOpen(false); }}>กลับหน้าร้าน</button></div>
+              <div className={`success-card${orderPaymentStatus === "invalid" ? " invalid" : ""}`} role={orderPaymentStatus === "invalid" ? "alert" : "status"}><span>{orderPaymentStatus === "invalid" ? "!" : "✓"}</span><h3>{orderPaymentStatus === "invalid" ? "บันทึกคำสั่งซื้อแล้ว" : "รับคำสั่งซื้อแล้ว"}</h3><p>เลขที่ออเดอร์</p><strong>{orderId}</strong><p>{orderPaymentStatus === "verified" ? "ตรวจสลิปและยอดชำระเรียบร้อยแล้ว ร้านจะเริ่มเตรียมสินค้า" : orderPaymentStatus === "review" ? "สลิปอยู่ระหว่างตรวจสอบ ร้านจะยืนยันอีกครั้งก่อนเตรียมสินค้า" : orderPaymentStatus === "invalid" ? "ยังยืนยันสลิปไม่ได้ ร้านเก็บออเดอร์ไว้แล้วและจะตรวจสอบหรือติดต่อกลับ กรุณาอย่าโอนซ้ำจนกว่าร้านจะแจ้ง" : "ยังไม่ได้แนบสลิป ออเดอร์อยู่ในสถานะรอชำระเงิน"}</p><Link className="track-order-link" href={`/track?order=${encodeURIComponent(orderId)}`}>ติดตามออเดอร์นี้</Link><button type="button" onClick={() => { setOrderId(null); setOrderPaymentStatus("waiting"); setCartOpen(false); }}>กลับหน้าร้าน</button></div>
             ) : (
               <form onSubmit={submitOrder}>
                 <div className="cart-list">
