@@ -15,6 +15,18 @@ export type Product = {
 
 export type PreorderRound = { id: string; deliveryDate: string; opensAt: string; closesAt: string; label: string; note: string };
 
+export type StorefrontContent = {
+  storeName: string;
+  heroTitle: string;
+  heroHighlight: string;
+  heroDescription: string;
+  announcementText: string;
+  storyTitle: string;
+  storyDescription: string;
+  phonePrimary: string;
+  phoneSecondary: string;
+};
+
 type StorefrontResponse = {
   products: Product[];
   rounds: PreorderRound[];
@@ -24,6 +36,7 @@ type StorefrontResponse = {
   pickupMapUrl: string | null;
   promptPayId: string | null;
   promptPayName: string | null;
+  content: StorefrontContent;
   secureWriteReady: boolean;
   error?: string;
 };
@@ -50,6 +63,7 @@ export type UseStorefrontResult = Readonly<{
   pickupMapUrl: string | null;
   promptPayId: string | null;
   promptPayName: string | null;
+  content: StorefrontContent;
   secureWriteReady: boolean;
   storeLoading: boolean;
   notice: string | null;
@@ -68,6 +82,17 @@ export function useStorefront({ cartOpen, pruneUnavailable }: UseStorefrontOptio
   const [pickupMapUrl, setPickupMapUrl] = useState<string | null>(null);
   const [promptPayId, setPromptPayId] = useState<string | null>(null);
   const [promptPayName, setPromptPayName] = useState<string | null>(null);
+  const [content, setContent] = useState<StorefrontContent>({
+    storeName: "เจ๊น้อย เขียงหมูตะคร้อ",
+    heroTitle: "อร่อยถึงเครื่อง",
+    heroHighlight: "สั่งง่ายถึงบ้าน",
+    heroDescription: "แหนมหมู ไส้กรอกอีสาน และแคปหมูสูตรร้านเจ๊น้อย เลือกของอร่อย ใส่ตะกร้า แล้วสั่งได้เลย",
+    announcementText: "ทำสดทุกวัน ◆ สูตรดั้งเดิมตะคร้อ ◆ แพ็กพร้อมส่ง ◆ อร่อยถึงเครื่อง",
+    storyTitle: "ของดีจากเขียงหมูตะคร้อ",
+    storyDescription: "รสชาติคุ้นเคยจากร้านท้องถิ่น ส่งต่อด้วยวัตถุดิบที่คัดแล้วและความตั้งใจในทุกแพ็ก จากมือเจ๊น้อยถึงมือลูกค้า",
+    phonePrimary: "087-2416773",
+    phoneSecondary: "087-8755479",
+  });
   const [secureWriteReady, setSecureWriteReady] = useState(false);
   const [storeLoading, setStoreLoading] = useState(true);
   const [notice, setNotice] = useState<string | null>(null);
@@ -103,6 +128,7 @@ export function useStorefront({ cartOpen, pruneUnavailable }: UseStorefrontOptio
         setPickupMapUrl(data.pickupMapUrl);
         setPromptPayId(data.promptPayId);
         setPromptPayName(data.promptPayName);
+        setContent(data.content);
         setSecureWriteReady(data.secureWriteReady);
       } catch (error: unknown) {
         if (mountedRef.current && !hasLoadedProductsRef.current) {
@@ -153,6 +179,7 @@ export function useStorefront({ cartOpen, pruneUnavailable }: UseStorefrontOptio
     pickupMapUrl,
     promptPayId,
     promptPayName,
+    content,
     secureWriteReady,
     storeLoading,
     notice,

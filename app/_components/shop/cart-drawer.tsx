@@ -29,6 +29,8 @@ export type CartDrawerProps = Readonly<{
     promptPayName: string | null;
     secureWriteReady: boolean;
     notice: string | null;
+    phonePrimary: string;
+    phoneSecondary: string;
   }>;
   order: Readonly<{
     id: string | null;
@@ -104,8 +106,8 @@ export function CartDrawer({ drawerRef, onClose, cart, storefront, order }: Cart
                 <p className="closed-round-date">{storefront.nextRound ? `รอบถัดไปเปิดวันที่ ${storefront.nextRound.opensAt}` : "ติดตามรอบถัดไปเร็ว ๆ นี้"}</p>
                 <p className="closed-round-note">สินค้าในตะกร้ายังไม่ถูกจองและยังไม่ต้องชำระเงิน หากต้องการสอบถาม โทรหาร้านได้ทันที</p>
                 <div className="closed-round-phone-links" aria-label="โทรสอบถามร้านเจ๊น้อย">
-                  <a href="tel:0872416773" aria-label="โทรหาร้านเจ๊น้อยที่เบอร์ 087 241 6773">☎ 087-2416773</a>
-                  <a href="tel:0878755479" aria-label="โทรหาร้านเจ๊น้อยที่เบอร์ 087 875 5479">☎ 087-8755479</a>
+                  <a href={`tel:${storefront.phonePrimary.replace(/[^\d+]/g, "")}`} aria-label={`โทรหาร้านเจ๊น้อยที่เบอร์ ${storefront.phonePrimary}`}>☎ {storefront.phonePrimary}</a>
+                  <a href={`tel:${storefront.phoneSecondary.replace(/[^\d+]/g, "")}`} aria-label={`โทรหาร้านเจ๊น้อยที่เบอร์ ${storefront.phoneSecondary}`}>☎ {storefront.phoneSecondary}</a>
                 </div>
                 <button className="closed-round-back" type="button" onClick={onClose}>กลับไปเลือกสินค้า</button>
               </section>

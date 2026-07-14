@@ -135,18 +135,18 @@ export function Shop() {
 
   return (
     <main>
-      <SiteHeader cartCount={cartCount} onOpenCart={() => setCartOpen(true)} />
-      <Hero storeLoading={storefront.storeLoading} rounds={storefront.rounds} nextRound={storefront.nextRound} />
+      <SiteHeader cartCount={cartCount} onOpenCart={() => setCartOpen(true)} storeName={storefront.content.storeName} />
+      <Hero storeLoading={storefront.storeLoading} rounds={storefront.rounds} nextRound={storefront.nextRound} content={storefront.content} />
       <ProductGrid
         storeLoading={storefront.storeLoading}
         products={storefront.products}
         quantities={quantities}
         onUpdateQuantity={updateQuantity}
       />
-      <PhoneStrip />
+      <PhoneStrip phonePrimary={storefront.content.phonePrimary} phoneSecondary={storefront.content.phoneSecondary} />
 
       <section className="marquee" aria-label="จุดเด่นสินค้า">
-        <div>ทำสดทุกวัน <span>◆</span> สูตรดั้งเดิมตะคร้อ <span>◆</span> แพ็กพร้อมส่ง <span>◆</span> อร่อยถึงเครื่อง</div>
+        <div>{storefront.content.announcementText} <span aria-hidden="true">◆</span> {storefront.content.announcementText}</div>
       </section>
 
       <section className="order-flow" id="how-to-order">
@@ -157,10 +157,10 @@ export function Shop() {
 
       <section className="story" id="story">
         <Image src="/images/products/jae-noi-presenting-pork-rinds-large-tubs.jpg" alt="เจ๊น้อยนำเสนอแคปหมูบรรจุกล่อง" width={760} height={960} />
-        <div><p className="eyebrow">ทำเอง ขายเอง ใส่ใจทุกกล่อง</p><h2>ของดีจากเขียงหมูตะคร้อ</h2><p>รสชาติคุ้นเคยจากร้านท้องถิ่น ส่งต่อด้วยวัตถุดิบที่คัดแล้วและความตั้งใจในทุกแพ็ก จากมือเจ๊น้อยถึงมือลูกค้า</p><blockquote>“ให้ลูกค้าได้ของอร่อย เหมือนมาซื้อถึงหน้าร้าน”</blockquote></div>
+        <div><p className="eyebrow">ทำเอง ขายเอง ใส่ใจทุกกล่อง</p><h2>{storefront.content.storyTitle}</h2><p>{storefront.content.storyDescription}</p><blockquote>“ให้ลูกค้าได้ของอร่อย เหมือนมาซื้อถึงหน้าร้าน”</blockquote></div>
       </section>
 
-      <footer><Image src="/images/products/jae-noi-shop-logo.jpg" alt="เจ๊น้อย เขียงหมูตะคร้อ" width={150} height={90} /><p>โทรสั่งซื้อ / สอบถาม</p><div className="footer-phone-links" aria-label="เบอร์โทรร้านเจ๊น้อย"><a href="tel:0872416773">087-2416773</a><a href="tel:0878755479">087-8755479</a></div><Link href="/track">ติดตามออเดอร์</Link></footer>
+      <footer><Image src="/images/products/jae-noi-shop-logo.jpg" alt={storefront.content.storeName} width={150} height={90} /><p>โทรสั่งซื้อ / สอบถาม</p><div className="footer-phone-links" aria-label="เบอร์โทรร้านเจ๊น้อย"><a href={`tel:${storefront.content.phonePrimary.replace(/[^\d+]/g, "")}`}>{storefront.content.phonePrimary}</a><a href={`tel:${storefront.content.phoneSecondary.replace(/[^\d+]/g, "")}`}>{storefront.content.phoneSecondary}</a></div><Link href="/track">ติดตามออเดอร์</Link></footer>
 
       {cartOpen && (
         <CartDrawer
@@ -181,6 +181,8 @@ export function Shop() {
             promptPayName: storefront.promptPayName,
             secureWriteReady: storefront.secureWriteReady,
             notice: storefront.notice,
+            phonePrimary: storefront.content.phonePrimary,
+            phoneSecondary: storefront.content.phoneSecondary,
           }}
           order={{
             id: orderId,

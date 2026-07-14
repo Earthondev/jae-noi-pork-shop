@@ -6,16 +6,17 @@ import Link from "next/link";
 export type SiteHeaderProps = Readonly<{
   cartCount: number;
   onOpenCart: () => void;
+  storeName: string;
 }>;
 
-export function SiteHeader({ cartCount, onOpenCart }: SiteHeaderProps) {
+export function SiteHeader({ cartCount, onOpenCart, storeName }: SiteHeaderProps) {
   return (
     <header className="site-header">
       <a className="brand" href="#top" aria-label="กลับไปด้านบน">
         <span className="brand-mark">
           <Image src="/images/products/jae-noi-shop-logo.jpg" alt="" width={80} height={80} priority />
         </span>
-        <span className="brand-name">เจ๊น้อย เขียงหมู</span>
+        <span className="brand-name">{storeName}</span>
       </a>
       <nav aria-label="เมนูหลัก">
         <a href="#products">สินค้า</a>

@@ -34,7 +34,7 @@ function receiptLines(order: PublicOrderTracking): string[] {
   return order.items.map((item) => `${item.name} × ${item.quantity}    ${item.lineTotal.toLocaleString("th-TH")} บาท`);
 }
 
-async function saveReceiptPng(order: PublicOrderTracking): Promise<void> {
+async function saveReceiptPng(order: PublicOrderTracking, storeName: string): Promise<void> {
   await document.fonts.ready;
   const lines = receiptLines(order);
   const canvas = document.createElement("canvas");
@@ -52,7 +52,7 @@ async function saveReceiptPng(order: PublicOrderTracking): Promise<void> {
   context.textAlign = "center";
   context.fillStyle = "#ffffff";
   context.font = "700 52px 'Noto Sans Thai', sans-serif";
-  context.fillText("เจ๊น้อย เขียงหมูตะคร้อ", canvas.width / 2, 86);
+  context.fillText(storeName, canvas.width / 2, 86);
   context.font = "500 30px 'Noto Sans Thai', sans-serif";
   context.fillText("ใบยืนยันการชำระเงิน", canvas.width / 2, 145);
 
@@ -102,7 +102,7 @@ async function saveReceiptPng(order: PublicOrderTracking): Promise<void> {
   URL.revokeObjectURL(url);
 }
 
-export function OrderTracker({ initialOrderId = "" }: { initialOrderId?: string }) {
+export function OrderTracker({ initialOrderId = "", storeName, phonePrimary, phoneSecondary }: { initialOrderId?: string; storeName: string; phonePrimary: string; phoneSecondary: string }) {
   const [orderId, setOrderId] = useState(initialOrderId);
   const [phoneLast4, setPhoneLast4] = useState("");
   const [order, setOrder] = useState<PublicOrderTracking | null>(null);
@@ -145,7 +145,7 @@ export function OrderTracker({ initialOrderId = "" }: { initialOrderId?: string 
   return (
     <main className="track-page">
       <header className="track-header">
-        <Link href="/" aria-label="กลับหน้าร้าน"><Image src="/images/products/jae-noi-shop-logo.jpg" alt="เจ๊น้อย เขียงหมูตะคร้อ" width={130} height={78} priority /></Link>
+        <Link href="/" aria-label="กลับหน้าร้าน"><Image src="/images/products/jae-noi-shop-logo.jpg" alt={storeName} width={130} height={78} priority /></Link>
         <Link href="/">กลับหน้าร้าน</Link>
       </header>
 
@@ -186,14 +186,14 @@ export function OrderTracker({ initialOrderId = "" }: { initialOrderId?: string 
           {order.paymentStatus === "paid" && (
             <section className="track-receipt" aria-labelledby="receipt-title">
               <p className="receipt-mark" aria-hidden="true">✓</p><p className="eyebrow">ชำระเงินเรียบร้อย</p><h3 id="receipt-title">ใบยืนยันการชำระเงิน</h3><p>เลขออเดอร์ <strong>{order.orderId}</strong></p><div className="receipt-items">{order.items.map((item, index) => <p key={`${item.name}-receipt-${index}`}><span>{item.name} × {item.quantity}</span><strong>{item.lineTotal.toLocaleString("th-TH")} บาท</strong></p>)}</div><p>ยอดชำระ <strong>{order.total.toLocaleString("th-TH")} บาท</strong></p><p>รอบจัดส่ง <strong>{order.deliveryDate}</strong></p>
-              <div className="receipt-actions"><button type="button" onClick={() => { setReceiptError(null); void saveReceiptPng(order).catch((saveError: unknown) => setReceiptError(saveError instanceof Error ? saveError.message : "บันทึกรูปไม่สำเร็จ")); }}>บันทึกเป็นรูป PNG</button><button type="button" onClick={() => window.print()}>พิมพ์หรือบันทึก PDF</button></div>
+              <div className="receipt-actions"><button type="button" onClick={() => { setReceiptError(null); void saveReceiptPng(order, storeName).catch((saveError: unknown) => setReceiptError(saveError instanceof Error ? saveError.message : "บันทึกรูปไม่สำเร็จ")); }}>บันทึกเป็นรูป PNG</button><button type="button" onClick={() => window.print()}>พิมพ์หรือบันทึก PDF</button></div>
               {receiptError && <p className="track-error" role="alert">{receiptError}</p>}
             </section>
           )}
         </section>
       )}
 
-      <footer className="track-footer"><p>ต้องการความช่วยเหลือ โทรหาร้านได้ทันที</p><div className="track-phone-links" aria-label="เบอร์โทรร้านเจ๊น้อย"><a href="tel:0872416773">☎ 087-2416773</a><a href="tel:0878755479">☎ 087-8755479</a></div><Link href="/">กลับไปเลือกสินค้า</Link></footer>
+      <footer className="track-footer"><p>ต้องการความช่วยเหลือ โทรหาร้านได้ทันที</p><div className="track-phone-links" aria-label="เบอร์โทรร้านเจ๊น้อย"><a href={`tel:${phonePrimary.replace(/[^\d+]/g, "")}`}>☎ {phonePrimary}</a><a href={`tel:${phoneSecondary.replace(/[^\d+]/g, "")}`}>☎ {phoneSecondary}</a></div><Link href="/">กลับไปเลือกสินค้า</Link></footer>
     </main>
   );
 }

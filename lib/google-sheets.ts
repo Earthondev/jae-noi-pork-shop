@@ -1,8 +1,26 @@
 import { env } from "cloudflare:workers";
 import type { AdminOrder, OrderStatus, PaymentStatus } from "../db/orders";
 import { maskPhone, matchesPhoneLast4, type PublicOrderTracking } from "./order-tracking";
-import { catalogProductsFromRows, type CatalogProduct } from "./product-catalog";
+import { catalogProductsFromRows, safeProductImageUrl, PRODUCT_IMAGE_PLACEHOLDER, type CatalogProduct } from "./product-catalog";
+import { normalizeProductStatus } from "./product-catalog";
 import { safePickupMapUrl } from "./storefront-settings";
+import {
+  cleanStorefrontSettings,
+  dateInputFromSheetsSerial,
+  dateTimeInputFromSheetsSerial,
+  DEFAULT_STOREFRONT_CONTENT,
+  fingerprint,
+  roundIdFromDeliveryDate,
+  sheetsSerialFromInput,
+  validateProductInput,
+  validateRoundInput,
+  type AdminCmsData,
+  type AdminProduct,
+  type AdminRound,
+  type AdminStorefrontSettings,
+  type ProductInput,
+  type RoundInput,
+} from "./admin-cms";
 
 type GoogleBindings = {
   GOOGLE_SHEET_ID?: string;
@@ -22,15 +40,18 @@ const SHEETS_SCOPE = "https://www.googleapis.com/auth/spreadsheets";
 const TOKEN_URL = "https://oauth2.googleapis.com/token";
 
 type AccessToken = { value: string; expiresAt: number };
+type SheetScalar = string | number | boolean;
 type SheetsValuesResponse = { values?: string[][] };
-type SheetsBatchGetResponse = { valueRanges?: Array<{ values?: string[][] }> };
+type SheetsBatchGetResponse = { valueRanges?: Array<{ values?: SheetScalar[][] }> };
 type SheetPaymentStatus = "รอชำระเงิน" | "รอตรวจสลิป" | "ชำระแล้ว" | "สลิปไม่ถูกต้อง" | "คืนเงินแล้ว";
 type SheetOrderStatus = "รับออเดอร์แล้ว" | "กำลังเตรียม" | "พร้อมรับหน้าร้าน" | "จัดส่งแล้ว" | "สำเร็จ" | "ยกเลิก";
-type CellValue = { stringValue: string } | { numberValue: number };
+type CellValue = { stringValue: string } | { numberValue: number } | { formulaValue: string };
 type CellData = { userEnteredValue: CellValue };
 
 const ORDER_SHEET_ID = 103;
 const ORDER_ITEM_SHEET_ID = 104;
+const ROUND_SHEET_ID = 101;
+const PRODUCT_SHEET_ID = 102;
 
 let cachedAccessToken: AccessToken | null = null;
 
@@ -170,7 +191,15 @@ async function sheetsRequest(path: string, init?: RequestInit): Promise<Response
 }
 
 async function readRanges(ranges: string[]): Promise<string[][][]> {
-  const query = new URLSearchParams({ valueRenderOption: "FORMATTED_VALUE", dateTimeRenderOption: "FORMATTED_STRING" });
+  const rows = await readRangesWithRenderOption(ranges, "FORMATTED_VALUE");
+  return rows.map((range) => range.map((row) => row.map((value) => String(value ?? ""))));
+}
+
+async function readRangesWithRenderOption(
+  ranges: string[],
+  valueRenderOption: "FORMATTED_VALUE" | "UNFORMATTED_VALUE" | "FORMULA",
+): Promise<SheetScalar[][][]> {
+  const query = new URLSearchParams({ valueRenderOption, dateTimeRenderOption: "SERIAL_NUMBER" });
   for (const range of ranges) query.append("ranges", range);
   const response = await sheetsRequest(`/values:batchGet?${query.toString()}`);
   const result = await response.json() as SheetsBatchGetResponse;
@@ -186,6 +215,17 @@ function cell(value: string | number): CellData {
   return {
     userEnteredValue: typeof value === "number" ? { numberValue: value } : { stringValue: value },
   };
+}
+
+function formulaCell(value: string): CellData {
+  return { userEnteredValue: { formulaValue: value } };
+}
+
+function settingsFromRows(rows: string[][]): Record<string, { value: string; status: string }> {
+  return Object.fromEntries(rows.slice(1).filter((row) => row[0]).map((row) => [row[0], {
+    value: row[1] ?? "",
+    status: row[3] ?? "รอข้อมูล",
+  }]));
 }
 
 export async function getStorefrontData() {
@@ -208,10 +248,7 @@ export async function getStorefrontData() {
     ["เปิดรับ", "เตรียมเปิด"].includes(row[4]) && ["ยังไม่ถึงเวลาเปิด", "ยังไม่แสดง"].includes(row[9]),
   );
 
-  const settings = Object.fromEntries(settingRows.slice(1).filter((row) => row[0]).map((row) => [row[0], {
-    value: row[1] ?? "",
-    status: row[3] ?? "รอข้อมูล",
-  }]));
+  const settings = settingsFromRows(settingRows);
   const shippingFee = settings.postal_shipping_fee?.value ? numberValue(settings.postal_shipping_fee.value) : null;
   const pickupAddress = settings.pickup_address?.status === "พร้อมใช้" && settings.pickup_address.value
     ? settings.pickup_address.value
@@ -229,8 +266,233 @@ export async function getStorefrontData() {
     pickupMapUrl,
     promptPayId: settings.promptpay_id?.value || null,
     promptPayName: settings.promptpay_name?.value || null,
+    content: {
+      storeName: settings.store_name?.value || "เจ๊น้อย เขียงหมูตะคร้อ",
+      heroTitle: settings.hero_title?.value || DEFAULT_STOREFRONT_CONTENT.heroTitle,
+      heroHighlight: settings.hero_highlight?.value || DEFAULT_STOREFRONT_CONTENT.heroHighlight,
+      heroDescription: settings.hero_description?.value || DEFAULT_STOREFRONT_CONTENT.heroDescription,
+      announcementText: settings.announcement_text?.value || DEFAULT_STOREFRONT_CONTENT.announcementText,
+      storyTitle: settings.story_title?.value || DEFAULT_STOREFRONT_CONTENT.storyTitle,
+      storyDescription: settings.story_description?.value || DEFAULT_STOREFRONT_CONTENT.storyDescription,
+      phonePrimary: settings.phone_primary?.value || "087-2416773",
+      phoneSecondary: settings.phone_secondary?.value || "087-8755479",
+    },
     secureWriteReady: serviceCredentials() !== null,
   };
+}
+
+export async function getAdminCmsData(): Promise<AdminCmsData> {
+  const [productRows, roundRows, settingRows] = await readRangesWithRenderOption(
+    ["สินค้า!A:I", "รอบจัดส่ง!A:J", "ตั้งค่าร้าน!A:D"],
+    "UNFORMATTED_VALUE",
+  );
+  const formattedRoundRows = (await readRanges(["รอบจัดส่ง!A:J"]))[0];
+
+  const products: AdminProduct[] = await Promise.all(productRows.slice(1).filter((row) => row[0]).map(async (row) => {
+    const source = row.slice(0, 9);
+    return {
+      id: String(row[0] ?? ""),
+      name: String(row[1] ?? ""),
+      unit: String(row[2] ?? ""),
+      detail: String(row[3] ?? ""),
+      price: row[4] === undefined || row[4] === "" ? null : numberValue(String(row[4])),
+      status: normalizeProductStatus(String(row[5] ?? "")),
+      updatedAt: String(row[7] ?? ""),
+      imageUrl: String(row[8] ?? ""),
+      fingerprint: await fingerprint(source),
+    };
+  }));
+
+  const rounds: AdminRound[] = await Promise.all(roundRows.slice(1).filter((row) => row[0]).map(async (row, index) => {
+    const formatted = formattedRoundRows[index + 1] ?? [];
+    const source = row.slice(0, 10);
+    return {
+      id: String(row[0] ?? ""),
+      deliveryDate: dateInputFromSheetsSerial(row[1]),
+      opensAt: dateTimeInputFromSheetsSerial(row[2]),
+      closesAt: dateTimeInputFromSheetsSerial(row[3]),
+      status: String(row[4] ?? "เตรียมเปิด") as AdminRound["status"],
+      label: formatted[5] ?? String(row[5] ?? ""),
+      note: String(row[6] ?? ""),
+      orderCount: numberValue(String(row[7] ?? "0")),
+      sales: numberValue(String(row[8] ?? "0")),
+      displayState: formatted[9] ?? String(row[9] ?? ""),
+      fingerprint: await fingerprint(source),
+    };
+  }));
+
+  const settingTextRows = settingRows.map((row) => row.map((value) => String(value ?? "")));
+  const settingsByKey = settingsFromRows(settingTextRows);
+  const settingsBase = {
+    storeName: settingsByKey.store_name?.value || "เจ๊น้อย เขียงหมูตะคร้อ",
+    heroTitle: settingsByKey.hero_title?.value || DEFAULT_STOREFRONT_CONTENT.heroTitle,
+    heroHighlight: settingsByKey.hero_highlight?.value || DEFAULT_STOREFRONT_CONTENT.heroHighlight,
+    heroDescription: settingsByKey.hero_description?.value || DEFAULT_STOREFRONT_CONTENT.heroDescription,
+    announcementText: settingsByKey.announcement_text?.value || DEFAULT_STOREFRONT_CONTENT.announcementText,
+    storyTitle: settingsByKey.story_title?.value || DEFAULT_STOREFRONT_CONTENT.storyTitle,
+    storyDescription: settingsByKey.story_description?.value || DEFAULT_STOREFRONT_CONTENT.storyDescription,
+    phonePrimary: settingsByKey.phone_primary?.value || "087-2416773",
+    phoneSecondary: settingsByKey.phone_secondary?.value || "087-8755479",
+    shippingFee: settingsByKey.postal_shipping_fee?.value ? numberValue(settingsByKey.postal_shipping_fee.value) : null,
+    pickupAddress: settingsByKey.pickup_address?.value || "",
+    pickupMapUrl: settingsByKey.pickup_map_url?.value || "",
+  };
+  const settings: AdminStorefrontSettings = {
+    ...settingsBase,
+    fingerprint: await fingerprint(settingRows.slice(1).filter((row) => row[0])),
+  };
+
+  return { products, rounds, settings, refreshedAt: new Date().toISOString() };
+}
+
+export type CmsMutationResult = "updated" | "not_found" | "conflict" | "duplicate";
+
+export async function createAdminProduct(input: ProductInput): Promise<CmsMutationResult> {
+  const product = validateProductInput(input);
+  assertSafeProductImage(product.imageUrl);
+  const rows = (await readRangesWithRenderOption(["สินค้า!A:I"], "UNFORMATTED_VALUE"))[0];
+  if (rows.slice(1).some((row) => String(row[0] ?? "").toUpperCase() === product.id)) return "duplicate";
+  const rowNumber = firstBlankRow(rows);
+  await sheetsRequest(":batchUpdate", {
+    method: "POST",
+    body: JSON.stringify({ requests: [{ updateCells: {
+      start: { sheetId: PRODUCT_SHEET_ID, rowIndex: rowNumber - 1, columnIndex: 0 },
+      rows: [{ values: [
+        cell(product.id), cell(product.name), cell(product.unit), cell(product.detail),
+        product.price === null ? cell("") : cell(product.price), cell(product.status), cell(""),
+        cell(new Date().toISOString()), cell(product.imageUrl),
+      ] }],
+      fields: "userEnteredValue",
+    } }] }),
+  });
+  return "updated";
+}
+
+export async function updateAdminProduct(id: string, input: ProductInput): Promise<CmsMutationResult> {
+  const product = validateProductInput({ ...input, id });
+  assertSafeProductImage(product.imageUrl);
+  const rows = (await readRangesWithRenderOption(["สินค้า!A:I"], "UNFORMATTED_VALUE"))[0];
+  const index = rows.slice(1).findIndex((row) => String(row[0] ?? "") === id);
+  if (index < 0) return "not_found";
+  const currentRow = rows[index + 1] ?? [];
+  if (input.fingerprint && await fingerprint(currentRow.slice(0, 9)) !== input.fingerprint) return "conflict";
+  const rowNumber = index + 2;
+  await writeRawValues([
+    { range: `สินค้า!B${rowNumber}:F${rowNumber}`, values: [[product.name, product.unit, product.detail, product.price ?? "", product.status]] },
+    { range: `สินค้า!H${rowNumber}:I${rowNumber}`, values: [[new Date().toISOString(), product.imageUrl]] },
+  ]);
+  return "updated";
+}
+
+export async function moveAdminProduct(id: string, direction: "up" | "down", expectedFingerprint?: string): Promise<CmsMutationResult> {
+  const rows = (await readRangesWithRenderOption(["สินค้า!A:I"], "UNFORMATTED_VALUE"))[0];
+  const index = rows.slice(1).findIndex((row) => String(row[0] ?? "") === id);
+  if (index < 0) return "not_found";
+  const rowIndex = index + 1;
+  if (expectedFingerprint && await fingerprint((rows[rowIndex] ?? []).slice(0, 9)) !== expectedFingerprint) return "conflict";
+  const targetIndex = direction === "up" ? rowIndex - 1 : rowIndex + 1;
+  if (targetIndex < 1 || targetIndex >= rows.length || !rows[targetIndex]?.[0]) return "updated";
+  const current = padRow(rows[rowIndex] ?? [], 9);
+  const target = padRow(rows[targetIndex] ?? [], 9);
+  await writeRawValues([
+    { range: `สินค้า!A${rowIndex + 1}:I${rowIndex + 1}`, values: [target] },
+    { range: `สินค้า!A${targetIndex + 1}:I${targetIndex + 1}`, values: [current] },
+  ]);
+  return "updated";
+}
+
+export async function createAdminRound(input: RoundInput): Promise<CmsMutationResult> {
+  const round = validateRoundInput(input);
+  const id = roundIdFromDeliveryDate(round.deliveryDate);
+  const rows = (await readRangesWithRenderOption(["รอบจัดส่ง!A:J"], "UNFORMATTED_VALUE"))[0];
+  if (rows.slice(1).some((row) => String(row[0] ?? "") === id)) return "duplicate";
+  const rowNumber = firstBlankRow(rows);
+  await sheetsRequest(":batchUpdate", {
+    method: "POST",
+    body: JSON.stringify({ requests: [{ updateCells: {
+      start: { sheetId: ROUND_SHEET_ID, rowIndex: rowNumber - 1, columnIndex: 0 },
+      rows: [{ values: [
+        cell(id), cell(sheetsSerialFromInput(round.deliveryDate)), cell(sheetsSerialFromInput(round.opensAt)),
+        cell(sheetsSerialFromInput(round.closesAt)), cell(round.status),
+        formulaCell(`="รอบจัดส่ง "&TEXT(B${rowNumber},"d mmm yyyy")`), cell(round.note),
+        formulaCell(`=COUNTIF('ออเดอร์'!B:B,A${rowNumber})`),
+        formulaCell(`=SUMIF('ออเดอร์'!B:B,A${rowNumber},'ออเดอร์'!J:J)`),
+        formulaCell(`=IF(E${rowNumber}="เตรียมเปิด","ยังไม่แสดง",IF(E${rowNumber}<>"เปิดรับ","ปิดรับแล้ว",IF(NOW()<C${rowNumber},"ยังไม่ถึงเวลาเปิด",IF(NOW()<=D${rowNumber},"แสดงใน dropdown","ปิดรับแล้ว"))))`),
+      ] }],
+      fields: "userEnteredValue",
+    } }] }),
+  });
+  return "updated";
+}
+
+export async function updateAdminRound(id: string, input: RoundInput): Promise<CmsMutationResult> {
+  const round = validateRoundInput(input);
+  if (roundIdFromDeliveryDate(round.deliveryDate) !== id) throw new Error("ไม่สามารถเปลี่ยนวันจัดส่งของรอบเดิมได้ กรุณาสร้างรอบใหม่");
+  const rows = (await readRangesWithRenderOption(["รอบจัดส่ง!A:J"], "UNFORMATTED_VALUE"))[0];
+  const index = rows.slice(1).findIndex((row) => String(row[0] ?? "") === id);
+  if (index < 0) return "not_found";
+  const currentRow = rows[index + 1] ?? [];
+  if (input.fingerprint && await fingerprint(currentRow.slice(0, 10)) !== input.fingerprint) return "conflict";
+  const rowNumber = index + 2;
+  await writeRawValues([
+    { range: `รอบจัดส่ง!B${rowNumber}:E${rowNumber}`, values: [[
+      sheetsSerialFromInput(round.deliveryDate), sheetsSerialFromInput(round.opensAt), sheetsSerialFromInput(round.closesAt), round.status,
+    ]] },
+    { range: `รอบจัดส่ง!G${rowNumber}`, values: [[round.note]] },
+  ]);
+  return "updated";
+}
+
+export async function updateAdminStorefrontSettings(
+  input: Omit<AdminStorefrontSettings, "fingerprint"> & { fingerprint?: string },
+): Promise<CmsMutationResult> {
+  const currentRows = (await readRangesWithRenderOption(["ตั้งค่าร้าน!A:D"], "UNFORMATTED_VALUE"))[0];
+  if (input.fingerprint && await fingerprint(currentRows.slice(1).filter((row) => row[0])) !== input.fingerprint) return "conflict";
+  const settings = cleanStorefrontSettings(input);
+  const definitions: Array<[string, string | number, string, string]> = [
+    ["store_name", settings.storeName, "ชื่อร้านบนเว็บไซต์", "พร้อมใช้"],
+    ["phone_primary", settings.phonePrimary, "เบอร์โทรหลัก", "พร้อมใช้"],
+    ["phone_secondary", settings.phoneSecondary, "เบอร์โทรสำรอง", "พร้อมใช้"],
+    ["postal_shipping_fee", settings.shippingFee ?? "", "ค่าส่งไปรษณีย์ หน่วยบาท", settings.shippingFee === null ? "รอข้อมูล" : "พร้อมใช้"],
+    ["pickup_address", settings.pickupAddress, "ที่อยู่สำหรับรับเองหน้าร้าน", settings.pickupAddress ? "พร้อมใช้" : "รอข้อมูล"],
+    ["pickup_map_url", settings.pickupMapUrl, "ลิงก์นำทางสำหรับลูกค้าที่รับเองหน้าร้าน", settings.pickupMapUrl ? "พร้อมใช้" : "รอข้อมูล"],
+    ["hero_title", settings.heroTitle, "หัวข้อหลักหน้าแรก", "พร้อมใช้"],
+    ["hero_highlight", settings.heroHighlight, "ข้อความสีแดงใต้หัวข้อ", "พร้อมใช้"],
+    ["hero_description", settings.heroDescription, "คำแนะนำร้านหน้าแรก", "พร้อมใช้"],
+    ["announcement_text", settings.announcementText, "ข้อความแถบประกาศ", "พร้อมใช้"],
+    ["story_title", settings.storyTitle, "หัวข้อเรื่องของร้าน", "พร้อมใช้"],
+    ["story_description", settings.storyDescription, "เนื้อหาเรื่องของร้าน", "พร้อมใช้"],
+  ];
+  const existingRows = new Map(currentRows.slice(1).map((row, index) => [String(row[0] ?? ""), index + 2]));
+  let nextRow = firstBlankRow(currentRows);
+  const data = definitions.map(([key, value, purpose, status]) => {
+    const row = existingRows.get(key) ?? nextRow++;
+    return { range: `ตั้งค่าร้าน!A${row}:D${row}`, values: [[key, value, purpose, status]] };
+  });
+  await writeRawValues(data);
+  return "updated";
+}
+
+async function writeRawValues(data: Array<{ range: string; values: SheetScalar[][] }>): Promise<void> {
+  await sheetsRequest("/values:batchUpdate", {
+    method: "POST",
+    body: JSON.stringify({ valueInputOption: "RAW", data }),
+  });
+}
+
+function firstBlankRow(rows: SheetScalar[][]): number {
+  const index = rows.slice(1).findIndex((row) => !row[0]);
+  return index < 0 ? rows.length + 1 : index + 2;
+}
+
+function padRow(row: SheetScalar[], length: number): SheetScalar[] {
+  return Array.from({ length }, (_, index) => row[index] ?? "");
+}
+
+function assertSafeProductImage(imageUrl: string): void {
+  if (imageUrl && safeProductImageUrl(imageUrl, googleBindings().PRODUCT_MEDIA_ORIGIN) === PRODUCT_IMAGE_PLACEHOLDER) {
+    throw new Error("รูปสินค้าต้องมาจากพื้นที่รูปของร้านเท่านั้น");
+  }
 }
 
 export async function appendOrder(order: NewSheetOrder): Promise<void> {

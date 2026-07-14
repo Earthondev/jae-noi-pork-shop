@@ -36,8 +36,8 @@ test("keeps the Thai mobile shop content and accessibility contract", async () =
   assert.match(shop, /role="dialog"/);
   assert.match(shop, /aria-modal="true"/);
   assert.match(shop, /event\.key === "Escape"/);
-  assert.match(shop, /href="tel:0872416773"/);
-  assert.match(shop, /href="tel:0878755479"/);
+  assert.match(shop, /phonePrimary\.replace/);
+  assert.match(shop, /phoneSecondary\.replace/);
   assert.doesNotMatch(shop, /href="\/admin"/);
   assert.doesNotMatch(shop, /หลังบ้านร้านค้า/);
   assert.match(shop, /0 บาท \(ฟรี\)/);
@@ -51,8 +51,8 @@ test("keeps the Thai mobile shop content and accessibility contract", async () =
   assert.match(shop, /ปิดรับชั่วคราว/);
   assert.match(shop, /product-card-skeleton/);
   assert.doesNotMatch(shop, /fallbackProducts/);
-  assert.match(tracker, /href="tel:0872416773"/);
-  assert.match(tracker, /href="tel:0878755479"/);
+  assert.match(tracker, /phonePrimary\.replace/);
+  assert.match(tracker, /phoneSecondary\.replace/);
   assert.match(css, /--red-700:/);
   assert.match(css, /prefers-reduced-motion/);
   assert.match(css, /\.floating-cart/);

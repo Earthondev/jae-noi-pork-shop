@@ -1,4 +1,6 @@
-export function PhoneStrip() {
+export function PhoneStrip({ phonePrimary, phoneSecondary }: { phonePrimary: string; phoneSecondary: string }) {
+  const primaryHref = phonePrimary.replace(/[^\d+]/g, "");
+  const secondaryHref = phoneSecondary.replace(/[^\d+]/g, "");
   return (
     <section className="phone-strip" aria-labelledby="phone-strip-title">
       <div className="phone-strip-copy">
@@ -9,8 +11,8 @@ export function PhoneStrip() {
         </div>
       </div>
       <div className="phone-strip-links">
-        <a href="tel:0872416773" aria-label="โทรหาร้านเจ๊น้อยที่เบอร์ 087 241 6773"><span>โทร</span><strong>087-2416773</strong></a>
-        <a href="tel:0878755479" aria-label="โทรหาร้านเจ๊น้อยที่เบอร์ 087 875 5479"><span>โทร</span><strong>087-8755479</strong></a>
+        <a href={`tel:${primaryHref}`} aria-label={`โทรหาร้านเจ๊น้อยที่เบอร์ ${phonePrimary}`}><span>โทร</span><strong>{phonePrimary}</strong></a>
+        <a href={`tel:${secondaryHref}`} aria-label={`โทรหาร้านเจ๊น้อยที่เบอร์ ${phoneSecondary}`}><span>โทร</span><strong>{phoneSecondary}</strong></a>
       </div>
     </section>
   );

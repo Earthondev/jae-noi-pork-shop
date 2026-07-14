@@ -1,23 +1,24 @@
 import Image from "next/image";
-import type { PreorderRound } from "../../_hooks/use-storefront";
+import type { PreorderRound, StorefrontContent } from "../../_hooks/use-storefront";
 
 export type HeroProps = Readonly<{
   storeLoading: boolean;
   rounds: readonly PreorderRound[];
   nextRound: PreorderRound | null;
+  content: StorefrontContent;
 }>;
 
-export function Hero({ storeLoading, rounds, nextRound }: HeroProps) {
+export function Hero({ storeLoading, rounds, nextRound, content }: HeroProps) {
   return (
     <>
       <section className="hero" id="top">
         <div className="hero-copy">
           <p className="eyebrow"><span aria-hidden="true" />ของอร่อยจากตะคร้อ · ทำสดทุกวัน</p>
           <h1>
-            อร่อยถึงเครื่อง<br />
-            <span>สั่งง่ายถึงบ้าน</span>
+            {content.heroTitle}<br />
+            <span>{content.heroHighlight}</span>
           </h1>
-          <p className="hero-lead">แหนมหมู ไส้กรอกอีสาน และแคปหมูสูตรร้านเจ๊น้อย เลือกของอร่อย ใส่ตะกร้า แล้วสั่งได้เลย</p>
+          <p className="hero-lead">{content.heroDescription}</p>
           <div className="hero-actions">
             <a className="primary-action" href="#products">เลือกสินค้า</a>
           </div>
