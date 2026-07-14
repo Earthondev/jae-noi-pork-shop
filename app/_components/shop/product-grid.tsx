@@ -1,4 +1,4 @@
-import type { Quantities } from "../../_hooks/use-cart";
+import type { Quantities } from "../../_hooks/use-checkout-draft";
 import type { Product } from "../../_hooks/use-storefront";
 import { ProductCard } from "./product-card";
 

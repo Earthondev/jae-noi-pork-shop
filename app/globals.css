@@ -242,6 +242,12 @@ footer .footer-phone-links a { min-height: 44px; padding: 0 12px; display: inlin
 .file-label input { border: 0; padding: 8px 0 0; }
 .form-notice { padding: 12px; background: #ffe2df; color: var(--red-800); border-radius: 10px; font-size: .88rem; }
 .cart-notice { margin: 12px 0 0; }
+.saved-draft-control { margin: 12px 0 0; padding: 11px 12px; display: flex; align-items: center; justify-content: space-between; gap: 10px; border: 1px solid #d8c280; border-radius: 12px; background: #fff8d9; color: #725000; }
+.saved-draft-control > span { min-width: 0; display: grid; gap: 1px; }
+.saved-draft-control strong { font-size: .76rem; }
+.saved-draft-control small { color: #806c2c; font-size: .66rem; line-height: 1.45; }
+.saved-draft-control button { min-height: 44px; padding: 0 11px; flex: 0 0 auto; border: 1px solid #b79224; border-radius: 10px; background: white; color: #725000; font-size: .7rem; font-weight: 900; transition: transform .15s, background-color .15s; }
+.saved-draft-control button:active { transform: scale(.96); background: #fff2b5; }
 .fulfilment-choice { margin: 0; padding: 0; border: 0; display: grid; grid-template-columns: 1fr 1fr; gap: 9px; }
 .fulfilment-choice legend { margin-bottom: 6px; font-size: .86rem; font-weight: 700; }
 .fulfilment-choice label { min-height: 86px; margin: 0; padding: 12px; border: 2px solid var(--line); border-radius: 14px; background: white; display: flex; gap: 9px; align-items: flex-start; }

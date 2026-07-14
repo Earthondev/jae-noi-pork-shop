@@ -11,7 +11,7 @@ import test from "node:test";
 const SHOP_SOURCE_FILES = [
   "../app/shop.tsx",
   "../app/_hooks/use-storefront.ts",
-  "../app/_hooks/use-cart.ts",
+  "../app/_hooks/use-checkout-draft.ts",
   "../app/_components/shop/site-header.tsx",
   "../app/_components/shop/hero.tsx",
   "../app/_components/shop/phone-strip.tsx",

@@ -10,7 +10,7 @@ import { Hero } from "./_components/shop/hero";
 import { PhoneStrip } from "./_components/shop/phone-strip";
 import { ProductGrid } from "./_components/shop/product-grid";
 import { SiteHeader } from "./_components/shop/site-header";
-import { useCart } from "./_hooks/use-cart";
+import { useCheckoutDraft } from "./_hooks/use-checkout-draft";
 import { useStorefront } from "./_hooks/use-storefront";
 
 type ClientPaymentStatus = "waiting" | "verified" | "review" | "invalid";
@@ -23,13 +23,49 @@ export function Shop() {
   const drawerRef = useRef<HTMLElement>(null);
   const idempotencyKeyRef = useRef<string | null>(null);
 
-  const { quantities, updateQuantity: updateCartQuantity, clearCart, pruneUnavailable } = useCart();
-  const storefront = useStorefront({ cartOpen, pruneUnavailable });
+  const checkout = useCheckoutDraft();
+  const {
+    draft: checkoutDraft,
+    restored: checkoutRestored,
+    hasContent: checkoutHasContent,
+    setField: setCheckoutField,
+    updateQuantity: updateCheckoutQuantity,
+    pruneUnavailable,
+    clearDraft,
+  } = checkout;
+  const quantities = checkoutDraft.quantities;
+  const setSelectedRound = useCallback((round: string) => setCheckoutField("selectedRound", round), [setCheckoutField]);
+  const setFulfilment = useCallback((fulfilment: "pickup" | "postal") => setCheckoutField("fulfilment", fulfilment), [setCheckoutField]);
+  const storefront = useStorefront({
+    cartOpen,
+    pruneUnavailable,
+    selectedRound: checkoutDraft.selectedRound,
+    setSelectedRound,
+    fulfilment: checkoutDraft.fulfilment,
+    setFulfilment,
+  });
+  const {
+    storeLoading,
+    notice: storefrontNotice,
+    setNotice: setStorefrontNotice,
+    refreshStorefront,
+  } = storefront;
+  const restoredNoticeShownRef = useRef(false);
 
   const updateQuantity = useCallback(
-    (productId: string, delta: number) => updateCartQuantity(storefront.products, productId, delta),
-    [updateCartQuantity, storefront.products],
+    (productId: string, delta: number) => updateCheckoutQuantity(storefront.products, productId, delta),
+    [updateCheckoutQuantity, storefront.products],
   );
+
+  useEffect(() => {
+    if (checkoutRestored) void refreshStorefront();
+  }, [checkoutRestored, refreshStorefront]);
+
+  useEffect(() => {
+    if (!checkoutRestored || storeLoading || restoredNoticeShownRef.current) return;
+    restoredNoticeShownRef.current = true;
+    if (!storefrontNotice) setStorefrontNotice("กู้คืนตะกร้าและข้อมูลที่กรอกไว้แล้ว พร้อมตรวจราคาและสถานะสินค้าล่าสุดให้แล้ว");
+  }, [checkoutRestored, setStorefrontNotice, storefrontNotice, storeLoading]);
 
   useEffect(() => {
     if (!cartOpen) return;
@@ -57,7 +93,7 @@ export function Shop() {
   }, [cartOpen]);
 
   const cartItems = storefront.products.filter((product) => (quantities[product.id] ?? 0) > 0);
-  const cartCount = Object.values(quantities).reduce((sum, qty) => sum + qty, 0);
+  const cartCount = cartItems.reduce((sum, product) => sum + (quantities[product.id] ?? 0), 0);
   const subtotal = useMemo(
     () =>
       storefront.products.reduce(
@@ -118,7 +154,7 @@ export function Shop() {
       setOrderId(result.orderId);
       setOrderPaymentStatus(result.paymentStatus ?? "waiting");
       idempotencyKeyRef.current = null;
-      clearCart();
+      clearDraft();
     } catch (error) {
       await storefront.refreshStorefront();
       storefront.setNotice(error instanceof Error ? error.message : "เกิดข้อผิดพลาด กรุณาลองใหม่");
@@ -167,6 +203,15 @@ export function Shop() {
           drawerRef={drawerRef}
           onClose={() => setCartOpen(false)}
           cart={{ items: cartItems, quantities, subtotal, onUpdateQuantity: updateQuantity }}
+          checkout={{
+            customerName: checkoutDraft.customerName,
+            phone: checkoutDraft.phone,
+            address: checkoutDraft.address,
+            note: checkoutDraft.note,
+            hasContent: checkoutHasContent,
+            onChange: setCheckoutField,
+            onClear: clearDraft,
+          }}
           storefront={{
             rounds: storefront.rounds,
             nextRound: storefront.nextRound,

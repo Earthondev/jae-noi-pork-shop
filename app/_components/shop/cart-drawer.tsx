@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { QRCodeSVG } from "qrcode.react";
 import type { FormEvent, RefObject } from "react";
-import type { Quantities } from "../../_hooks/use-cart";
+import type { Quantities } from "../../_hooks/use-checkout-draft";
 import type { Fulfilment, PreorderRound, Product } from "../../_hooks/use-storefront";
 
 type ClientPaymentStatus = "waiting" | "verified" | "review" | "invalid";
@@ -14,6 +14,15 @@ export type CartDrawerProps = Readonly<{
     quantities: Quantities;
     subtotal: number;
     onUpdateQuantity: (productId: string, delta: number) => void;
+  }>;
+  checkout: Readonly<{
+    customerName: string;
+    phone: string;
+    address: string;
+    note: string;
+    hasContent: boolean;
+    onChange: (field: "customerName" | "phone" | "address" | "note", value: string) => void;
+    onClear: () => void;
   }>;
   storefront: Readonly<{
     rounds: readonly PreorderRound[];
@@ -44,7 +53,7 @@ export type CartDrawerProps = Readonly<{
   }>;
 }>;
 
-export function CartDrawer({ drawerRef, onClose, cart, storefront, order }: CartDrawerProps) {
+export function CartDrawer({ drawerRef, onClose, cart, checkout, storefront, order }: CartDrawerProps) {
   return (
     <div className="drawer-backdrop" role="presentation" onMouseDown={(event) => event.target === event.currentTarget && onClose()}>
       <aside ref={drawerRef} className="cart-drawer" role="dialog" aria-modal="true" aria-labelledby="cart-title">
@@ -97,6 +106,16 @@ export function CartDrawer({ drawerRef, onClose, cart, storefront, order }: Cart
             </div>
             <div className="summary-row"><span>รวมค่าสินค้า</span><strong>{cart.subtotal} บาท</strong></div>
             {storefront.notice && <p className="form-notice cart-notice" role="alert">{storefront.notice}</p>}
+            {checkout.hasContent && (
+              <div className="saved-draft-control" aria-label="ข้อมูลที่บันทึกชั่วคราว">
+                <span><strong>จำข้อมูลไว้บนเครื่องนี้</strong><small>ตะกร้าและข้อมูลที่กรอกจะอยู่ต่อ 24 ชั่วโมง</small></span>
+                <button type="button" onClick={() => {
+                  if (!window.confirm("ล้างสินค้าและข้อมูลที่กรอกไว้ทั้งหมดจากเครื่องนี้?")) return;
+                  checkout.onClear();
+                  if (storefront.rounds.length === 1) storefront.onSelectRound(storefront.rounds[0].id);
+                }}>ล้างข้อมูล</button>
+              </div>
+            )}
 
             {storefront.rounds.length === 0 ? (
               <section className="closed-round-cart" role="status" aria-labelledby="closed-round-title">
@@ -155,15 +174,15 @@ export function CartDrawer({ drawerRef, onClose, cart, storefront, order }: Cart
                       <span aria-hidden="true">⌖</span> เปิดแผนที่ / นำทาง <span aria-hidden="true">↗</span>
                     </a>
                   )}
-                  <label>ชื่อผู้รับ<input name="customerName" required autoComplete="name" placeholder="ชื่อ–นามสกุล" /></label>
+                  <label>ชื่อผู้รับ<input name="customerName" required autoComplete="name" placeholder="ชื่อ–นามสกุล" value={checkout.customerName} onChange={(event) => checkout.onChange("customerName", event.target.value)} /></label>
                   <label>
-                    เบอร์โทร<input name="phone" required inputMode="tel" autoComplete="tel" placeholder="08x-xxx-xxxx" aria-describedby="phone-help" />
+                    เบอร์โทร<input name="phone" required inputMode="tel" autoComplete="tel" placeholder="08x-xxx-xxxx" aria-describedby="phone-help" value={checkout.phone} onChange={(event) => checkout.onChange("phone", event.target.value)} />
                     <small className="field-help" id="phone-help">ใช้เบอร์นี้เช็กสถานะออเดอร์ภายหลังด้วยเลข 4 ตัวท้าย</small>
                   </label>
                   {storefront.fulfilment === "postal" && (
-                    <label className="full">ที่อยู่จัดส่ง<textarea name="address" required autoComplete="street-address" rows={3} placeholder="บ้านเลขที่ หมู่ ตำบล อำเภอ จังหวัด รหัสไปรษณีย์" /></label>
+                    <label className="full">ที่อยู่จัดส่ง<textarea name="address" required autoComplete="street-address" rows={3} placeholder="บ้านเลขที่ หมู่ ตำบล อำเภอ จังหวัด รหัสไปรษณีย์" value={checkout.address} onChange={(event) => checkout.onChange("address", event.target.value)} /></label>
                   )}
-                  <label className="full">หมายเหตุ<textarea name="note" rows={2} placeholder="เช่น เวลาที่สะดวกรับสินค้า (ถ้ามี)" /></label>
+                  <label className="full">หมายเหตุ<textarea name="note" rows={2} placeholder="เช่น เวลาที่สะดวกรับสินค้า (ถ้ามี)" value={checkout.note} onChange={(event) => checkout.onChange("note", event.target.value)} /></label>
                   <section className="payment-card full" aria-labelledby="promptpay-title">
                     <div className="payment-heading">
                       <span>พร้อมเพย์</span>
@@ -183,7 +202,7 @@ export function CartDrawer({ drawerRef, onClose, cart, storefront, order }: Cart
                     <p className="payment-amount">ยอดใน QR <strong>{order.promptPayPayload ? `${order.orderTotal.toLocaleString("th-TH")} บาท` : "—"}</strong></p>
                     <p className="payment-check">ตรวจสอบชื่อผู้รับและยอดเงินในแอปธนาคารก่อนยืนยันทุกครั้ง</p>
                   </section>
-                  <label className="full file-label">แนบสลิป (ส่งภายหลังได้)<input name="slip" type="file" accept="image/jpeg,image/png,image/webp" /></label>
+                  <label className="full file-label">แนบสลิป (ส่งภายหลังได้)<input name="slip" type="file" accept="image/jpeg,image/png,image/webp" /><small className="field-help">เพื่อความปลอดภัย ระบบไม่บันทึกไฟล์สลิปไว้ หากรีเฟรชหน้าต้องเลือกสลิปใหม่</small></label>
                 </div>
                 {!storefront.secureWriteReady && <p className="preview-mode">โหมดดูตัวอย่าง · ยังไม่รับข้อมูลลูกค้าจนกว่าจะเชื่อมบัญชีระบบที่ปลอดภัย</p>}
                 <button className="submit-order" type="submit" disabled={order.submitting || cart.items.length === 0}>{order.submitting ? "กำลังบันทึก..." : "ยืนยันคำสั่งซื้อ"}</button>

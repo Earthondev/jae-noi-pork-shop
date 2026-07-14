@@ -46,8 +46,12 @@ export type Fulfilment = "pickup" | "postal";
 type UseStorefrontOptions = Readonly<{
   /** Re-fetches whenever the cart drawer opens, so prices/availability are always fresh at checkout. */
   cartOpen: boolean;
-  /** Owned by `useCart`; called on every successful fetch so the cart stays reconciled with the catalog. */
+  /** Owned by `useCheckoutDraft`; called on every successful fetch so restored items stay reconciled with the live catalog. */
   pruneUnavailable: (nextProducts: readonly Product[]) => string[];
+  selectedRound: string;
+  setSelectedRound: (round: string) => void;
+  fulfilment: Fulfilment;
+  setFulfilment: (fulfilment: Fulfilment) => void;
 }>;
 
 export type UseStorefrontResult = Readonly<{
@@ -71,12 +75,17 @@ export type UseStorefrontResult = Readonly<{
   refreshStorefront: () => Promise<void>;
 }>;
 
-export function useStorefront({ cartOpen, pruneUnavailable }: UseStorefrontOptions): UseStorefrontResult {
+export function useStorefront({
+  cartOpen,
+  pruneUnavailable,
+  selectedRound,
+  setSelectedRound,
+  fulfilment,
+  setFulfilment,
+}: UseStorefrontOptions): UseStorefrontResult {
   const [products, setProducts] = useState<Product[]>([]);
   const [rounds, setRounds] = useState<PreorderRound[]>([]);
   const [nextRound, setNextRound] = useState<PreorderRound | null>(null);
-  const [selectedRound, setSelectedRound] = useState("");
-  const [fulfilment, setFulfilment] = useState<Fulfilment>("postal");
   const [shippingFee, setShippingFee] = useState<number | null>(null);
   const [pickupAddress, setPickupAddress] = useState<string | null>(null);
   const [pickupMapUrl, setPickupMapUrl] = useState<string | null>(null);
@@ -99,6 +108,11 @@ export function useStorefront({ cartOpen, pruneUnavailable }: UseStorefrontOptio
   const hasLoadedProductsRef = useRef(false);
   const mountedRef = useRef(true);
   const refreshInFlightRef = useRef<Promise<void> | null>(null);
+  const selectedRoundRef = useRef(selectedRound);
+  const fulfilmentRef = useRef(fulfilment);
+
+  useEffect(() => { selectedRoundRef.current = selectedRound; }, [selectedRound]);
+  useEffect(() => { fulfilmentRef.current = fulfilment; }, [fulfilment]);
 
   const refreshStorefront = useCallback(async () => {
     if (refreshInFlightRef.current) return refreshInFlightRef.current;
@@ -119,10 +133,12 @@ export function useStorefront({ cartOpen, pruneUnavailable }: UseStorefrontOptio
         setProducts(data.products);
         setRounds(data.rounds);
         setNextRound(data.nextRound);
-        setSelectedRound((current) => {
-          if (data.rounds.length === 1) return data.rounds[0].id;
-          return data.rounds.some((round) => round.id === current) ? current : "";
-        });
+        const currentRound = selectedRoundRef.current;
+        const validRound = data.rounds.length === 1
+          ? data.rounds[0].id
+          : data.rounds.some((round) => round.id === currentRound) ? currentRound : "";
+        if (validRound !== currentRound) setSelectedRound(validRound);
+        if (!data.pickupAddress && fulfilmentRef.current === "pickup") setFulfilment("postal");
         setShippingFee(data.shippingFee);
         setPickupAddress(data.pickupAddress);
         setPickupMapUrl(data.pickupMapUrl);
@@ -145,7 +161,7 @@ export function useStorefront({ cartOpen, pruneUnavailable }: UseStorefrontOptio
     } finally {
       refreshInFlightRef.current = null;
     }
-  }, [pruneUnavailable]);
+  }, [pruneUnavailable, setFulfilment, setSelectedRound]);
 
   useEffect(() => {
     mountedRef.current = true;
