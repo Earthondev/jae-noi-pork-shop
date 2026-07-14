@@ -3,102 +3,33 @@
 import Image from "next/image";
 import Link from "next/link";
 import generatePromptPayPayload from "promptpay-qr";
-import { QRCodeSVG } from "qrcode.react";
-import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
+import { FormEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { BottomNav } from "./_components/shop/bottom-nav";
+import { CartDrawer } from "./_components/shop/cart-drawer";
+import { Hero } from "./_components/shop/hero";
+import { PhoneStrip } from "./_components/shop/phone-strip";
+import { ProductGrid } from "./_components/shop/product-grid";
+import { SiteHeader } from "./_components/shop/site-header";
+import { useCart } from "./_hooks/use-cart";
+import { useStorefront } from "./_hooks/use-storefront";
 
-type Product = {
-  id: string;
-  name: string;
-  detail: string;
-  price: number | null;
-  image: string;
-  badge: string;
-};
-
-type PreorderRound = { id: string; deliveryDate: string; opensAt: string; closesAt: string; label: string; note: string };
-type StorefrontResponse = {
-  products: Array<Omit<Product, "badge"> & { unit?: string; status?: string }>;
-  rounds: PreorderRound[];
-  nextRound: PreorderRound | null;
-  shippingFee: number | null;
-  pickupAddress: string | null;
-  promptPayId: string | null;
-  promptPayName: string | null;
-  secureWriteReady: boolean;
-  error?: string;
-};
-
-const fallbackProducts: Product[] = [
-  {
-    id: "NAEM250",
-    name: "แหนมหมู",
-    detail: "250 กรัม · รสจัดจ้านแบบตะคร้อ",
-    price: 50,
-    image: "/images/products/spicy-naem-pork-bags-closeup.jpg",
-    badge: "ขายดี",
-  },
-  {
-    id: "SAUSAGE10",
-    name: "ไส้กรอกอีสาน",
-    detail: "แพ็กละ 10 ชิ้น · เปรี้ยวกำลังดี",
-    price: 100,
-    image: "/images/products/jae-noi-presenting-vacuum-packed-pork-sausages.jpg",
-    badge: "แพ็ก 10 ชิ้น",
-  },
-  {
-    id: "PORKRIND1",
-    name: "แคปหมู",
-    detail: "1 กล่อง · กรอบ หอม ทำสด",
-    price: 150,
-    image: "/images/products/jae-noi-pork-rinds-product-display.jpg",
-    badge: "กล่องใหญ่",
-  },
-];
-
-type Quantities = Record<string, number>;
+type ClientPaymentStatus = "waiting" | "verified" | "review" | "invalid";
 
 export function Shop() {
-  const [products, setProducts] = useState<Product[]>(fallbackProducts);
-  const [rounds, setRounds] = useState<PreorderRound[]>([]);
-  const [nextRound, setNextRound] = useState<PreorderRound | null>(null);
-  const [selectedRound, setSelectedRound] = useState("");
-  const [fulfilment, setFulfilment] = useState<"pickup" | "postal">("postal");
-  const [shippingFee, setShippingFee] = useState<number | null>(null);
-  const [pickupAddress, setPickupAddress] = useState<string | null>(null);
-  const [promptPayId, setPromptPayId] = useState<string | null>(null);
-  const [promptPayName, setPromptPayName] = useState<string | null>(null);
-  const [secureWriteReady, setSecureWriteReady] = useState(false);
-  const [storeLoading, setStoreLoading] = useState(true);
-  const [quantities, setQuantities] = useState<Quantities>({});
   const [cartOpen, setCartOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [orderId, setOrderId] = useState<string | null>(null);
-  const [orderPaymentStatus, setOrderPaymentStatus] = useState<"waiting" | "verified" | "review" | "invalid">("waiting");
-  const [notice, setNotice] = useState<string | null>(null);
+  const [orderPaymentStatus, setOrderPaymentStatus] = useState<ClientPaymentStatus>("waiting");
   const drawerRef = useRef<HTMLElement>(null);
   const idempotencyKeyRef = useRef<string | null>(null);
 
-  useEffect(() => {
-    let active = true;
-    fetch("/api/storefront", { cache: "no-store" })
-      .then(async (response) => {
-        const data = (await response.json()) as StorefrontResponse;
-        if (!response.ok) throw new Error(data.error ?? "โหลดข้อมูลร้านไม่สำเร็จ");
-        if (!active) return;
-        setProducts(data.products.map((product) => ({ ...product, badge: product.status === "รอข้อมูล" ? "รอข้อมูล" : product.unit ?? "พร้อมสั่ง" })));
-        setRounds(data.rounds);
-        setNextRound(data.nextRound);
-        setSelectedRound(data.rounds[0]?.id ?? "");
-        setShippingFee(data.shippingFee);
-        setPickupAddress(data.pickupAddress);
-        setPromptPayId(data.promptPayId);
-        setPromptPayName(data.promptPayName);
-        setSecureWriteReady(data.secureWriteReady);
-      })
-      .catch((error: unknown) => active && setNotice(error instanceof Error ? error.message : "โหลดข้อมูลร้านไม่สำเร็จ"))
-      .finally(() => active && setStoreLoading(false));
-    return () => { active = false; };
-  }, []);
+  const { quantities, updateQuantity: updateCartQuantity, clearCart, pruneUnavailable } = useCart();
+  const storefront = useStorefront({ cartOpen, pruneUnavailable });
+
+  const updateQuantity = useCallback(
+    (productId: string, delta: number) => updateCartQuantity(storefront.products, productId, delta),
+    [updateCartQuantity, storefront.products],
+  );
 
   useEffect(() => {
     if (!cartOpen) return;
@@ -125,51 +56,44 @@ export function Shop() {
     };
   }, [cartOpen]);
 
-  const cartItems = products.filter((product) => (quantities[product.id] ?? 0) > 0);
+  const cartItems = storefront.products.filter((product) => (quantities[product.id] ?? 0) > 0);
   const cartCount = Object.values(quantities).reduce((sum, qty) => sum + qty, 0);
   const subtotal = useMemo(
     () =>
-      products.reduce(
+      storefront.products.reduce(
         (sum, product) => sum + (product.price ?? 0) * (quantities[product.id] ?? 0),
         0,
       ),
-    [products, quantities],
+    [storefront.products, quantities],
   );
-  const hasPendingPrice = cartItems.some((product) => product.price === null);
-  const shippingCost = fulfilment === "postal" ? shippingFee : 0;
+  const unavailableProduct = cartItems.find((product) => product.status !== "เปิดขาย" || product.price === null);
+  const shippingCost = storefront.fulfilment === "postal" ? storefront.shippingFee : 0;
   const orderTotal = subtotal + (shippingCost ?? 0);
   let promptPayPayload: string | null = null;
-  if (promptPayId && orderTotal > 0 && !hasPendingPrice && shippingCost !== null) {
+  if (storefront.promptPayId && orderTotal > 0 && !unavailableProduct && shippingCost !== null) {
     try {
-      promptPayPayload = generatePromptPayPayload(promptPayId, { amount: orderTotal });
+      promptPayPayload = generatePromptPayPayload(storefront.promptPayId, { amount: orderTotal });
     } catch {
       promptPayPayload = null;
     }
   }
 
-  function updateQuantity(productId: string, delta: number) {
-    setQuantities((current) => ({
-      ...current,
-      [productId]: Math.max(0, (current[productId] ?? 0) + delta),
-    }));
-  }
-
   async function submitOrder(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (cartItems.length === 0) {
-      setNotice("กรุณาเลือกสินค้าอย่างน้อย 1 รายการ");
+      storefront.setNotice("กรุณาเลือกสินค้าอย่างน้อย 1 รายการ");
       return;
     }
-    if (hasPendingPrice) {
-      setNotice("ไส้กรอกอีสานยังรอข้อมูลราคา จึงยังยืนยันออเดอร์รายการนี้ไม่ได้");
+    if (unavailableProduct) {
+      storefront.setNotice(`${unavailableProduct.name} ไม่พร้อมขาย จึงยังยืนยันออเดอร์รายการนี้ไม่ได้`);
       return;
     }
-    if (!selectedRound) { setNotice("ขณะนี้ยังไม่มีรอบพรีออเดอร์ที่เปิดรับ"); return; }
-    if (fulfilment === "postal" && shippingFee === null) { setNotice("ค่าจัดส่งไปรษณีย์ยังรอข้อมูล"); return; }
-    if (!secureWriteReady) { setNotice("โหมดดูตัวอย่าง: การบันทึกออเดอร์อย่างปลอดภัยกำลังรอเชื่อมบัญชีระบบ Google"); return; }
+    if (!storefront.selectedRound) { storefront.setNotice("ขณะนี้ยังไม่มีรอบพรีออเดอร์ที่เปิดรับ"); return; }
+    if (storefront.fulfilment === "postal" && storefront.shippingFee === null) { storefront.setNotice("ค่าจัดส่งไปรษณีย์ยังรอข้อมูล"); return; }
+    if (!storefront.secureWriteReady) { storefront.setNotice("โหมดดูตัวอย่าง: การบันทึกออเดอร์อย่างปลอดภัยกำลังรอเชื่อมบัญชีระบบ Google"); return; }
 
     setSubmitting(true);
-    setNotice(null);
+    storefront.setNotice(null);
     const form = new FormData(event.currentTarget);
     form.set(
       "items",
@@ -182,101 +106,47 @@ export function Shop() {
         })),
       ),
     );
-    form.set("roundId", selectedRound);
-    form.set("fulfilment", fulfilment);
+    form.set("roundId", storefront.selectedRound);
+    form.set("fulfilment", storefront.fulfilment);
     idempotencyKeyRef.current ??= crypto.randomUUID();
     form.set("idempotencyKey", idempotencyKeyRef.current);
 
     try {
       const response = await fetch("/api/orders", { method: "POST", body: form });
-      const result = (await response.json()) as { orderId?: string; paymentStatus?: "waiting" | "verified" | "review" | "invalid"; error?: string };
+      const result = (await response.json()) as { orderId?: string; paymentStatus?: ClientPaymentStatus; error?: string };
       if (!response.ok || !result.orderId) throw new Error(result.error ?? "บันทึกออเดอร์ไม่สำเร็จ");
       setOrderId(result.orderId);
       setOrderPaymentStatus(result.paymentStatus ?? "waiting");
       idempotencyKeyRef.current = null;
-      setQuantities({});
+      clearCart();
     } catch (error) {
-      setNotice(error instanceof Error ? error.message : "เกิดข้อผิดพลาด กรุณาลองใหม่");
+      await storefront.refreshStorefront();
+      storefront.setNotice(error instanceof Error ? error.message : "เกิดข้อผิดพลาด กรุณาลองใหม่");
     } finally {
       setSubmitting(false);
     }
   }
 
+  function resetOrder() {
+    setOrderId(null);
+    setOrderPaymentStatus("waiting");
+    setCartOpen(false);
+  }
+
   return (
     <main>
-      <header className="site-header">
-        <a className="brand" href="#top" aria-label="กลับไปด้านบน">
-          <Image src="/images/products/jae-noi-shop-logo.jpg" alt="โลโก้ร้านเจ้น้อย เขียงหมูตะคร้อ" width={168} height={100} priority />
-        </a>
-        <nav aria-label="เมนูหลัก">
-          <a href="#products">สินค้า</a>
-          <a href="#how-to-order">วิธีสั่ง</a>
-          <Link href="/track">ติดตามออเดอร์</Link>
-          <a href="#story">เรื่องของร้าน</a>
-        </nav>
-        <button className="cart-button" type="button" onClick={() => setCartOpen(true)} aria-label={`เปิดตะกร้า มีสินค้า ${cartCount} ชิ้น`}>
-          <span aria-hidden="true">ตะกร้า</span>
-          <strong>{cartCount}</strong>
-        </button>
-      </header>
-
-      <section className="hero" id="top">
-        <div className="hero-copy">
-          <p className="eyebrow">ของอร่อยจากตะคร้อ · ทำสดทุกวัน</p>
-          <h1>อร่อยถึงเครื่อง<br /><span>สั่งง่ายถึงบ้าน</span></h1>
-          <p className="hero-lead">แหนมหมู ไส้กรอกอีสาน และแคปหมูสูตรร้านเจ้น้อย เลือกของอร่อย ใส่ตะกร้า แล้วสั่งได้เลย</p>
-          <div className="round-callout" role="status">
-            {storeLoading ? <span>กำลังโหลดรอบพรีออเดอร์...</span> : rounds[0] ? <><strong>{rounds[0].label}</strong><span>ปิดตะกร้า {rounds[0].closesAt}</span></> : <><strong>ยังไม่มีรอบที่เปิดรับ</strong><span>{nextRound ? `รอบถัดไปเปิดวันที่ ${nextRound.opensAt}` : "ติดตามรอบถัดไปเร็ว ๆ นี้"}</span></>}
-          </div>
-          <div className="hero-actions">
-            <a className="primary-action" href="#products">เลือกสินค้า</a>
-            <span>☎ 087-2416773 · 087-8755479</span>
-          </div>
-        </div>
-        <div className="hero-image-wrap">
-          <span className="sunburst" aria-hidden="true" />
-          <Image className="hero-image" src="/images/products/jae-noi-holding-two-naem-pork-bags.jpg" alt="เจ้น้อยถือแหนมหมูสองถุงที่หน้าร้าน" width={900} height={900} priority />
-          <p className="hero-stamp">สดจริง<br /><strong>จากร้าน</strong></p>
-        </div>
-      </section>
+      <SiteHeader cartCount={cartCount} onOpenCart={() => setCartOpen(true)} />
+      <Hero storeLoading={storefront.storeLoading} rounds={storefront.rounds} nextRound={storefront.nextRound} />
+      <ProductGrid
+        storeLoading={storefront.storeLoading}
+        products={storefront.products}
+        quantities={quantities}
+        onUpdateQuantity={updateQuantity}
+      />
+      <PhoneStrip />
 
       <section className="marquee" aria-label="จุดเด่นสินค้า">
         <div>ทำสดทุกวัน <span>◆</span> สูตรดั้งเดิมตะคร้อ <span>◆</span> แพ็กพร้อมส่ง <span>◆</span> อร่อยถึงเครื่อง</div>
-      </section>
-
-      <section className="products-section" id="products">
-        <div className="section-heading">
-          <div><p className="eyebrow">เลือกของอร่อย</p><h2>สินค้าของเจ้น้อย</h2></div>
-          <p>กดเพิ่มลงตะกร้าได้ทันที รายการที่ข้อมูลยังไม่ครบจะแสดง “รอข้อมูล” อย่างชัดเจน</p>
-        </div>
-        <div className="product-grid">
-          {products.map((product, index) => {
-            const quantity = quantities[product.id] ?? 0;
-            return (
-              <article className="product-card" key={product.id} style={{ "--delay": `${index * 90}ms` } as React.CSSProperties}>
-                <div className="product-image-wrap">
-                  <Image src={product.image} alt={product.name} width={760} height={680} />
-                  <span className="product-badge">{product.badge}</span>
-                </div>
-                <div className="product-info">
-                  <div><h3>{product.name}</h3><p>{product.detail}</p></div>
-                  <p className={product.price === null ? "price pending" : "price"}>{product.price === null ? "รอข้อมูลราคา" : `${product.price} บาท`}</p>
-                  {product.price === null && quantity === 0 ? (
-                    <button className="waiting-button" type="button" disabled>รอข้อมูล</button>
-                  ) : quantity === 0 ? (
-                    <button className="add-button" type="button" onClick={() => updateQuantity(product.id, 1)}>+ เพิ่มลงตะกร้า</button>
-                  ) : (
-                    <div className="stepper" aria-label={`จำนวน ${product.name}`}>
-                      <button type="button" onClick={() => updateQuantity(product.id, -1)} aria-label={`ลดจำนวน ${product.name}`}>−</button>
-                      <output aria-live="polite">{quantity}</output>
-                      <button type="button" onClick={() => updateQuantity(product.id, 1)} aria-label={`เพิ่มจำนวน ${product.name}`}>+</button>
-                    </div>
-                  )}
-                </div>
-              </article>
-            );
-          })}
-        </div>
       </section>
 
       <section className="order-flow" id="how-to-order">
@@ -285,61 +155,59 @@ export function Shop() {
         <div><span>3</span><h3>ชำระเงิน</h3><p>สแกน QR พร้อมยอดออเดอร์ แล้วแนบสลิป</p></div>
       </section>
 
-      <section className="track-promo" aria-labelledby="track-promo-title"><div><p className="eyebrow">สั่งแล้วไม่ต้องทักถาม</p><h2 id="track-promo-title">เช็กออเดอร์ได้ด้วยตัวเอง</h2><p>ใช้เลขออเดอร์กับเบอร์โทร 4 ตัวท้าย ดูสถานะชำระเงิน การเตรียมสินค้า และเลขพัสดุได้ตลอดเวลา</p></div><Link href="/track">ติดตามออเดอร์</Link></section>
-
       <section className="story" id="story">
-        <Image src="/images/products/jae-noi-presenting-pork-rinds-large-tubs.jpg" alt="เจ้น้อยนำเสนอแคปหมูบรรจุกล่อง" width={760} height={960} />
-        <div><p className="eyebrow">ทำเอง ขายเอง ใส่ใจทุกกล่อง</p><h2>ของดีจากเขียงหมูตะคร้อ</h2><p>รสชาติคุ้นเคยจากร้านท้องถิ่น ส่งต่อด้วยวัตถุดิบที่คัดแล้วและความตั้งใจในทุกแพ็ก จากมือเจ้น้อยถึงมือลูกค้า</p><blockquote>“ให้ลูกค้าได้ของอร่อย เหมือนมาซื้อถึงหน้าร้าน”</blockquote></div>
+        <Image src="/images/products/jae-noi-presenting-pork-rinds-large-tubs.jpg" alt="เจ๊น้อยนำเสนอแคปหมูบรรจุกล่อง" width={760} height={960} />
+        <div><p className="eyebrow">ทำเอง ขายเอง ใส่ใจทุกกล่อง</p><h2>ของดีจากเขียงหมูตะคร้อ</h2><p>รสชาติคุ้นเคยจากร้านท้องถิ่น ส่งต่อด้วยวัตถุดิบที่คัดแล้วและความตั้งใจในทุกแพ็ก จากมือเจ๊น้อยถึงมือลูกค้า</p><blockquote>“ให้ลูกค้าได้ของอร่อย เหมือนมาซื้อถึงหน้าร้าน”</blockquote></div>
       </section>
 
-      <footer><Image src="/images/products/jae-noi-shop-logo.jpg" alt="เจ้น้อย เขียงหมูตะคร้อ" width={150} height={90} /><p>โทร 087-2416773, 087-8755479</p><Link href="/track">ติดตามออเดอร์</Link><Link href="/admin">หลังบ้านร้านค้า</Link></footer>
+      <footer><Image src="/images/products/jae-noi-shop-logo.jpg" alt="เจ๊น้อย เขียงหมูตะคร้อ" width={150} height={90} /><p>โทรสั่งซื้อ / สอบถาม</p><div className="footer-phone-links" aria-label="เบอร์โทรร้านเจ๊น้อย"><a href="tel:0872416773">087-2416773</a><a href="tel:0878755479">087-8755479</a></div><Link href="/track">ติดตามออเดอร์</Link></footer>
 
       {cartOpen && (
-        <div className="drawer-backdrop" role="presentation" onMouseDown={(event) => event.target === event.currentTarget && setCartOpen(false)}>
-          <aside ref={drawerRef} className="cart-drawer" role="dialog" aria-modal="true" aria-labelledby="cart-title">
-            <div className="drawer-heading"><div><p className="eyebrow">รายการของคุณ</p><h2 id="cart-title">ตะกร้าสินค้า</h2></div><button type="button" onClick={() => setCartOpen(false)} aria-label="ปิดตะกร้า">×</button></div>
-            {orderId ? (
-              <div className={`success-card${orderPaymentStatus === "invalid" ? " invalid" : ""}`} role={orderPaymentStatus === "invalid" ? "alert" : "status"}><span>{orderPaymentStatus === "invalid" ? "!" : "✓"}</span><h3>{orderPaymentStatus === "invalid" ? "บันทึกคำสั่งซื้อแล้ว" : "รับคำสั่งซื้อแล้ว"}</h3><p>เลขที่ออเดอร์</p><strong>{orderId}</strong><p>{orderPaymentStatus === "verified" ? "ตรวจสลิปและยอดชำระเรียบร้อยแล้ว ร้านจะเริ่มเตรียมสินค้า" : orderPaymentStatus === "review" ? "สลิปอยู่ระหว่างตรวจสอบ ร้านจะยืนยันอีกครั้งก่อนเตรียมสินค้า" : orderPaymentStatus === "invalid" ? "ยังยืนยันสลิปไม่ได้ ร้านเก็บออเดอร์ไว้แล้วและจะตรวจสอบหรือติดต่อกลับ กรุณาอย่าโอนซ้ำจนกว่าร้านจะแจ้ง" : "ยังไม่ได้แนบสลิป ออเดอร์อยู่ในสถานะรอชำระเงิน"}</p><Link className="track-order-link" href={`/track?order=${encodeURIComponent(orderId)}`}>ติดตามออเดอร์นี้</Link><button type="button" onClick={() => { setOrderId(null); setOrderPaymentStatus("waiting"); setCartOpen(false); }}>กลับหน้าร้าน</button></div>
-            ) : (
-              <form onSubmit={submitOrder}>
-                <div className="cart-list">
-                  {cartItems.length === 0 ? <p className="empty-cart">ยังไม่มีสินค้าในตะกร้า</p> : cartItems.map((product) => (
-                    <div className="cart-line" key={product.id}><div><strong>{product.name}</strong><small>{product.price === null ? "รอข้อมูลราคา" : `${product.price} บาท/รายการ`}</small></div><div className="stepper compact"><button type="button" onClick={() => updateQuantity(product.id, -1)} aria-label={`ลด ${product.name}`}>−</button><output>{quantities[product.id]}</output><button type="button" onClick={() => updateQuantity(product.id, 1)} aria-label={`เพิ่ม ${product.name}`}>+</button></div></div>
-                  ))}
-                </div>
-                <div className="summary-row"><span>รวมค่าสินค้า</span><strong>{subtotal} บาท</strong></div>
-                <div className="summary-row pending-row"><span>{fulfilment === "pickup" ? "รับเองหน้าร้าน" : "ค่าจัดส่งไปรษณีย์"}</span><strong>{fulfilment === "pickup" ? "ฟรี" : shippingFee === null ? "รอข้อมูล" : `${shippingFee} บาท`}</strong></div>
-                <div className="summary-row total-row"><span>ยอดชำระทั้งหมด</span><strong>{shippingCost === null ? "รอข้อมูล" : `${orderTotal.toLocaleString("th-TH")} บาท`}</strong></div>
-                <div className="form-grid">
-                  <label className="full">เลือกรอบจัดส่ง<select name="roundId" required value={selectedRound} onChange={(event) => setSelectedRound(event.target.value)} disabled={rounds.length === 0}><option value="">เลือกรอบ</option>{rounds.map((round) => <option value={round.id} key={round.id}>{round.label} · ปิดรับ {round.closesAt}</option>)}</select></label>
-                  <fieldset className="fulfilment-choice full"><legend>วิธีรับสินค้า</legend><label className={`${fulfilment === "pickup" ? "selected " : ""}${!pickupAddress ? "disabled" : ""}`.trim()}><input type="radio" name="fulfilment" value="pickup" checked={fulfilment === "pickup"} onChange={() => setFulfilment("pickup")} disabled={!pickupAddress} /><span><strong>รับเองหน้าร้าน</strong><small>{pickupAddress ?? "ปิดชั่วคราว · รอข้อมูลที่อยู่ร้าน"}</small></span></label><label className={fulfilment === "postal" ? "selected" : ""}><input type="radio" name="fulfilment" value="postal" checked={fulfilment === "postal"} onChange={() => setFulfilment("postal")} /><span><strong>จัดส่งไปรษณีย์</strong><small>{shippingFee === null ? "ค่าส่งรอข้อมูล" : `ค่าส่ง ${shippingFee} บาท`}</small></span></label></fieldset>
-                  <label>ชื่อผู้รับ<input name="customerName" required autoComplete="name" placeholder="ชื่อ–นามสกุล" /></label>
-                  <label>เบอร์โทร<input name="phone" required inputMode="tel" autoComplete="tel" placeholder="08x-xxx-xxxx" /></label>
-                  {fulfilment === "postal" && <label className="full">ที่อยู่จัดส่ง<textarea name="address" required autoComplete="street-address" rows={3} placeholder="บ้านเลขที่ หมู่ ตำบล อำเภอ จังหวัด รหัสไปรษณีย์" /></label>}
-                  <label className="full">หมายเหตุ<textarea name="note" rows={2} placeholder="เช่น เวลาที่สะดวกรับสินค้า (ถ้ามี)" /></label>
-                  <section className="payment-card full" aria-labelledby="promptpay-title">
-                    <div className="payment-heading"><span>พร้อมเพย์</span><strong id="promptpay-title">{promptPayName ?? "รอชื่อบัญชี"}</strong><small>{promptPayId ?? "รอเลขพร้อมเพย์"}</small></div>
-                    {promptPayPayload ? (
-                      <div className="qr-frame">
-                        <QRCodeSVG value={promptPayPayload} size={216} level="M" marginSize={4} title={`QR พร้อมเพย์ ${promptPayName ?? "ร้านเจ้น้อย"} ยอด ${orderTotal} บาท`} />
-                      </div>
-                    ) : (
-                      <div className="qr-placeholder" role="status"><span>QR</span><p>{cartItems.length === 0 ? "เลือกสินค้าก่อนเพื่อสร้าง QR พร้อมยอด" : "ยังสร้าง QR ไม่ได้ กรุณาตรวจสอบยอดออเดอร์"}</p></div>
-                    )}
-                    <p className="payment-amount">ยอดใน QR <strong>{promptPayPayload ? `${orderTotal.toLocaleString("th-TH")} บาท` : "—"}</strong></p>
-                    <p className="payment-check">ตรวจสอบชื่อผู้รับและยอดเงินในแอปธนาคารก่อนยืนยันทุกครั้ง</p>
-                  </section>
-                  <label className="full file-label">แนบสลิป (ส่งภายหลังได้)<input name="slip" type="file" accept="image/jpeg,image/png,image/webp" /></label>
-                </div>
-                {notice && <p className="form-notice" role="alert">{notice}</p>}
-                {!secureWriteReady && <p className="preview-mode">โหมดดูตัวอย่าง · ยังไม่รับข้อมูลลูกค้าจนกว่าจะเชื่อมบัญชีระบบที่ปลอดภัย</p>}
-                <button className="submit-order" type="submit" disabled={submitting || cartItems.length === 0 || rounds.length === 0}>{submitting ? "กำลังบันทึก..." : "ยืนยันคำสั่งซื้อ"}</button>
-              </form>
-            )}
-          </aside>
+        <CartDrawer
+          drawerRef={drawerRef}
+          onClose={() => setCartOpen(false)}
+          cart={{ items: cartItems, quantities, subtotal, onUpdateQuantity: updateQuantity }}
+          storefront={{
+            rounds: storefront.rounds,
+            nextRound: storefront.nextRound,
+            selectedRound: storefront.selectedRound,
+            onSelectRound: storefront.setSelectedRound,
+            fulfilment: storefront.fulfilment,
+            onSelectFulfilment: storefront.setFulfilment,
+            shippingFee: storefront.shippingFee,
+            pickupAddress: storefront.pickupAddress,
+            pickupMapUrl: storefront.pickupMapUrl,
+            promptPayId: storefront.promptPayId,
+            promptPayName: storefront.promptPayName,
+            secureWriteReady: storefront.secureWriteReady,
+            notice: storefront.notice,
+          }}
+          order={{
+            id: orderId,
+            paymentStatus: orderPaymentStatus,
+            submitting,
+            promptPayPayload,
+            orderTotal,
+            shippingCost,
+            onSubmit: submitOrder,
+            onReset: resetOrder,
+          }}
+        />
+      )}
+      {storefront.notice && !cartOpen && (
+        <div className={`storefront-notice${cartCount > 0 ? " with-cart" : ""}`} role="status">
+          <span>{storefront.notice}</span>
+          <button type="button" onClick={() => storefront.setNotice(null)} aria-label="ปิดข้อความแจ้งเตือน">×</button>
         </div>
       )}
-      <button className="floating-cart" type="button" onClick={() => setCartOpen(true)} aria-label={`เปิดตะกร้า มีสินค้า ${cartCount} ชิ้น`}><span>ดูตะกร้า</span><strong>{cartCount}</strong></button>
+      {cartCount > 0 && !cartOpen && (
+        <button className="floating-cart" type="button" onClick={() => setCartOpen(true)} aria-label={`เปิดตะกร้า มีสินค้า ${cartCount} ชิ้น รวมค่าสินค้า ${subtotal} บาท`}>
+          <span className="floating-cart-copy"><strong>ตะกร้า · {cartCount} ชิ้น</strong><small>รวมสินค้า {subtotal.toLocaleString("th-TH")} บาท</small></span>
+          <span className="floating-cart-arrow" aria-hidden="true">ดูตะกร้า →</span>
+        </button>
+      )}
+
+      <BottomNav cartCount={cartCount} onOpenCart={() => setCartOpen(true)} />
     </main>
   );
 }

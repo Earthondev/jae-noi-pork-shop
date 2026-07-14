@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 760 680" role="img" aria-labelledby="title description">
+  <title id="title">รูปสินค้ารออัปเดต</title>
+  <desc id="description">ภาพสำรองสีครีมและแดงของร้านเจ๊น้อย</desc>
+  <rect width="760" height="680" fill="#fff2d4"/>
+  <circle cx="380" cy="298" r="132" fill="#f4bd24"/>
+  <path d="M286 306c24-76 164-76 188 0 12 39-7 111-94 111s-106-72-94-111Z" fill="#b51519"/>
+  <path d="M321 276c18-30 100-30 118 0" fill="none" stroke="#fffaf0" stroke-width="22" stroke-linecap="round"/>
+  <text x="380" y="510" fill="#8d1014" font-family="sans-serif" font-size="42" font-weight="700" text-anchor="middle">รูปสินค้ารออัปเดต</text>
+  <text x="380" y="562" fill="#765d56" font-family="sans-serif" font-size="28" text-anchor="middle">เจ๊น้อย เขียงหมูตะคร้อ</text>
+</svg>

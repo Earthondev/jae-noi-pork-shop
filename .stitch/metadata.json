@@ -1,0 +1,37 @@
+{
+  "projectId": "4713816981186849297",
+  "title": "Jay Noy Shop Redesign",
+  "canonicalBrandName": "เจ๊น้อย เขียงหมูตะคร้อ",
+  "deviceType": "MOBILE",
+  "lastSyncTime": "2026-07-14T09:25:48Z",
+  "screens": {
+    "storefront-mobile": {
+      "id": "c0ae1155c87b47949343a87d837d2512",
+      "label": "เจ๊น้อย เขียงหมูตะคร้อ - Homepage Redesign",
+      "sourceScreen": "projects/4713816981186849297/screens/c0ae1155c87b47949343a87d837d2512",
+      "dimensions": {
+        "width": 390,
+        "height": 2760,
+        "sourceAssetWidth": 780,
+        "sourceAssetHeight": 5472
+      },
+      "canvasPosition": {
+        "x": 1478,
+        "y": 0
+      }
+    },
+    "production-reference": {
+      "id": "3309942101735479391",
+      "label": "incognito-mobile-production-top-390x844.png",
+      "sourceScreen": "projects/4713816981186849297/screens/3309942101735479391",
+      "dimensions": {
+        "width": 390,
+        "height": 844
+      },
+      "canvasPosition": {
+        "x": 0,
+        "y": 0
+      }
+    }
+  }
+}

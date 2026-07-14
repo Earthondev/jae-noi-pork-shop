@@ -20,6 +20,8 @@ export type AdminOrder = {
   order_status: OrderStatus;
   created_at: string;
   items: string;
+  fulfilment: "pickup" | "postal";
+  tracking_number: string | null;
 };
 
 export function getBindings(): { DB: D1Database; UPLOADS: R2Bucket } {

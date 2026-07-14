@@ -1,11 +1,14 @@
 import { env } from "cloudflare:workers";
 import type { AdminOrder, OrderStatus, PaymentStatus } from "../db/orders";
 import { maskPhone, matchesPhoneLast4, type PublicOrderTracking } from "./order-tracking";
+import { catalogProductsFromRows, type CatalogProduct } from "./product-catalog";
+import { safePickupMapUrl } from "./storefront-settings";
 
 type GoogleBindings = {
   GOOGLE_SHEET_ID?: string;
   GOOGLE_SERVICE_ACCOUNT_EMAIL?: string;
   GOOGLE_PRIVATE_KEY?: string;
+  PRODUCT_MEDIA_ORIGIN?: string;
 };
 
 function googleBindings(): GoogleBindings {
@@ -31,15 +34,7 @@ const ORDER_ITEM_SHEET_ID = 104;
 
 let cachedAccessToken: AccessToken | null = null;
 
-export type StorefrontProduct = {
-  id: string;
-  name: string;
-  unit: string;
-  detail: string;
-  price: number | null;
-  status: "เปิดขาย" | "รอข้อมูล";
-  image: string;
-};
+export type StorefrontProduct = CatalogProduct;
 
 export type StorefrontRound = {
   id: string;
@@ -94,6 +89,14 @@ const appStatusToSheet: Record<OrderStatus, string> = {
   shipped: "จัดส่งแล้ว",
   completed: "สำเร็จ",
   cancelled: "ยกเลิก",
+};
+
+const appPaymentStatusToSheet: Record<PaymentStatus, string> = {
+  waiting_for_payment: "รอชำระเงิน",
+  waiting_for_slip_review: "รอตรวจสลิป",
+  paid: "ชำระแล้ว",
+  invalid_slip: "สลิปไม่ถูกต้อง",
+  refunded: "คืนเงินแล้ว",
 };
 
 function serviceCredentials(): { email: string; privateKey: string } | null {
@@ -186,16 +189,8 @@ function cell(value: string | number): CellData {
 }
 
 export async function getStorefrontData() {
-  const [productRows, roundRows, settingRows] = await readRanges(["สินค้า!A:K", "รอบจัดส่ง!A:J", "ตั้งค่าร้าน!A:D"]);
-
-  const products: StorefrontProduct[] = productRows.slice(1)
-    .filter((row) => row[0] && row[5] !== "หยุดขาย")
-    .map((row) => ({
-      id: row[0], name: row[1], unit: row[2], detail: row[3],
-      price: row[4] ? numberValue(row[4]) : null,
-      status: row[5] === "เปิดขาย" ? "เปิดขาย" : "รอข้อมูล",
-      image: `/images/products/${row[6]}`,
-    }));
+  const [productRows, roundRows, settingRows] = await readRanges(["สินค้า!A:I", "รอบจัดส่ง!A:J", "ตั้งค่าร้าน!A:D"]);
+  const products: StorefrontProduct[] = catalogProductsFromRows(productRows, googleBindings().PRODUCT_MEDIA_ORIGIN);
 
   const allRoundRows = roundRows.slice(1).filter((row) => row[0]);
   const toStorefrontRound = (row: string[]): StorefrontRound => ({
@@ -221,6 +216,9 @@ export async function getStorefrontData() {
   const pickupAddress = settings.pickup_address?.status === "พร้อมใช้" && settings.pickup_address.value
     ? settings.pickup_address.value
     : null;
+  const pickupMapUrl = settings.pickup_map_url?.status === "พร้อมใช้"
+    ? safePickupMapUrl(settings.pickup_map_url.value)
+    : null;
 
   return {
     products,
@@ -228,6 +226,7 @@ export async function getStorefrontData() {
     nextRound: nextRoundRow ? toStorefrontRound(nextRoundRow) : null,
     shippingFee,
     pickupAddress,
+    pickupMapUrl,
     promptPayId: settings.promptpay_id?.value || null,
     promptPayName: settings.promptpay_name?.value || null,
     secureWriteReady: serviceCredentials() !== null,
@@ -304,6 +303,8 @@ export async function getAdminOrders(): Promise<AdminOrder[]> {
     payment_status: sheetPaymentStatusToApp[row[11]] ?? (row[10] ? "waiting_for_slip_review" : "waiting_for_payment"),
     order_status: sheetOrderStatusToApp[row[12]] ?? "received",
     created_at: row[2] ?? "", items: (itemsByOrder.get(row[0]) ?? []).join(", "),
+    fulfilment: row[5] === "รับเองหน้าร้าน" ? "pickup" : "postal",
+    tracking_number: row[16] || null,
   }));
 }
 
@@ -352,23 +353,51 @@ export async function findOrderByIdempotencyKey(idempotencyKey: string): Promise
 
 export type UpdateOrderStatusResult = "updated" | "not_found" | "payment_required";
 
+export type AdminOrderPatch = {
+  paymentStatus?: PaymentStatus;
+  orderStatus?: OrderStatus;
+  trackingNumber?: string;
+};
+
 export async function updateOrderStatus(id: string, status: OrderStatus): Promise<UpdateOrderStatusResult> {
-  const response = await sheetsRequest(`/values/${encodeURIComponent("ออเดอร์!A2:M")}`);
+  return updateAdminOrder(id, { orderStatus: status });
+}
+
+export async function updateAdminOrder(
+  id: string,
+  patch: AdminOrderPatch,
+): Promise<UpdateOrderStatusResult> {
+  const response = await sheetsRequest(`/values/${encodeURIComponent("ออเดอร์!A2:Q")}`);
   const result = await response.json() as SheetsValuesResponse;
   const index = result.values?.findIndex((row) => row[0] === id) ?? -1;
   if (index < 0) return "not_found";
   const currentOrder = result.values?.[index];
-  const canAdvanceWithoutPayment = status === "received" || status === "cancelled";
-  if (!canAdvanceWithoutPayment && currentOrder?.[11] !== "ชำระแล้ว") return "payment_required";
+  const currentPaymentStatus = sheetPaymentStatusToApp[currentOrder?.[11] ?? ""] ?? "waiting_for_payment";
+  const effectivePaymentStatus = patch.paymentStatus ?? currentPaymentStatus;
+  const requestedOrderStatus = patch.orderStatus;
+  const canAdvanceWithoutPayment = !requestedOrderStatus || requestedOrderStatus === "received" || requestedOrderStatus === "cancelled";
+  if (!canAdvanceWithoutPayment && effectivePaymentStatus !== "paid") return "payment_required";
+  if (patch.trackingNumber?.trim() && effectivePaymentStatus !== "paid") return "payment_required";
+
   const rowNumber = index + 2;
+  const data: Array<{ range: string; values: string[][] }> = [];
+  if (patch.paymentStatus) {
+    data.push({ range: `ออเดอร์!L${rowNumber}`, values: [[appPaymentStatusToSheet[patch.paymentStatus]]] });
+  }
+  if (patch.orderStatus) {
+    data.push({ range: `ออเดอร์!M${rowNumber}`, values: [[appStatusToSheet[patch.orderStatus]]] });
+  }
+  if (patch.trackingNumber !== undefined) {
+    data.push({ range: `ออเดอร์!Q${rowNumber}`, values: [[patch.trackingNumber.trim()]] });
+  }
+  if (data.length === 0) return "updated";
+  data.push({ range: `ออเดอร์!P${rowNumber}`, values: [[new Date().toISOString()]] });
+
   await sheetsRequest("/values:batchUpdate", {
     method: "POST",
     body: JSON.stringify({
-      valueInputOption: "USER_ENTERED",
-      data: [
-        { range: `ออเดอร์!M${rowNumber}`, values: [[appStatusToSheet[status]]] },
-        { range: `ออเดอร์!P${rowNumber}`, values: [[new Date().toISOString()]] },
-      ],
+      valueInputOption: "RAW",
+      data,
     }),
   });
   return "updated";

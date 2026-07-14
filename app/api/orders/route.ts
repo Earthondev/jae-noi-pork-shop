@@ -83,9 +83,10 @@ export async function POST(request: Request) {
       const candidate = raw as OrderItemInput;
       const product = candidate.productId ? productsById.get(candidate.productId) : undefined;
       const quantity = Number(candidate.quantity);
-      if (!product || product.status !== "เปิดขาย" || product.price === null || !Number.isInteger(quantity) || quantity < 1 || quantity > 99) {
-        throw new OrderRequestError("รายการสินค้าหรือจำนวนไม่ถูกต้อง", 400);
-      }
+      if (!product) throw new OrderRequestError("ไม่พบสินค้านี้หรือสินค้าถูกซ่อนแล้ว กรุณาโหลดหน้าใหม่", 409);
+      if (product.status === "ปิดชั่วคราว") throw new OrderRequestError(`${product.name} ปิดรับชั่วคราว ระบบยังไม่รับออเดอร์รายการนี้`, 409);
+      if (product.status !== "เปิดขาย" || product.price === null) throw new OrderRequestError(`${product.name} ยังรอข้อมูล จึงยังสั่งซื้อไม่ได้`, 409);
+      if (!Number.isInteger(quantity) || quantity < 1 || quantity > 99) throw new OrderRequestError(`จำนวน ${product.name} ไม่ถูกต้อง`, 400);
       return { id: product.id, name: product.name, unit: product.unit, quantity, unitPrice: product.price };
     });
 

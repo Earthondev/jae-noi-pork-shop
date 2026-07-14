@@ -52,7 +52,7 @@ async function saveReceiptPng(order: PublicOrderTracking): Promise<void> {
   context.textAlign = "center";
   context.fillStyle = "#ffffff";
   context.font = "700 52px 'Noto Sans Thai', sans-serif";
-  context.fillText("เจ้น้อย เขียงหมูตะคร้อ", canvas.width / 2, 86);
+  context.fillText("เจ๊น้อย เขียงหมูตะคร้อ", canvas.width / 2, 86);
   context.font = "500 30px 'Noto Sans Thai', sans-serif";
   context.fillText("ใบยืนยันการชำระเงิน", canvas.width / 2, 145);
 
@@ -90,7 +90,7 @@ async function saveReceiptPng(order: PublicOrderTracking): Promise<void> {
   context.fillText(`ยอดชำระทั้งหมด  ${order.total.toLocaleString("th-TH")} บาท`, 78, totalY + 70);
   context.fillStyle = "#765d56";
   context.font = "500 24px 'Noto Sans Thai', sans-serif";
-  context.fillText("เอกสารนี้ออกโดยระบบร้านเจ้น้อย กรุณาเก็บเลขออเดอร์ไว้ติดตามสินค้า", 78, totalY + 135);
+  context.fillText("เอกสารนี้ออกโดยระบบร้านเจ๊น้อย กรุณาเก็บเลขออเดอร์ไว้ติดตามสินค้า", 78, totalY + 135);
 
   const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, "image/png"));
   if (!blob) throw new Error("สร้างรูปใบยืนยันไม่สำเร็จ");
@@ -145,7 +145,7 @@ export function OrderTracker({ initialOrderId = "" }: { initialOrderId?: string 
   return (
     <main className="track-page">
       <header className="track-header">
-        <Link href="/" aria-label="กลับหน้าร้าน"><Image src="/images/products/jae-noi-shop-logo.jpg" alt="เจ้น้อย เขียงหมูตะคร้อ" width={130} height={78} priority /></Link>
+        <Link href="/" aria-label="กลับหน้าร้าน"><Image src="/images/products/jae-noi-shop-logo.jpg" alt="เจ๊น้อย เขียงหมูตะคร้อ" width={130} height={78} priority /></Link>
         <Link href="/">กลับหน้าร้าน</Link>
       </header>
 
@@ -193,7 +193,7 @@ export function OrderTracker({ initialOrderId = "" }: { initialOrderId?: string 
         </section>
       )}
 
-      <footer className="track-footer"><p>ต้องการความช่วยเหลือ โทร 087-2416773 หรือ 087-8755479</p><Link href="/">กลับไปเลือกสินค้า</Link></footer>
+      <footer className="track-footer"><p>ต้องการความช่วยเหลือ โทรหาร้านได้ทันที</p><div className="track-phone-links" aria-label="เบอร์โทรร้านเจ๊น้อย"><a href="tel:0872416773">☎ 087-2416773</a><a href="tel:0878755479">☎ 087-8755479</a></div><Link href="/">กลับไปเลือกสินค้า</Link></footer>
     </main>
   );
 }

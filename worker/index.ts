@@ -6,6 +6,7 @@ interface Env {
   ASSETS?: Fetcher;
   DB?: D1Database;
   UPLOADS?: R2Bucket;
+  PRODUCT_MEDIA?: R2Bucket;
   IMAGES?: {
     input(stream: ReadableStream): {
       transform(options: Record<string, unknown>): {
@@ -29,6 +30,22 @@ interface ExecutionContext {
 const worker = {
   async fetch(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
     const url = new URL(request.url);
+
+    if (url.pathname.startsWith("/media/products/")) {
+      const key = url.pathname.slice("/media/".length);
+      if (!key || key.includes("..") || key.startsWith("/")) return new Response("Invalid media key", { status: 400 });
+      if (!env.PRODUCT_MEDIA) return new Response("Product media is not configured", { status: 503 });
+
+      const object = await env.PRODUCT_MEDIA.get(key, { onlyIf: request.headers });
+      if (!object) return new Response("Product image not found", { status: 404 });
+      const headers = new Headers();
+      object.writeHttpMetadata(headers);
+      headers.set("etag", object.httpEtag);
+      headers.set("cache-control", "public, max-age=31536000, immutable");
+      headers.set("x-content-type-options", "nosniff");
+      if (!("body" in object)) return new Response(null, { status: 304, headers });
+      return new Response(object.body, { headers });
+    }
 
     if (url.pathname === "/_vinext/image") {
       const assets = env.ASSETS;

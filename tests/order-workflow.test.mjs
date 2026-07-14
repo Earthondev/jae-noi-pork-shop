@@ -39,15 +39,20 @@ test("writes an order atomically and carries a stable idempotency key", async ()
 });
 
 test("shows the next opening and blocks pickup until an address exists", async () => {
-  const [shop, sheets, orderRoute] = await Promise.all([
+  // "nextRound" copy and the pickup-disabled control now live in the extracted
+  // Hero / CartDrawer components rather than the shop.tsx container itself.
+  const [shop, hero, cartDrawer, sheets, orderRoute] = await Promise.all([
     projectFile("app/shop.tsx"),
+    projectFile("app/_components/shop/hero.tsx"),
+    projectFile("app/_components/shop/cart-drawer.tsx"),
     projectFile("lib/google-sheets.ts"),
     projectFile("app/api/orders/route.ts"),
   ]);
+  const shopAndComponents = `${shop}\n${hero}\n${cartDrawer}`;
 
-  assert.match(shop, /nextRound/);
-  assert.match(shop, /รอบถัดไปเปิดวันที่/);
-  assert.match(shop, /disabled={!pickupAddress}/);
+  assert.match(shopAndComponents, /nextRound/);
+  assert.match(shopAndComponents, /รอบถัดไปเปิดวันที่/);
+  assert.match(cartDrawer, /disabled={!storefront\.pickupAddress}/);
   assert.match(sheets, /nextRound/);
   assert.match(orderRoute, /ไม่สามารถรับเองหน้าร้านได้จนกว่าจะมีที่อยู่ร้าน/);
 });
@@ -96,9 +101,21 @@ test("prevents fulfilment progress until payment is confirmed", async () => {
     projectFile("app/admin/dashboard.tsx"),
   ]);
 
-  assert.match(sheets, /currentOrder\?\.\[11\] !== "ชำระแล้ว"/);
+  assert.match(sheets, /effectivePaymentStatus !== "paid"/);
   assert.match(sheets, /return "payment_required"/);
   assert.match(adminRoute, /result === "payment_required"/);
   assert.match(admin, /order\.payment_status !== "paid"/);
-  assert.match(admin, /order_status: status/);
+  assert.match(admin, /order_status: update\.orderStatus/);
+});
+
+test("revalidates product availability with product-specific messages", async () => {
+  const [orderRoute, sheets] = await Promise.all([
+    projectFile("app/api/orders/route.ts"),
+    projectFile("lib/google-sheets.ts"),
+  ]);
+
+  assert.match(sheets, /สินค้า!A:I/);
+  assert.match(orderRoute, /product\.status === "ปิดชั่วคราว"/);
+  assert.match(orderRoute, /\$\{product\.name\} ปิดรับชั่วคราว/);
+  assert.doesNotMatch(orderRoute, /ไส้กรอกอีสานยังรอข้อมูลราคา/);
 });

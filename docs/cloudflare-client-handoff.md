@@ -1,0 +1,109 @@
+# ส่งมอบเว็บให้ลูกค้าบน Cloudflare
+
+เอกสารนี้ใช้สำหรับรูปแบบที่ลูกค้าเป็นเจ้าของระบบ แต่ผู้พัฒนายังดูแลโค้ดและ
+เพิ่มฟีเจอร์ให้ต่อได้ โดยไม่ต้องใช้รหัสผ่านบัญชีของลูกค้าร่วมกัน
+
+## การแบ่งความเป็นเจ้าของ
+
+| ทรัพย์สิน | เจ้าของที่แนะนำ | สิทธิ์ผู้พัฒนา |
+| --- | --- | --- |
+| โดเมนและบัญชี Cloudflare | ลูกค้า | สมาชิกที่ดูแล Workers, R2, DNS และ Access |
+| Google Sheet ออเดอร์ | ลูกค้า | เข้าถึงเท่าที่จำเป็นผ่านบัญชีระบบ |
+| SlipOK และบัญชีรับเงิน | ลูกค้า | ตั้งค่าผ่าน secret โดยไม่เก็บใน Git |
+| GitHub repository | ลูกค้าหรือองค์กรโครงการ | Maintainer |
+| Source code และการ deploy | ตามสัญญาส่งมอบ | ผู้พัฒนาดูแลต่อผ่าน GitHub |
+
+ไม่ควรขอรหัสผ่าน Cloudflare, Google หรือ SlipOK ของลูกค้า ให้ลูกค้าเชิญผู้พัฒนา
+เป็นสมาชิกและให้สิทธิ์เฉพาะส่วนที่จำเป็น
+
+## สิ่งที่ต้องขอจากลูกค้า
+
+1. อีเมลเจ้าของร้านสำหรับล็อกอินหลังบ้าน
+2. บัญชี Cloudflare ที่ยืนยันอีเมลแล้ว
+3. โดเมนหรือชื่อโดเมนที่ต้องการซื้อ
+4. Google Sheet ที่ลูกค้าเป็นเจ้าของ
+5. บัญชี SlipOK เมื่อพร้อมเปิดตรวจสลิปจริง
+
+## ตั้งค่า Cloudflare
+
+1. เพิ่มโดเมนในบัญชี Cloudflare ของลูกค้า
+2. เชิญผู้พัฒนาเป็นสมาชิก โดยใช้สิทธิ์ Workers Platform Admin, DNS และ
+   Workers, R2 และ DNS เฉพาะบัญชีหรือโดเมนนี้ ไม่ใช้ Super Administrator
+3. สร้าง R2 bucket ส่วนตัวสำหรับสลิปชื่อเดียวกับ `CLOUDFLARE_R2_BUCKET_NAME`
+4. สร้าง R2 bucket รูปสินค้าชื่อเดียวกับ `CLOUDFLARE_PRODUCT_MEDIA_BUCKET_NAME`
+   และห้ามนำสลิปหรือข้อมูลลูกค้าไปเก็บใน bucket รูปสินค้า
+5. ตั้งรหัสผ่านเริ่มต้นผ่าน Cloudflare Secret โดยไม่บันทึกรหัสจริงลง Git หรือชีต
+6. เปิด `/admin/login` และทดสอบว่าเข้าหลังบ้านได้เฉพาะชื่อผู้ใช้และรหัสที่กำหนด
+7. เปลี่ยนรหัสเริ่มต้นเป็น passphrase ที่เดายากก่อนเปิดขายจริง
+
+## Build variables ที่ไม่ใช่ความลับ
+
+ตั้งสองค่านี้ใน Cloudflare Workers Builds:
+
+```text
+CLOUDFLARE_CUSTOM_DOMAIN=
+CLOUDFLARE_R2_BUCKET_NAME=jae-noi-pork-shop-uploads
+CLOUDFLARE_PRODUCT_MEDIA_BUCKET_NAME=jae-noi-pork-shop-media
+PRODUCT_MEDIA_ORIGIN=https://pub-example.r2.dev
+```
+
+`CLOUDFLARE_CUSTOM_DOMAIN` เว้นว่างได้ระหว่างที่ร้านยังไม่มีโดเมน ระบบจะเปิดผ่าน
+`workers.dev` ก่อน เมื่อซื้อโดเมนแล้วจึงใส่ hostname และ deploy ใหม่
+
+Build command:
+
+```text
+npm run build:cloudflare
+```
+
+Deploy command:
+
+```text
+npx wrangler deploy --config dist/server/wrangler.json
+```
+
+## Runtime secrets
+
+ตั้งค่าเหล่านี้เป็น **Secret/Encrypt** ใน Worker ห้ามตั้งเป็น plaintext build
+variable และห้ามเก็บใน `.env` ที่ commit ขึ้น Git:
+
+```text
+ADMIN_PASSWORD_HASH
+ADMIN_AUTH_SECRET
+GOOGLE_SHEET_ID
+GOOGLE_SERVICE_ACCOUNT_EMAIL
+GOOGLE_PRIVATE_KEY
+SLIPOK_ENABLED
+SLIPOK_BRANCH_ID
+SLIPOK_API_KEY
+```
+
+`ADMIN_USERNAME=admin` จะถูกใส่เป็นค่าที่ไม่ลับใน build อัตโนมัติ สร้าง
+`ADMIN_PASSWORD_HASH` ด้วย `npm run admin:hash-password` และสร้าง
+`ADMIN_AUTH_SECRET` เป็นค่าสุ่มอย่างน้อย 32 bytes ส่วน `SLIPOK_ENABLED`
+ต้องคงเป็น `false` จนกว่าจะผูกบัญชีธนาคาร
+
+ตัวสร้าง hash ใช้ PBKDF2-SHA256 ที่ 100,000 รอบ ซึ่งเป็นจำนวนสูงสุดที่ Web Crypto
+ของ Cloudflare Workers runtime รองรับในปัจจุบัน
+ตรวจโควต้า และทดสอบสลิปเงินจริงผ่าน
+
+## ลำดับเปิดใช้งานโดยไม่กระทบเว็บเดิม
+
+1. สร้าง staging subdomain ใน Cloudflare ลูกค้า
+2. Build และ deploy จาก GitHub
+3. ใส่ secrets และทดสอบการอ่าน/เขียน Google Sheet
+4. ทดสอบออเดอร์, QR, แนบสลิป, ติดตามสถานะ และหลังบ้านบนมือถือ
+5. ยืนยันว่าอีเมลอื่นเข้า `/admin` และ `/api/admin/*` ไม่ได้
+6. สำรอง Google Sheet และทดสอบกู้คืน
+7. เปลี่ยนโดเมนจริงเข้าระบบใหม่
+8. เก็บ Sites เดิมเป็น rollback ชั่วคราว ก่อนปิดเมื่อระบบใหม่เสถียร
+
+## เงื่อนไขก่อนเปิดขายจริง
+
+- ราคา น้ำหนัก ค่าส่ง รอบจัดส่ง และที่อยู่รับเองครบถ้วน
+- พร้อมเพย์แสดงชื่อผู้รับถูกต้อง
+- Google Sheet ไม่เปิดแชร์สาธารณะ
+- รหัสหลังบ้านไม่อยู่ใน Git, Google Sheets หรือเอกสารที่แชร์สาธารณะ
+- สลิปและข้อมูลลูกค้าไม่ถูกส่งกลับจาก API สาธารณะ
+- ทดสอบสั่งซ้ำ, เน็ตหลุด, ไฟล์สลิปผิดประเภท และการค้นหาออเดอร์ถี่เกินกำหนด
+- มีข้อความนโยบายจัดส่ง ยกเลิก คืนเงิน และความเป็นส่วนตัวให้ลูกค้าอ่าน

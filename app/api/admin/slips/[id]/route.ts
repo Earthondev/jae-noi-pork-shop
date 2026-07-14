@@ -1,11 +1,11 @@
 import { env } from "cloudflare:workers";
-import { getChatGPTUser } from "../../../../chatgpt-auth";
+import { getAdminUser } from "../../../../admin-auth";
 import { getOrderSlipKey } from "../../../../../lib/google-sheets";
 
 type UploadBindings = { UPLOADS?: R2Bucket };
 
 export async function GET(_request: Request, context: { params: Promise<{ id: string }> }) {
-  const user = await getChatGPTUser();
+  const user = await getAdminUser();
   if (!user) return new Response("Unauthorized", { status: 401 });
   const { id } = await context.params;
   const slipKey = await getOrderSlipKey(id);

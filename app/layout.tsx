@@ -11,14 +11,14 @@ export async function generateMetadata(): Promise<Metadata> {
   const host = requestHeaders.get("x-forwarded-host") ?? requestHeaders.get("host") ?? "localhost";
   const protocol = requestHeaders.get("x-forwarded-proto") ?? (host.includes("localhost") ? "http" : "https");
   const metadataBase = new URL(`${protocol}://${host}`);
-  const title = "เจ้น้อย เขียงหมูตะคร้อ | สั่งสินค้าออนไลน์";
-  const description = "สั่งแหนมหมู ไส้กรอกอีสาน และแคปหมูจากร้านเจ้น้อย เขียงหมูตะคร้อ";
+  const title = "เจ๊น้อย เขียงหมูตะคร้อ | สั่งสินค้าออนไลน์";
+  const description = "สั่งแหนมหมู ไส้กรอกอีสาน และแคปหมูจากร้านเจ๊น้อย เขียงหมูตะคร้อ";
   return {
     metadataBase,
     title,
     description,
     icons: { icon: "/favicon.svg" },
-    openGraph: { title, description, type: "website", locale: "th_TH", images: [{ url: "/og.png", width: 1536, height: 909, alt: "เจ้น้อย เขียงหมูตะคร้อ อร่อยถึงเครื่อง สั่งง่ายถึงบ้าน" }] },
+    openGraph: { title, description, type: "website", locale: "th_TH", images: [{ url: "/og.png", width: 1536, height: 909, alt: "เจ๊น้อย เขียงหมูตะคร้อ อร่อยถึงเครื่อง สั่งง่ายถึงบ้าน" }] },
     twitter: { card: "summary_large_image", title, description, images: ["/og.png"] },
   };
 }
