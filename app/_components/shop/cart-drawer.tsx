@@ -150,6 +150,12 @@ export function CartDrawer({ drawerRef, onClose, cart, checkout, storefront, ord
                 </div>
                 <button className="closed-round-back" type="button" onClick={onClose}>กลับไปเลือกสินค้า</button>
               </section>
+            ) : cart.items.length === 0 ? (
+              <div style={{ padding: "16px 0", textAlign: "center" }}>
+                <button className="closed-round-back" type="button" onClick={onClose}>
+                  กลับไปเลือกสินค้า
+                </button>
+              </div>
             ) : (
               <form onSubmit={order.onSubmit}>
                 <div className="summary-row pending-row">
