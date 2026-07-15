@@ -9,6 +9,11 @@ export type CheckoutDraft = {
   customerName: string;
   phone: string;
   address: string;
+  addressLine: string;
+  subdistrict: string;
+  district: string;
+  province: string;
+  postalCode: string;
   note: string;
   fulfilment: DraftFulfilment;
   selectedRound: string;
@@ -33,6 +38,11 @@ export const EMPTY_CHECKOUT_DRAFT: CheckoutDraft = {
   customerName: "",
   phone: "",
   address: "",
+  addressLine: "",
+  subdistrict: "",
+  district: "",
+  province: "",
+  postalCode: "",
   note: "",
   fulfilment: "postal",
   selectedRound: "",
@@ -91,7 +101,7 @@ export function browserDraftStorage(): DraftStorage | null {
 
 export function hasCheckoutDraftContent(draft: CheckoutDraft): boolean {
   return Object.keys(draft.quantities).length > 0 || Boolean(
-    draft.customerName || draft.phone || draft.address || draft.note,
+    draft.customerName || draft.phone || draft.address || draft.addressLine || draft.subdistrict || draft.district || draft.province || draft.postalCode || draft.note,
   );
 }
 
@@ -125,6 +135,11 @@ function parseStoredDraft(value: unknown, now: number): CheckoutDraft | null {
     customerName: typeof stored.customerName === "string" ? stored.customerName : "",
     phone: typeof stored.phone === "string" ? stored.phone : "",
     address: typeof stored.address === "string" ? stored.address : "",
+    addressLine: typeof stored.addressLine === "string" ? stored.addressLine : (typeof stored.address === "string" ? stored.address : ""),
+    subdistrict: typeof stored.subdistrict === "string" ? stored.subdistrict : "",
+    district: typeof stored.district === "string" ? stored.district : "",
+    province: typeof stored.province === "string" ? stored.province : "",
+    postalCode: typeof stored.postalCode === "string" ? stored.postalCode : "",
     note: typeof stored.note === "string" ? stored.note : "",
     fulfilment: stored.fulfilment === "pickup" ? "pickup" : "postal",
     selectedRound: typeof stored.selectedRound === "string" ? stored.selectedRound : "",
@@ -137,6 +152,11 @@ function sanitizeDraft(draft: CheckoutDraft): CheckoutDraft {
     customerName: cleanText(draft.customerName, 100),
     phone: cleanText(draft.phone, 30),
     address: cleanText(draft.address, 1_000),
+    addressLine: cleanText(draft.addressLine, 500),
+    subdistrict: cleanText(draft.subdistrict, 100),
+    district: cleanText(draft.district, 100),
+    province: cleanText(draft.province, 100),
+    postalCode: draft.postalCode.replace(/\D/g, "").slice(0, 5),
     note: cleanText(draft.note, 500),
     fulfilment: draft.fulfilment === "pickup" ? "pickup" : "postal",
     selectedRound: /^RD-\d{8}$/.test(draft.selectedRound) ? draft.selectedRound : "",

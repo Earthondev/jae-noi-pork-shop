@@ -19,7 +19,7 @@ import {
   updateAdminRound,
   updateAdminStorefrontSettings,
   type CmsMutationResult,
-} from "../../../../lib/google-sheets";
+} from "../../../../db/cms-repository";
 
 type ActionBody = Record<string, unknown> & { action?: unknown };
 type CloudflareCacheStorage = CacheStorage & { default?: Cache };

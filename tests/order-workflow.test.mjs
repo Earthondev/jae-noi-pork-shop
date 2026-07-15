@@ -18,24 +18,23 @@ test("keeps payment and fulfilment statuses separated", async () => {
   assert.match(workflow, /paymentStatus: "ชำระแล้ว"/);
   assert.match(workflow, /paymentStatus: "สลิปไม่ถูกต้อง"/);
   assert.doesNotMatch(orderRoute, /orderStatus = "ชำระแล้ว"/);
-  assert.match(orderRoute, /orderStatus = "รับออเดอร์แล้ว"/);
+  assert.match(orderRoute, /orderStatus: "received"/);
   assert.match(admin, /payment_status/);
   assert.match(admin, /order_status/);
 });
 
-test("writes an order atomically and carries a stable idempotency key", async () => {
-  const [shop, orderRoute, sheets] = await Promise.all([
+test("writes an order atomically to D1 and carries a stable idempotency key", async () => {
+  const [shop, orderRoute, repository] = await Promise.all([
     projectFile("app/shop.tsx"),
     projectFile("app/api/orders/route.ts"),
-    projectFile("lib/google-sheets.ts"),
+    projectFile("db/order-repository.ts"),
   ]);
 
   assert.match(shop, /idempotencyKey/);
   assert.match(orderRoute, /idempotencyKey/);
-  assert.match(sheets, /idempotencyKey/);
-  assert.match(sheets, /:batchUpdate/);
-  assert.match(sheets, /insertDimension/);
-  assert.doesNotMatch(sheets, /async function appendValues/);
+  assert.match(repository, /idempotencyKey/);
+  assert.match(repository, /db\.batch/);
+  assert.match(orderRoute, /insertOrder/);
 });
 
 test("shows the next opening and blocks pickup until an address exists", async () => {
@@ -95,14 +94,14 @@ test("separates verified, pending, and disabled SlipOK outcomes", () => {
 });
 
 test("prevents fulfilment progress until payment is confirmed", async () => {
-  const [sheets, adminRoute, admin] = await Promise.all([
-    projectFile("lib/google-sheets.ts"),
+  const [repository, adminRoute, admin] = await Promise.all([
+    projectFile("db/order-repository.ts"),
     projectFile("app/api/admin/orders/[id]/route.ts"),
     projectFile("app/admin/dashboard.tsx"),
   ]);
 
-  assert.match(sheets, /effectivePaymentStatus !== "paid"/);
-  assert.match(sheets, /return "payment_required"/);
+  assert.match(repository, /effectivePaymentStatus !== "paid"/);
+  assert.match(repository, /return "payment_required"/);
   assert.match(adminRoute, /result === "payment_required"/);
   assert.match(admin, /order\.payment_status !== "paid"/);
   assert.match(admin, /order_status: patch\.orderStatus/);

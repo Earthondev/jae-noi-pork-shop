@@ -30,14 +30,16 @@
 2. เชิญผู้พัฒนาเป็นสมาชิก โดยใช้สิทธิ์ Workers Platform Admin, DNS และ
    Workers, R2 และ DNS เฉพาะบัญชีหรือโดเมนนี้ ไม่ใช้ Super Administrator
 3. สร้าง R2 bucket ส่วนตัวสำหรับสลิปชื่อเดียวกับ `CLOUDFLARE_R2_BUCKET_NAME`
-4. สร้าง R2 bucket รูปสินค้าชื่อเดียวกับ `CLOUDFLARE_PRODUCT_MEDIA_BUCKET_NAME`
+4. สร้าง D1 database สำหรับออเดอร์ ผูกกับ Worker ด้วย binding `DB` และ apply
+   `migrations/0001_orders.sql` และ `migrations/0002_storefront_cms.sql` ใน staging ก่อนเสมอ
+5. สร้าง R2 bucket รูปสินค้าชื่อเดียวกับ `CLOUDFLARE_PRODUCT_MEDIA_BUCKET_NAME`
    และห้ามนำสลิปหรือข้อมูลลูกค้าไปเก็บใน bucket รูปสินค้า
-5. เปิด Cloudflare Zero Trust และสร้าง Access application เดียวที่มีปลายทาง
+6. เปิด Cloudflare Zero Trust และสร้าง Access application เดียวที่มีปลายทาง
    `/admin*` และ `/api/admin/*`
-6. เพิ่ม Google เป็น identity provider และคง One-time PIN ไว้เป็นวิธีสำรอง
-7. สร้าง Allow policy แบบ Emails โดยระบุเฉพาะอีเมลเจ้าของร้านและผู้ดูแล
-8. ตั้ง session 6 ชั่วโมง และทดสอบทั้ง Google กับ OTP ก่อนปิดรหัสผ่านสำรอง
-9. เก็บรหัสผ่านสำรองที่เดายากไว้นอก Git แล้วตั้ง
+7. เพิ่ม Google เป็น identity provider และคง One-time PIN ไว้เป็นวิธีสำรอง
+8. สร้าง Allow policy แบบ Emails โดยระบุเฉพาะอีเมลเจ้าของร้านและผู้ดูแล
+9. ตั้ง session 6 ชั่วโมง และทดสอบทั้ง Google กับ OTP ก่อนปิดรหัสผ่านสำรอง
+10. เก็บรหัสผ่านสำรองที่เดายากไว้นอก Git แล้วตั้ง
    `ADMIN_PASSWORD_FALLBACK_ENABLED=false` ในระบบจริง
 
 ## Build variables ที่ไม่ใช่ความลับ
@@ -46,6 +48,9 @@
 
 ```text
 CLOUDFLARE_CUSTOM_DOMAIN=
+CLOUDFLARE_WORKER_NAME=jae-noi-pork-shop
+CLOUDFLARE_D1_DATABASE_NAME=jae-noi-pork-shop
+CLOUDFLARE_D1_DATABASE_ID=7bfa8fbb-f603-441c-bbb0-b4474cdfd2fa
 CLOUDFLARE_R2_BUCKET_NAME=jae-noi-pork-shop-uploads
 CLOUDFLARE_PRODUCT_MEDIA_BUCKET_NAME=jae-noi-pork-shop-media
 PRODUCT_MEDIA_ORIGIN=https://pub-example.r2.dev
@@ -53,6 +58,8 @@ PRODUCT_MEDIA_ORIGIN=https://pub-example.r2.dev
 
 `CLOUDFLARE_CUSTOM_DOMAIN` เว้นว่างได้ระหว่างที่ร้านยังไม่มีโดเมน ระบบจะเปิดผ่าน
 `workers.dev` ก่อน เมื่อซื้อโดเมนแล้วจึงใส่ hostname และ deploy ใหม่
+ตัว build จะหยุดทันทีหากชื่อ Worker, ชื่อ D1 หรือ D1 UUID ไม่ครบ และตรวจซ้ำหลัง build
+เพื่อไม่ให้ staging หรือ production ชี้ฐานข้อมูลสลับกัน
 
 Build command:
 
@@ -109,14 +116,16 @@ SLIPOK_API_KEY
 ## ลำดับเปิดใช้งานโดยไม่กระทบเว็บเดิม
 
 1. สร้าง staging subdomain ใน Cloudflare ลูกค้า
-2. Build และ deploy จาก GitHub
-3. ใส่ secrets และทดสอบการอ่าน/เขียน Google Sheet
-4. ทดสอบออเดอร์, QR, แนบสลิป, ติดตามสถานะ และหลังบ้านบนมือถือ
-5. ยืนยันว่าอีเมลอื่นเข้า `/admin` และ `/api/admin/*` ไม่ได้ และหน้าร้าน `/`
+2. สร้าง D1 staging แยกจาก production และ apply migration
+3. Build และ deploy จาก GitHub โดยระบุ Worker และ D1 ของ staging ให้ชัดเจน
+4. ใส่ secrets ผ่านรายการอนุญาต และทดสอบการอ่าน Google Sheet
+5. ทดสอบสร้าง อ่าน แก้สถานะ และลบออเดอร์ทดสอบใน D1 staging
+6. ทดสอบออเดอร์, QR, แนบสลิป, ติดตามสถานะ และหลังบ้านบนมือถือ
+7. ยืนยันว่าอีเมลอื่นเข้า `/admin` และ `/api/admin/*` ไม่ได้ และหน้าร้าน `/`
    ยังเปิดโดยไม่ต้องล็อกอิน
-6. สำรอง Google Sheet และทดสอบกู้คืน
-7. เปลี่ยนโดเมนจริงเข้าระบบใหม่
-8. เก็บ Sites เดิมเป็น rollback ชั่วคราว ก่อนปิดเมื่อระบบใหม่เสถียร
+8. สำรอง Google Sheet และทดสอบกู้คืน
+9. เปลี่ยนโดเมนจริงเข้าระบบใหม่
+10. เก็บ Sites เดิมเป็น rollback ชั่วคราว ก่อนปิดเมื่อระบบใหม่เสถียร
 
 ## เงื่อนไขก่อนเปิดขายจริง
 

@@ -1,9 +1,11 @@
 import { env } from "cloudflare:workers";
 import { NextResponse } from "next/server";
-import { appendOrder, findOrderByIdempotencyKey, getStorefrontData } from "../../../lib/google-sheets";
+import { findOrderByIdempotencyKey, insertOrder } from "../../../db/order-repository";
+import { getStorefrontData } from "../../../db/storefront-repository";
 import { createSecureOrderId } from "../../../lib/order-id";
 import {
   clientPaymentStatus,
+  databasePaymentStatus,
   paymentDecisionFromVerification,
   type ClientPaymentStatus,
   type SheetPaymentStatus,
@@ -11,6 +13,8 @@ import {
 import { verifySlipWithSlipOk } from "../../../lib/slipok";
 import { publicErrorBody } from "../../../lib/public-errors";
 import { reportServerError } from "../../../lib/server-monitoring";
+import { formatThaiAddress, type StructuredThaiAddress } from "../../../lib/thai-address";
+import { isValidStructuredThaiAddress } from "../../../lib/thai-address-validation";
 
 type OrderItemInput = { productId?: string; quantity?: number };
 type UploadBindings = { UPLOADS?: R2Bucket };
@@ -54,7 +58,13 @@ export async function POST(request: Request) {
     const form = await request.formData();
     const customerName = String(form.get("customerName") ?? "").trim();
     const phone = String(form.get("phone") ?? "").trim();
-    const address = String(form.get("address") ?? "").trim();
+    const structuredAddress: StructuredThaiAddress = {
+      addressLine: String(form.get("addressLine") ?? "").trim(),
+      subdistrict: String(form.get("subdistrict") ?? "").trim(),
+      district: String(form.get("district") ?? "").trim(),
+      province: String(form.get("province") ?? "").trim(),
+      postalCode: String(form.get("postalCode") ?? "").trim(),
+    };
     const note = String(form.get("note") ?? "").trim();
     const roundId = String(form.get("roundId") ?? "").trim();
     const fulfilment = String(form.get("fulfilment") ?? "");
@@ -65,7 +75,9 @@ export async function POST(request: Request) {
     if (!customerName || !phone) return NextResponse.json({ error: "กรุณากรอกชื่อและเบอร์โทรให้ครบ" }, { status: 400 });
     if (!/^0[0-9\s-]{8,12}$/.test(phone)) return NextResponse.json({ error: "กรุณาตรวจสอบเบอร์โทรศัพท์" }, { status: 400 });
     if (fulfilment !== "pickup" && fulfilment !== "postal") return NextResponse.json({ error: "กรุณาเลือกวิธีรับสินค้า" }, { status: 400 });
-    if (fulfilment === "postal" && !address) return NextResponse.json({ error: "กรุณากรอกที่อยู่จัดส่ง" }, { status: 400 });
+    if (fulfilment === "postal" && (structuredAddress.addressLine.length > 500 || !isValidStructuredThaiAddress(structuredAddress))) {
+      return NextResponse.json({ error: "กรุณาตรวจสอบจังหวัด อำเภอ ตำบล และรหัสไปรษณีย์" }, { status: 400 });
+    }
     if (!/^[A-Za-z0-9_-]{20,100}$/.test(idempotencyKey)) return NextResponse.json({ error: "ไม่พบรหัสป้องกันการสั่งซ้ำ กรุณาโหลดหน้าใหม่" }, { status: 400 });
     if (!Array.isArray(rawItems) || rawItems.length === 0) return NextResponse.json({ error: "ไม่พบสินค้าในตะกร้า" }, { status: 400 });
     if (slip instanceof File && slip.size > 0 && (slip.size > 5 * 1024 * 1024 || !["image/jpeg", "image/png", "image/webp"].includes(slip.type))) {
@@ -107,6 +119,7 @@ export async function POST(request: Request) {
 
     const subtotal = items.reduce((sum, item) => sum + item.unitPrice * item.quantity, 0);
     const shippingFee = fulfilment === "postal" ? storefront.shippingFee ?? 0 : 0;
+    const address = fulfilment === "postal" ? formatThaiAddress(structuredAddress) : storefront.pickupAddress ?? "";
     const fingerprint = await sha256Hex(JSON.stringify({
       customerName,
       phone,
@@ -161,7 +174,6 @@ export async function POST(request: Request) {
     }
 
     let paymentStatus: SheetPaymentStatus = "รอชำระเงิน";
-    const orderStatus = "รับออเดอร์แล้ว" as const;
     let adminNote = "";
 
     if (slip instanceof File && slip.size > 0) {
@@ -175,21 +187,27 @@ export async function POST(request: Request) {
       adminNote = decision.adminNote;
     }
 
-    operation = "order.append_sheet";
-    await appendOrder({
+    operation = "order.insert_d1";
+    await insertOrder({
       id: orderId,
       roundId,
+      deliveryDate: selectedRound.deliveryDate,
       createdAt,
       customerName,
       phone,
       fulfilment,
-      address: fulfilment === "pickup" ? storefront.pickupAddress ?? "" : address,
+      address,
+      addressLine: fulfilment === "postal" ? structuredAddress.addressLine : "",
+      subdistrict: fulfilment === "postal" ? structuredAddress.subdistrict : "",
+      district: fulfilment === "postal" ? structuredAddress.district : "",
+      province: fulfilment === "postal" ? structuredAddress.province : "",
+      postalCode: fulfilment === "postal" ? structuredAddress.postalCode : "",
       subtotal,
       shippingFee,
       total: subtotal + shippingFee,
       slipKey,
-      paymentStatus,
-      orderStatus,
+      paymentStatus: databasePaymentStatus(paymentStatus),
+      orderStatus: "received",
       adminNote,
       note,
       idempotencyKey,

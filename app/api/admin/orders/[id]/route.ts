@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { getAdminUser } from "../../../../admin-auth";
 import type { OrderStatus, PaymentStatus } from "../../../../../db/orders";
 import { isSameOriginMutation } from "../../../../../lib/admin-auth";
-import { updateAdminOrder } from "../../../../../lib/google-sheets";
+import { updateAdminOrder } from "../../../../../db/order-repository";
 import { publicErrorBody } from "../../../../../lib/public-errors";
 import { reportServerError } from "../../../../../lib/server-monitoring";
 

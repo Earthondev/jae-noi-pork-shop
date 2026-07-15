@@ -14,7 +14,7 @@ type SnapshotEnvelope<T> = {
 
 export type ResilientStorefrontResult<T> = {
   data: T;
-  source: "google-sheets" | "r2-stale";
+  source: "google-sheets" | "d1" | "r2-stale";
   savedAt: string;
   attempts: number;
 };
@@ -29,6 +29,7 @@ type ResilientStorefrontOptions<T> = {
   retryDelayMs?: number;
   now?: () => Date;
   sleep?: (milliseconds: number) => Promise<void>;
+  freshSource?: "google-sheets" | "d1";
 };
 
 class StorefrontTimeoutError extends Error {
@@ -57,7 +58,7 @@ export async function loadResilientStorefront<T>(
       if (!options.validate(data)) throw new InvalidFreshStorefrontError();
       const savedAt = now().toISOString();
       await writeSnapshot(options.bucket, { version: 1, savedAt, data });
-      return { data, source: "google-sheets", savedAt, attempts: attempt };
+      return { data, source: options.freshSource ?? "google-sheets", savedAt, attempts: attempt };
     } catch (error) {
       lastError = error;
       const retryable = error instanceof StorefrontTimeoutError || options.shouldRetry(error);

@@ -32,6 +32,9 @@ const orderLabels: Record<PublicOrderTracking["orderStatus"], string> = {
   cancelled: "ยกเลิก",
 };
 
+const INITIAL_VISIBLE_ORDERS = 3;
+const ORDERS_PER_PAGE = 3;
+
 function formatDate(value: string): string {
   const date = new Date(value);
   return Number.isNaN(date.getTime()) ? value || "—" : date.toLocaleString("th-TH", { dateStyle: "medium", timeStyle: "short" });
@@ -109,13 +112,59 @@ async function saveReceiptPng(order: PublicOrderTracking, storeName: string): Pr
   URL.revokeObjectURL(url);
 }
 
-export function OrderTracker({ initialOrderId = "", storeName, phonePrimary, phoneSecondary }: { initialOrderId?: string; storeName: string; phonePrimary: string; phoneSecondary: string }) {
-  const [orderId, setOrderId] = useState(initialOrderId);
-  const [phoneLast4, setPhoneLast4] = useState("");
-  const [order, setOrder] = useState<PublicOrderTracking | null>(null);
+function OrderHistoryCard({ order, expanded, onToggle, storeName }: { order: PublicOrderTracking; expanded: boolean; onToggle: () => void; storeName: string }) {
+  const [receiptError, setReceiptError] = useState<string | null>(null);
+  const currentStep = trackingStepIndex(order.orderStatus, order.fulfilment);
+  const steps = order.fulfilment === "pickup"
+    ? ["รับออเดอร์แล้ว", "กำลังเตรียม", "พร้อมรับหน้าร้าน", "สำเร็จ"]
+    : ["รับออเดอร์แล้ว", "กำลังเตรียม", "จัดส่งแล้ว", "สำเร็จ"];
+
+  return (
+    <article className={`track-history-card${expanded ? " expanded" : ""}`}>
+      <button className="track-order-summary" type="button" onClick={onToggle} aria-expanded={expanded}>
+        <span><small>{formatDate(order.createdAt)}</small><strong>{order.orderId}</strong><em>{order.items.map((item) => `${item.name} × ${item.quantity}`).join(", ")}</em></span>
+        <span><b>{order.total.toLocaleString("th-TH")} บาท</b><i>{orderLabels[order.orderStatus]}</i><span aria-hidden="true">⌄</span></span>
+      </button>
+      {expanded && (
+        <div className="track-order-expanded">
+          <div className="customer-statuses"><span className={`customer-payment payment-${order.paymentStatus}`}>{paymentLabels[order.paymentStatus]}</span><span>{orderLabels[order.orderStatus]}</span></div>
+          {order.orderStatus === "cancelled" ? <p className="track-warning" role="status">ออเดอร์นี้ถูกยกเลิก หากมีการชำระเงินแล้วกรุณาติดต่อร้าน</p> : (
+            <ol className="tracking-steps" aria-label="ความคืบหน้าออเดอร์">
+              {steps.map((step, index) => (
+                <li className={index <= currentStep ? "done" : ""} key={step} aria-current={index === currentStep ? "step" : undefined}>
+                  <span aria-hidden="true">{index < currentStep ? "✓" : index + 1}</span><strong>{step}</strong>
+                </li>
+              ))}
+            </ol>
+          )}
+          <div className="tracking-details">
+            <div><span>รอบจัดส่ง</span><strong>{order.deliveryDate || "รอข้อมูล"}</strong></div>
+            <div><span>วิธีรับสินค้า</span><strong>{order.fulfilmentLabel}</strong></div>
+            <div><span>เลขพัสดุ</span><strong>{order.trackingNumber ?? "ยังไม่มีเลขพัสดุ"}</strong></div>
+          </div>
+          <div className="tracking-items"><h3>รายการสินค้า</h3>{order.items.map((item, index) => <div key={`${item.name}-${index}`}><span>{item.name} × {item.quantity}</span><strong>{item.lineTotal.toLocaleString("th-TH")} บาท</strong></div>)}<div className="tracking-total"><span>ยอดรวม</span><strong>{order.total.toLocaleString("th-TH")} บาท</strong></div></div>
+          {order.paymentStatus === "paid" && (
+            <section className="track-receipt" aria-labelledby={`receipt-${order.orderId}`}>
+              <div className="receipt-mark" aria-hidden="true">✓</div><p className="eyebrow">ชำระเงินเรียบร้อย</p><h3 id={`receipt-${order.orderId}`}>ใบยืนยันการชำระเงิน</h3>
+              <p>เลขออเดอร์ <strong>{order.orderId}</strong></p><div className="receipt-items">{order.items.map((item, index) => <p key={`${item.name}-receipt-${index}`}><span>{item.name} × {item.quantity}</span><strong>{item.lineTotal.toLocaleString("th-TH")} บาท</strong></p>)}</div>
+              <p>ยอดชำระ <strong>{order.total.toLocaleString("th-TH")} บาท</strong></p><p>รอบจัดส่ง <strong>{order.deliveryDate}</strong></p>
+              <div className="receipt-actions"><button type="button" onClick={() => { setReceiptError(null); void saveReceiptPng(order, storeName).catch((saveError: unknown) => setReceiptError(saveError instanceof Error ? saveError.message : "บันทึกรูปไม่สำเร็จ")); }}>บันทึกเป็นรูป PNG</button><button type="button" onClick={() => window.print()}>พิมพ์หรือบันทึก PDF</button></div>
+              {receiptError && <p className="track-error" role="alert">{receiptError}</p>}
+            </section>
+          )}
+        </div>
+      )}
+    </article>
+  );
+}
+
+export function OrderTracker({ storeName, phonePrimary, phoneSecondary }: { storeName: string; phonePrimary: string; phoneSecondary: string }) {
+  const [phone, setPhone] = useState("");
+  const [orders, setOrders] = useState<PublicOrderTracking[]>([]);
+  const [expandedOrderId, setExpandedOrderId] = useState<string | null>(null);
+  const [visibleOrderCount, setVisibleOrderCount] = useState(INITIAL_VISIBLE_ORDERS);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [receiptError, setReceiptError] = useState<string | null>(null);
   const resultHeadingRef = useRef<HTMLHeadingElement>(null);
 
   const { draft } = useCheckoutDraft();
@@ -126,26 +175,28 @@ export function OrderTracker({ initialOrderId = "", storeName, phonePrimary, pho
   };
 
   useEffect(() => {
-    if (order) resultHeadingRef.current?.focus();
-  }, [order]);
+    if (orders.length > 0) resultHeadingRef.current?.focus();
+  }, [orders]);
 
   async function lookupOrder(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setLoading(true);
     setError(null);
-    setOrder(null);
-    setReceiptError(null);
+    setOrders([]);
+    setExpandedOrderId(null);
+    setVisibleOrderCount(INITIAL_VISIBLE_ORDERS);
     try {
       const response = await fetch("/api/orders/track", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ orderId: orderId.trim().toUpperCase(), phoneLast4 }),
+        body: JSON.stringify({ phone }),
       });
-      const result = await response.json().catch(() => null) as { order?: PublicOrderTracking; error?: string } | null;
-      if (!response.ok || !result?.order) {
+      const result = await response.json().catch(() => null) as { orders?: PublicOrderTracking[]; error?: string } | null;
+      if (!response.ok || !result?.orders?.length) {
         throw new CustomerFacingError(safeClientApiMessage(response.status, result, "TRACKING_UNAVAILABLE"));
       }
-      setOrder(result.order);
+      setOrders(result.orders);
+      setExpandedOrderId(result.orders[0].orderId);
     } catch (lookupError) {
       setError(
         lookupError instanceof CustomerFacingError
@@ -156,11 +207,6 @@ export function OrderTracker({ initialOrderId = "", storeName, phonePrimary, pho
       setLoading(false);
     }
   }
-
-  const currentStep = order ? trackingStepIndex(order.orderStatus, order.fulfilment) : -1;
-  const steps = order?.fulfilment === "pickup"
-    ? ["รับออเดอร์แล้ว", "กำลังเตรียม", "พร้อมรับหน้าร้าน", "สำเร็จ"]
-    : ["รับออเดอร์แล้ว", "กำลังเตรียม", "จัดส่งแล้ว", "สำเร็จ"];
 
   return (
     <main className="track-page">
@@ -175,68 +221,44 @@ export function OrderTracker({ initialOrderId = "", storeName, phonePrimary, pho
 
       <section className="track-hero">
         <p className="eyebrow">ตรวจได้ด้วยตัวเองตลอดเวลา</p>
-        <h1>ติดตามออเดอร์</h1>
-        <p>กรอกเลขออเดอร์และเบอร์โทร 4 ตัวท้าย ข้อมูลส่วนตัวของคุณจะไม่แสดงต่อสาธารณะ</p>
+        <h1>ประวัติและสถานะออเดอร์</h1>
+        <p>กรอกเบอร์โทรศัพท์ที่ใช้สั่งซื้อ เพื่อติดตามสถานะออเดอร์</p>
         <form className="track-form" onSubmit={lookupOrder}>
-          <label>เลขออเดอร์<input value={orderId} onChange={(event) => setOrderId(event.target.value.toUpperCase())} autoComplete="off" spellCheck={false} maxLength={22} placeholder="JN-20260716-7G4K2P9ABC" required /></label>
-          <label>เบอร์โทร 4 ตัวท้าย<input value={phoneLast4} onChange={(event) => setPhoneLast4(event.target.value.replace(/\D/g, "").slice(0, 4))} inputMode="numeric" autoComplete="off" pattern="[0-9]{4}" maxLength={4} placeholder="เช่น 7892" required /></label>
-          <button type="submit" disabled={loading}>{loading ? "กำลังตรวจสอบ..." : "ตรวจสอบสถานะ"}</button>
+          <label>เบอร์โทรศัพท์<input value={phone} onChange={(event) => setPhone(event.target.value.replace(/\D/g, "").slice(0, 10))} inputMode="tel" autoComplete="tel" pattern="0[0-9]{8,9}" maxLength={10} placeholder="เช่น 0931687892" required /></label>
+          <button type="submit" disabled={loading}>{loading ? "กำลังค้นหา..." : "ติดตามสถานะ"}</button>
         </form>
         {error && <p className="track-error" role="alert">{error}</p>}
       </section>
 
       {loading && <section className="tracking-skeleton" aria-live="polite" aria-label="กำลังโหลดสถานะออเดอร์"><span /><span /><span /><span /></section>}
 
-      {order && (
-        <section className="track-result" aria-live="polite">
-          <div className="track-result-heading">
-            <div><p className="eyebrow">อัปเดตล่าสุด {formatDate(order.updatedAt)}</p><h2 ref={resultHeadingRef} tabIndex={-1}>{order.orderId}</h2><p>{order.maskedPhone}</p></div>
-            <div className="customer-statuses"><span className={`customer-payment payment-${order.paymentStatus}`}>{paymentLabels[order.paymentStatus]}</span><span>{orderLabels[order.orderStatus]}</span></div>
+      {orders.length > 0 && (
+        <section className="track-history" aria-live="polite">
+          <div className="track-history-heading"><div><p className="eyebrow">ย้อนหลัง 30 วัน</p><h2 ref={resultHeadingRef} tabIndex={-1}>พบ {orders.length} ออเดอร์</h2></div><span>{orders[0].maskedPhone}</span></div>
+          <div className="track-history-list">
+            {orders.slice(0, visibleOrderCount).map((order) => (
+              <OrderHistoryCard
+                key={order.orderId}
+                order={order}
+                storeName={storeName}
+                expanded={expandedOrderId === order.orderId}
+                onToggle={() => setExpandedOrderId((current) => current === order.orderId ? null : order.orderId)}
+              />
+            ))}
           </div>
-
-          {order.orderStatus === "cancelled" ? <p className="track-warning" role="status">ออเดอร์นี้ถูกยกเลิก หากมีการชำระเงินแล้วกรุณาติดต่อร้าน</p> : (
-            <ol className="tracking-steps" aria-label="ความคืบหน้าออเดอร์">
-              {steps.map((step, index) => (
-                <li className={index <= currentStep ? "done" : ""} key={step} aria-current={index === currentStep ? "step" : undefined}>
-                  <span aria-hidden="true">
-                    {index < currentStep ? (
-                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" style={{ width: 14, height: 14 }}>
-                        <polyline points="20 6 9 17 4 12"></polyline>
-                      </svg>
-                    ) : (
-                      index + 1
-                    )}
-                  </span>
-                  <strong>{step}</strong>
-                </li>
-              ))}
-            </ol>
-          )}
-
-          <div className="tracking-details">
-            <div><span>รอบจัดส่ง</span><strong>{order.deliveryDate || "รอข้อมูล"}</strong></div>
-            <div><span>วิธีรับสินค้า</span><strong>{order.fulfilmentLabel}</strong></div>
-            <div><span>เลขพัสดุ</span><strong>{order.trackingNumber ?? "ยังไม่มีเลขพัสดุ"}</strong></div>
+          <div className="track-history-pagination" aria-live="polite">
+            <p>แสดงแล้ว {Math.min(visibleOrderCount, orders.length)} จาก {orders.length} ออเดอร์</p>
+            {visibleOrderCount < orders.length && (
+              <button
+                type="button"
+                onClick={() => setVisibleOrderCount((current) => Math.min(current + ORDERS_PER_PAGE, orders.length))}
+                aria-label={`แสดงออเดอร์เพิ่มเติม อีก ${Math.min(ORDERS_PER_PAGE, orders.length - visibleOrderCount)} รายการ`}
+              >
+                ดูออเดอร์เพิ่มเติม
+                <span aria-hidden="true">↓</span>
+              </button>
+            )}
           </div>
-          <div className="tracking-items"><h3>รายการสินค้า</h3>{order.items.map((item, index) => <div key={`${item.name}-${index}`}><span>{item.name} × {item.quantity}</span><strong>{item.lineTotal.toLocaleString("th-TH")} บาท</strong></div>)}<div className="tracking-total"><span>ยอดรวม</span><strong>{order.total.toLocaleString("th-TH")} บาท</strong></div></div>
-
-          {order.paymentStatus === "paid" && (
-            <section className="track-receipt" aria-labelledby="receipt-title">
-              <div className="receipt-mark" aria-hidden="true">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" style={{ width: 22, height: 22 }}>
-                  <polyline points="20 6 9 17 4 12"></polyline>
-                </svg>
-              </div>
-              <p className="eyebrow">ชำระเงินเรียบร้อย</p>
-              <h3 id="receipt-title">ใบยืนยันการชำระเงิน</h3>
-              <p>เลขออเดอร์ <strong>{order.orderId}</strong></p>
-              <div className="receipt-items">{order.items.map((item, index) => <p key={`${item.name}-receipt-${index}`}><span>{item.name} × {item.quantity}</span><strong>{item.lineTotal.toLocaleString("th-TH")} บาท</strong></p>)}</div>
-              <p>ยอดชำระ <strong>{order.total.toLocaleString("th-TH")} บาท</strong></p>
-              <p>รอบจัดส่ง <strong>{order.deliveryDate}</strong></p>
-              <div className="receipt-actions"><button type="button" onClick={() => { setReceiptError(null); void saveReceiptPng(order, storeName).catch((saveError: unknown) => setReceiptError(saveError instanceof Error ? saveError.message : "บันทึกรูปไม่สำเร็จ")); }}>บันทึกเป็นรูป PNG</button><button type="button" onClick={() => window.print()}>พิมพ์หรือบันทึก PDF</button></div>
-              {receiptError && <p className="track-error" role="alert">{receiptError}</p>}
-            </section>
-          )}
         </section>
       )}
 

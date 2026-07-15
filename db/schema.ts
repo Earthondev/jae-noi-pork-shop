@@ -1,16 +1,64 @@
-import { integer, sqliteTable, text } from "drizzle-orm/sqlite-core";
+import { integer, sqliteTable, text, uniqueIndex } from "drizzle-orm/sqlite-core";
+
+export const products = sqliteTable("products", {
+  id: text("id").primaryKey(),
+  name: text("name").notNull(),
+  unit: text("unit").notNull().default(""),
+  detail: text("detail").notNull().default(""),
+  price: integer("price"),
+  status: text("status").notNull(),
+  imageUrl: text("image_url").notNull().default(""),
+  category: text("category").notNull().default("อื่น ๆ"),
+  sortOrder: integer("sort_order").notNull(),
+  version: integer("version").notNull().default(1),
+  updatedAt: text("updated_at").notNull(),
+}, (table) => [uniqueIndex("products_sort_order_idx").on(table.sortOrder)]);
+
+export const deliveryRounds = sqliteTable("delivery_rounds", {
+  id: text("id").primaryKey(),
+  deliveryDate: text("delivery_date").notNull().unique(),
+  opensAt: text("opens_at").notNull(),
+  closesAt: text("closes_at").notNull(),
+  status: text("status").notNull(),
+  label: text("label").notNull().default(""),
+  note: text("note").notNull().default(""),
+  version: integer("version").notNull().default(1),
+  updatedAt: text("updated_at").notNull(),
+});
+
+export const storefrontSettings = sqliteTable("storefront_settings", {
+  key: text("key").primaryKey(),
+  value: text("value").notNull().default(""),
+  purpose: text("purpose").notNull().default(""),
+  status: text("status").notNull().default("พร้อมใช้"),
+  version: integer("version").notNull().default(1),
+  updatedAt: text("updated_at").notNull(),
+});
 
 export const orders = sqliteTable("orders", {
   id: text("id").primaryKey(),
+  roundId: text("round_id").notNull(),
+  deliveryDate: text("delivery_date").notNull().default(""),
   customerName: text("customer_name").notNull(),
   phone: text("phone").notNull(),
+  phoneNormalized: text("phone_normalized").notNull(),
+  fulfilment: text("fulfilment").notNull(),
   address: text("address").notNull(),
+  addressLine: text("address_line").notNull().default(""),
+  subdistrict: text("subdistrict").notNull().default(""),
+  district: text("district").notNull().default(""),
+  province: text("province").notNull().default(""),
+  postalCode: text("postal_code").notNull().default(""),
   note: text("note").notNull().default(""),
+  adminNote: text("admin_note").notNull().default(""),
   subtotal: integer("subtotal").notNull(),
-  shippingFee: integer("shipping_fee"),
-  total: integer("total"),
+  shippingFee: integer("shipping_fee").notNull().default(0),
+  total: integer("total").notNull(),
   slipKey: text("slip_key"),
-  status: text("status").notNull().default("waiting_for_payment_info"),
+  paymentStatus: text("payment_status").notNull().default("waiting_for_payment"),
+  orderStatus: text("order_status").notNull().default("received"),
+  trackingNumber: text("tracking_number"),
+  idempotencyKey: text("idempotency_key").notNull().unique(),
   createdAt: text("created_at").notNull(),
   updatedAt: text("updated_at").notNull(),
 });

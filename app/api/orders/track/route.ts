@@ -1,7 +1,7 @@
 import { env } from "cloudflare:workers";
 import { NextResponse } from "next/server";
-import { getPublicOrderTracking } from "../../../../lib/google-sheets";
-import { isTrackingLookupInput } from "../../../../lib/order-tracking";
+import { getPublicOrdersByPhone } from "../../../../db/order-repository";
+import { isPhoneTrackingLookupInput, normalizePhone } from "../../../../lib/order-tracking";
 import { publicErrorBody } from "../../../../lib/public-errors";
 import { reportServerError } from "../../../../lib/server-monitoring";
 
@@ -14,7 +14,7 @@ const PRIVATE_HEADERS = {
   "Cache-Control": "private, no-store",
   "X-Content-Type-Options": "nosniff",
 };
-const NOT_FOUND_MESSAGE = "ไม่พบออเดอร์ กรุณาตรวจสอบเลขออเดอร์และเบอร์โทร 4 ตัวท้าย";
+const NOT_FOUND_MESSAGE = "ไม่พบออเดอร์ย้อนหลัง 30 วัน กรุณาตรวจสอบเบอร์โทรศัพท์";
 
 async function sha256Hex(value: string): Promise<string> {
   const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(value));
@@ -57,11 +57,10 @@ function privateJson(body: object, status = 200, extraHeaders?: Record<string, s
 
 export async function POST(request: Request) {
   try {
-    const body = await request.json().catch(() => null) as { orderId?: unknown; phoneLast4?: unknown } | null;
-    const orderId = typeof body?.orderId === "string" ? body.orderId.trim().toUpperCase() : "";
-    const phoneLast4 = typeof body?.phoneLast4 === "string" ? body.phoneLast4.trim() : "";
-    if (!isTrackingLookupInput(orderId, phoneLast4)) {
-      return privateJson({ error: "กรุณากรอกเลขออเดอร์และเบอร์โทร 4 ตัวท้ายให้ถูกต้อง" }, 400);
+    const body = await request.json().catch(() => null) as { phone?: unknown } | null;
+    const phone = typeof body?.phone === "string" ? normalizePhone(body.phone) : "";
+    if (!isPhoneTrackingLookupInput(phone)) {
+      return privateJson({ error: "กรุณากรอกเบอร์โทรศัพท์ให้ถูกต้อง" }, 400);
     }
 
     const uploads = (env as unknown as UploadBindings).UPLOADS;
@@ -76,9 +75,9 @@ export async function POST(request: Request) {
       return privateJson({ error: "ลองตรวจสอบหลายครั้งเกินไป กรุณารอ 15 นาทีแล้วลองใหม่" }, 429, { "Retry-After": "900" });
     }
 
-    const order = await getPublicOrderTracking(orderId, phoneLast4);
-    if (!order) return privateJson({ error: NOT_FOUND_MESSAGE }, 404);
-    return privateJson({ order });
+    const orders = await getPublicOrdersByPhone(phone, { days: 30, limit: 10 });
+    if (orders.length === 0) return privateJson({ error: NOT_FOUND_MESSAGE }, 404);
+    return privateJson({ orders });
   } catch (error) {
     reportServerError({ event: "order_tracking_failed", operation: "tracking.lookup", error, path: "/api/orders/track", method: "POST" });
     return privateJson(publicErrorBody("TRACKING_UNAVAILABLE"), 500);

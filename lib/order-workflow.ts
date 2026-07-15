@@ -14,10 +14,17 @@ type PaymentDecision = {
 };
 
 export function clientPaymentStatus(paymentStatus: string): ClientPaymentStatus {
-  if (paymentStatus === "ชำระแล้ว") return "verified";
-  if (paymentStatus === "รอตรวจสลิป") return "review";
-  if (paymentStatus === "สลิปไม่ถูกต้อง") return "invalid";
+  if (paymentStatus === "ชำระแล้ว" || paymentStatus === "paid") return "verified";
+  if (paymentStatus === "รอตรวจสลิป" || paymentStatus === "waiting_for_slip_review") return "review";
+  if (paymentStatus === "สลิปไม่ถูกต้อง" || paymentStatus === "invalid_slip") return "invalid";
   return "waiting";
+}
+
+export function databasePaymentStatus(paymentStatus: SheetPaymentStatus): import("../db/orders").PaymentStatus {
+  if (paymentStatus === "ชำระแล้ว") return "paid";
+  if (paymentStatus === "รอตรวจสลิป") return "waiting_for_slip_review";
+  if (paymentStatus === "สลิปไม่ถูกต้อง") return "invalid_slip";
+  return "waiting_for_payment";
 }
 
 export function paymentDecisionFromVerification(verification: VerificationOutcome): PaymentDecision {

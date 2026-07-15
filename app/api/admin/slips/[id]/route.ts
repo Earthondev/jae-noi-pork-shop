@@ -1,6 +1,6 @@
 import { env } from "cloudflare:workers";
 import { getAdminUser } from "../../../../admin-auth";
-import { getOrderSlipKey } from "../../../../../lib/google-sheets";
+import { getOrderSlipKey } from "../../../../../db/order-repository";
 import { reportServerError } from "../../../../../lib/server-monitoring";
 
 type UploadBindings = { UPLOADS?: R2Bucket };

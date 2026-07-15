@@ -1,10 +1,10 @@
 import { env } from "cloudflare:workers";
 import { NextResponse } from "next/server";
 import {
-  getStorefrontData,
   shouldRetryGoogleSheetsError,
   type StorefrontData,
 } from "../../../lib/google-sheets";
+import { getStorefrontData } from "../../../db/storefront-repository";
 import { loadResilientStorefront } from "../../../lib/storefront-resilience";
 import { publicErrorBody } from "../../../lib/public-errors";
 import { reportServerError } from "../../../lib/server-monitoring";
@@ -49,6 +49,7 @@ export async function GET(request: Request) {
       timeoutMs: 5_000,
       maxAttempts: 2,
       retryDelayMs: 250,
+      freshSource: "d1",
     });
 
     const headers = new Headers({

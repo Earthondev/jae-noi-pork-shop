@@ -19,6 +19,14 @@ import {
   PUBLIC_ERROR_MESSAGES,
   safeClientApiMessage,
 } from "../lib/public-errors";
+import {
+  browserCustomerStorage,
+  forgetRememberedCustomer,
+  normalizeCustomerPhone,
+  readRememberedCustomer,
+  saveRememberedCustomer,
+} from "../lib/remembered-customer";
+import { formatThaiAddress } from "../lib/thai-address";
 
 type ClientPaymentStatus = "waiting" | "verified" | "review" | "invalid";
 
@@ -35,8 +43,11 @@ export function Shop() {
   const [orderPaymentStatus, setOrderPaymentStatus] = useState<ClientPaymentStatus>("waiting");
   const [selectedCategory, setSelectedCategory] = useState<string>("ทั้งหมด");
   const [activeTab, setActiveTab] = useState<"home" | "products">("home");
+  const [rememberDetails, setRememberDetails] = useState(true);
+  const [rememberedForCurrentPhone, setRememberedForCurrentPhone] = useState(false);
   const drawerRef = useRef<HTMLElement>(null);
   const idempotencyKeyRef = useRef<string | null>(null);
+  const appliedRememberedPhoneRef = useRef<string | null>(null);
 
   const checkout = useCheckoutDraft();
   const {
@@ -71,6 +82,44 @@ export function Shop() {
     (productId: string, delta: number) => updateCheckoutQuantity(storefront.products, productId, delta),
     [updateCheckoutQuantity, storefront.products],
   );
+
+  const changeCheckoutField = useCallback((field: "customerName" | "phone" | "address" | "note" | "addressLine" | "subdistrict" | "district" | "province" | "postalCode", value: string) => {
+    setCheckoutField(field, value);
+    if (field !== "phone") return;
+
+    const normalizedPhone = normalizeCustomerPhone(value);
+    setRememberedForCurrentPhone(false);
+    if (!rememberDetails) {
+      appliedRememberedPhoneRef.current = null;
+      return;
+    }
+    if (!/^0\d{8,9}$/.test(normalizedPhone)) {
+      appliedRememberedPhoneRef.current = null;
+      return;
+    }
+    if (appliedRememberedPhoneRef.current === normalizedPhone) return;
+
+    const remembered = readRememberedCustomer(browserCustomerStorage(), normalizedPhone);
+    if (!remembered) {
+      appliedRememberedPhoneRef.current = null;
+      return;
+    }
+    appliedRememberedPhoneRef.current = normalizedPhone;
+    setCheckoutField("customerName", remembered.customerName);
+    setCheckoutField("address", remembered.address);
+    setCheckoutField("addressLine", remembered.addressLine);
+    setCheckoutField("subdistrict", remembered.subdistrict);
+    setCheckoutField("district", remembered.district);
+    setCheckoutField("province", remembered.province);
+    setCheckoutField("postalCode", remembered.postalCode);
+    setRememberedForCurrentPhone(true);
+  }, [rememberDetails, setCheckoutField]);
+
+  const forgetCurrentCustomer = useCallback(() => {
+    forgetRememberedCustomer(browserCustomerStorage(), checkoutDraft.phone);
+    appliedRememberedPhoneRef.current = null;
+    setRememberedForCurrentPhone(false);
+  }, [checkoutDraft.phone]);
 
   useEffect(() => {
     if (checkoutRestored) void refreshStorefront();
@@ -244,6 +293,15 @@ export function Shop() {
     );
     form.set("roundId", storefront.selectedRound);
     form.set("fulfilment", storefront.fulfilment);
+    if (storefront.fulfilment === "postal") {
+      form.set("address", formatThaiAddress({
+        addressLine: String(form.get("addressLine") ?? ""),
+        subdistrict: String(form.get("subdistrict") ?? ""),
+        district: String(form.get("district") ?? ""),
+        province: String(form.get("province") ?? ""),
+        postalCode: String(form.get("postalCode") ?? ""),
+      }));
+    }
     idempotencyKeyRef.current ??= crypto.randomUUID();
     form.set("idempotencyKey", idempotencyKeyRef.current);
 
@@ -255,6 +313,19 @@ export function Shop() {
       }
       setOrderId(result.orderId);
       setOrderPaymentStatus(result.paymentStatus ?? "waiting");
+      if (rememberDetails) {
+        const remembered = saveRememberedCustomer(browserCustomerStorage(), {
+          customerName: String(form.get("customerName") ?? ""),
+          phone: String(form.get("phone") ?? ""),
+          address: String(form.get("address") ?? checkoutDraft.address),
+          addressLine: String(form.get("addressLine") ?? checkoutDraft.addressLine),
+          subdistrict: String(form.get("subdistrict") ?? checkoutDraft.subdistrict),
+          district: String(form.get("district") ?? checkoutDraft.district),
+          province: String(form.get("province") ?? checkoutDraft.province),
+          postalCode: String(form.get("postalCode") ?? checkoutDraft.postalCode),
+        });
+        setRememberedForCurrentPhone(remembered);
+      }
       idempotencyKeyRef.current = null;
       clearDraft();
     } catch (error) {
@@ -386,12 +457,22 @@ export function Shop() {
             customerName: checkoutDraft.customerName,
             phone: checkoutDraft.phone,
             address: checkoutDraft.address,
+            addressLine: checkoutDraft.addressLine,
+            subdistrict: checkoutDraft.subdistrict,
+            district: checkoutDraft.district,
+            province: checkoutDraft.province,
+            postalCode: checkoutDraft.postalCode,
             note: checkoutDraft.note,
             hasContent: checkoutHasContent,
-            onChange: setCheckoutField,
+            rememberDetails,
+            rememberedForCurrentPhone,
+            onChange: changeCheckoutField,
+            onToggleRemember: setRememberDetails,
+            onForgetRemembered: forgetCurrentCustomer,
             onClear: clearDraft,
           }}
           storefront={{
+            storeName: storefront.content.storeName,
             rounds: storefront.rounds,
             nextRound: storefront.nextRound,
             selectedRound: storefront.selectedRound,

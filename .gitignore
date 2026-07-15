@@ -13,7 +13,10 @@
 # testing
 /coverage
 /.playwright-cli/
+/.playwright-mcp/
 /output/
+/order-history-phone-only.png
+/qr-template-sample-150.png
 
 # next.js
 /.next/

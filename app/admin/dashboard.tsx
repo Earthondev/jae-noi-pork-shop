@@ -39,20 +39,38 @@ const tabs: Array<{ id: AdminTab; icon: AdminIconName; label: string }> = [
   { id: "storefront", icon: "store", label: "หน้าร้าน" },
 ];
 
-export function AdminDashboard({ initialOrders, initialCms, userName, serverNow }: { initialOrders: AdminOrder[]; initialCms: AdminCmsData; userName: string; serverNow: string }) {
-  const [activeTab, setActiveTab] = useState<AdminTab>("orders");
+export function AdminDashboard({ initialOrders, initialCms, userName, serverNow, serverClockLabel, initialTab }: { initialOrders: AdminOrder[]; initialCms: AdminCmsData; userName: string; serverNow: string; serverClockLabel: string; initialTab: AdminTab }) {
+  const [activeTab, setActiveTab] = useState<AdminTab>(initialTab);
   const [orders, setOrders] = useState(initialOrders);
   const [cms, setCms] = useState(initialCms);
   const [saving, setSaving] = useState<string | null>(null);
   const [notice, setNotice] = useState("");
-  const [now, setNow] = useState(() => new Date(serverNow));
+  const [clock, setClock] = useState({ iso: serverNow, label: serverClockLabel });
   const pendingCount = orders.filter((order) => order.payment_status === "waiting_for_slip_review" || order.payment_status === "invalid_slip").length;
   const storeIsOpen = cms.rounds.some((round) => round.status === "เปิดรับ" && round.displayState === "แสดงใน dropdown");
 
   useEffect(() => {
-    const timer = window.setInterval(() => setNow(new Date()), 60_000);
+    const updateClock = () => {
+      const next = new Date();
+      setClock({ iso: next.toISOString(), label: formatBangkokHeader(next) });
+    };
+    updateClock();
+    const timer = window.setInterval(updateClock, 60_000);
     return () => window.clearInterval(timer);
   }, []);
+
+  useEffect(() => {
+    const syncTabFromUrl = () => setActiveTab(adminTabFromUrl());
+    window.addEventListener("popstate", syncTabFromUrl);
+    return () => window.removeEventListener("popstate", syncTabFromUrl);
+  }, []);
+
+  function changeTab(tab: AdminTab) {
+    setActiveTab(tab);
+    const url = new URL(window.location.href);
+    url.searchParams.set("tab", tab);
+    window.history.replaceState(null, "", url);
+  }
 
   async function refreshCms() {
     const response = await fetch("/api/admin/cms", { cache: "no-store" });
@@ -68,6 +86,11 @@ export function AdminDashboard({ initialOrders, initialCms, userName, serverNow 
       const response = await fetch("/api/admin/cms", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action, ...payload }) });
       if (response.status === 401) return redirectToLogin();
       const result = await response.json().catch(() => null) as { error?: string } | null;
+      if (response.status === 409) {
+        await refreshCms();
+        setNotice("ข้อมูลล่าสุดถูกโหลดให้แล้ว กรุณากดบันทึกอีกครั้ง โดยไม่ต้องรีโหลดหน้า");
+        return false;
+      }
       if (!response.ok) throw new CustomerFacingError(safeClientApiMessage(response.status, result, "ADMIN_UNAVAILABLE"));
       await refreshCms(); setNotice(successMessage); return true;
     } catch (error) {
@@ -82,7 +105,7 @@ export function AdminDashboard({ initialOrders, initialCms, userName, serverNow 
         <div><p>{cms.settings.storeName}</p><h1>{tabs.find((tab) => tab.id === activeTab)?.label}</h1></div>
       </div>
       <div className="admin-header-meta">
-        <time dateTime={now.toISOString()}>{formatBangkokHeader(now)}</time>
+        <time dateTime={clock.iso}>{clock.label}</time>
         <span className={`admin-store-state ${storeIsOpen ? "open" : "closed"}`}><i aria-hidden="true" />{storeIsOpen ? "หน้าร้านเปิดรับ" : "หน้าร้านปิดรับ"}</span>
       </div>
       <div className="admin-account-row">
@@ -99,7 +122,7 @@ export function AdminDashboard({ initialOrders, initialCms, userName, serverNow 
     {activeTab === "storefront" && <StorefrontPanel key={cms.settings.fingerprint} settings={cms.settings} saving={saving} mutate={mutate} setNotice={setNotice} />}
 
     <nav className="admin-bottom-nav" aria-label="เมนูหลังบ้าน">
-      {tabs.map((tab) => <button key={tab.id} type="button" className={activeTab === tab.id ? "active" : ""} aria-current={activeTab === tab.id ? "page" : undefined} onClick={() => setActiveTab(tab.id)}>
+      {tabs.map((tab) => <button key={tab.id} type="button" className={activeTab === tab.id ? "active" : ""} aria-current={activeTab === tab.id ? "page" : undefined} onClick={() => changeTab(tab.id)}>
         <span className="admin-nav-icon"><AdminIcon name={tab.icon} />{tab.id === "orders" && pendingCount > 0 && <b aria-label={`${pendingCount} รายการที่ต้องตรวจ`}>{pendingCount > 99 ? "99+" : pendingCount}</b>}</span><strong>{tab.label}</strong>
       </button>)}
     </nav>
@@ -206,6 +229,7 @@ function RoundsPanel({ rounds, saving, mutate }: { rounds: AdminRound[]; saving:
       <div className="admin-round-sales"><span>ยอดขายรอบนี้</span><strong>{formatMoney(round.sales)}</strong></div>
       <dl className="admin-mini-stats"><div><dt>เปิดรับ</dt><dd>{formatInputDateTime(round.opensAt)}</dd></div><div><dt>ปิดรับ</dt><dd>{formatInputDateTime(round.closesAt)}</dd></div><div><dt>ออเดอร์</dt><dd>{round.orderCount}</dd></div><div><dt>ยอดเฉลี่ย</dt><dd>{formatMoney(round.orderCount ? round.sales / round.orderCount : 0)}</dd></div></dl>
       {round.note && <p>{round.note}</p>}
+      {round.status === "เตรียมเปิด" && <button className="admin-open-round" type="button" disabled={saving !== null} onClick={() => void mutate("round.update", { id: round.id, round: { ...round, status: "เปิดรับ" } }, "เปิดรอบขายแล้ว")}>เปิดรอบขาย</button>}
       {round.status === "เปิดรับ" && <button className="admin-close-round" type="button" onClick={() => setConfirm({ title: "ปิดรอบขายนี้?", description: `${round.label || round.id} จะหยุดรับออเดอร์ใหม่ทันที แต่ออเดอร์เดิมยังอยู่ครบ`, confirmLabel: "ปิดรอบขาย", tone: "danger", action: async () => { await mutate("round.update", { id: round.id, round: { ...round, status: "ปิดรับ" } }, "ปิดรอบขายแล้ว"); } })}>ปิดรอบขาย</button>}
     </article>)}</div>
     <ConfirmDialog open={Boolean(confirm)} title={confirm?.title ?? ""} description={confirm?.description ?? ""} confirmLabel={confirm?.confirmLabel ?? "ยืนยัน"} tone={confirm?.tone} busy={saving !== null} onCancel={() => setConfirm(null)} onConfirm={() => { const action = confirm?.action; setConfirm(null); if (action) void action(); }} />
@@ -318,7 +342,11 @@ function BrandAsset({ label, value, ratio, uploading, onUpload }: { label: strin
 
 function Kpi({ icon, label, value, accent = false }: { icon: AdminIconName; label: string; value: string; accent?: boolean }) { return <div className={accent ? "accent" : ""}><span><AdminIcon name={icon} />{label}</span><strong>{value}</strong></div>; }
 function FormActions({ disabled, onCancel }: { disabled: boolean; onCancel: () => void }) { return <div className="admin-form-actions"><button type="button" onClick={onCancel}>ยกเลิก</button><button className="admin-save-button" type="submit" disabled={disabled}>{disabled ? "กำลังบันทึก…" : "บันทึก"}</button></div>; }
-function redirectToLogin() { window.location.assign(`/admin/login?returnTo=${encodeURIComponent("/admin")}`); }
+function redirectToLogin() { window.location.assign(`/admin/login?returnTo=${encodeURIComponent(`${window.location.pathname}${window.location.search}`)}`); }
+function adminTabFromUrl(): AdminTab {
+  const value = new URL(window.location.href).searchParams.get("tab");
+  return value === "rounds" || value === "products" || value === "storefront" ? value : "orders";
+}
 function phoneHref(value: string) { return value.replace(/[^\d+]/g, ""); }
 function safeThaiDateTime(value: string) { const date = new Date(value); return Number.isNaN(date.getTime()) ? value : new Intl.DateTimeFormat("th-TH", { dateStyle: "medium", timeStyle: "short", timeZone: "Asia/Bangkok" }).format(date); }
 function formatInputDateTime(value: string) { if (!value) return "—"; const [date, time] = value.split("T"); const [year, month, day] = date.split("-"); return `${day}/${month}/${year} ${time ?? ""}`; }
@@ -328,4 +356,9 @@ function adminImageSrc(value: string) { if (!value) return ""; try { const url =
 function inOrderRange(value: string, range: OrderRange) { if (range === "all") return true; const timestamp = new Date(value).getTime(); if (!Number.isFinite(timestamp)) return false; const now = Date.now(); if (range === "7days") return timestamp >= now - 7 * 86_400_000; return bangkokDateKey(new Date(timestamp)) === bangkokDateKey(new Date(now)); }
 function bangkokDateKey(date: Date) { return new Intl.DateTimeFormat("en-CA", { year: "numeric", month: "2-digit", day: "2-digit", timeZone: "Asia/Bangkok" }).format(date); }
 function toggleSet(current: Set<string>, value: string) { const next = new Set(current); if (next.has(value)) next.delete(value); else next.add(value); return next; }
-function roundPriority(round: AdminRound) { if (round.status === "เปิดรับ") return 0; if (round.status === "เตรียมเปิด") return 1; return 2; }
+function roundPriority(round: AdminRound) {
+  if (round.displayState === "แสดงใน dropdown") return 0;
+  if (round.status === "เตรียมเปิด") return 1;
+  if (round.status === "เปิดรับ") return 2;
+  return 3;
+}

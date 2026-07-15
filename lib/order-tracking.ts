@@ -34,6 +34,10 @@ export function isTrackingLookupInput(orderId: string, phoneLast4: string): bool
   return ORDER_ID_PATTERN.test(orderId) && /^\d{4}$/.test(phoneLast4);
 }
 
+export function isPhoneTrackingLookupInput(value: string): boolean {
+  return /^0\d{8,9}$/.test(normalizePhone(value));
+}
+
 export function maskPhone(value: string): string {
   const last4 = normalizePhone(value).slice(-4).padStart(4, "•");
   return `•••-•••-${last4}`;
@@ -45,6 +49,17 @@ export function matchesPhoneLast4(phone: string, candidate: string): boolean {
   let difference = 0;
   for (let index = 0; index < 4; index += 1) {
     difference |= stored.charCodeAt(index) ^ candidate.charCodeAt(index);
+  }
+  return difference === 0;
+}
+
+export function matchesPhone(phone: string, candidate: string): boolean {
+  const stored = normalizePhone(phone);
+  const supplied = normalizePhone(candidate);
+  if (stored.length !== supplied.length || stored.length < 9) return false;
+  let difference = 0;
+  for (let index = 0; index < stored.length; index += 1) {
+    difference |= stored.charCodeAt(index) ^ supplied.charCodeAt(index);
   }
   return difference === 0;
 }

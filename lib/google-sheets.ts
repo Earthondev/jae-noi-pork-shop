@@ -1,6 +1,6 @@
 import { env } from "cloudflare:workers";
 import type { AdminOrder, OrderStatus, PaymentStatus } from "../db/orders";
-import { maskPhone, matchesPhoneLast4, type PublicOrderTracking } from "./order-tracking";
+import { maskPhone, matchesPhone, matchesPhoneLast4, type PublicOrderTracking } from "./order-tracking";
 import {
   catalogProductsFromRows,
   DEFAULT_STORE_COVER,
@@ -688,6 +688,54 @@ export async function getPublicOrderTracking(orderId: string, phoneLast4: string
     trackingNumber: row[16] || null,
     items,
   };
+}
+
+export async function getPublicOrdersByPhone(
+  phone: string,
+  options: { now?: Date; days?: number; limit?: number } = {},
+): Promise<PublicOrderTracking[]> {
+  const [orderRows, itemRows, roundRows] = await readRanges(["ออเดอร์!A2:R", "รายการออเดอร์!A2:H", "รอบจัดส่ง!A2:B"]);
+  const now = options.now ?? new Date();
+  const days = Math.max(1, Math.min(options.days ?? 30, 31));
+  const limit = Math.max(1, Math.min(options.limit ?? 10, 10));
+  const cutoff = now.getTime() - days * 24 * 60 * 60 * 1000;
+  const matchingRows = orderRows
+    .filter((row) => {
+      if (!matchesPhone(row[4] ?? "", phone)) return false;
+      const createdAt = Date.parse(row[2] ?? "");
+      return Number.isFinite(createdAt) && createdAt >= cutoff && createdAt <= now.getTime() + 5 * 60 * 1000;
+    })
+    .sort((left, right) => Date.parse(right[2] ?? "") - Date.parse(left[2] ?? ""))
+    .slice(0, limit);
+
+  return matchingRows.map((row) => {
+    const orderId = row[0] ?? "";
+    const fulfilment = row[5] === "รับเองหน้าร้าน" ? "pickup" as const : "postal" as const;
+    const paymentStatus = sheetPaymentStatusToApp[row[11]] ?? (row[10] ? "waiting_for_slip_review" : "waiting_for_payment");
+    const orderStatus = sheetOrderStatusToApp[row[12]] ?? "received";
+    const items = itemRows.filter((item) => item[1] === orderId).map((item) => ({
+      name: item[3] ?? "สินค้า",
+      quantity: numberValue(item[4]),
+      unitPrice: numberValue(item[5]),
+      lineTotal: numberValue(item[6]),
+    }));
+    return {
+      orderId,
+      maskedPhone: maskPhone(row[4] ?? ""),
+      createdAt: row[2] ?? "",
+      updatedAt: row[15] || row[2] || "",
+      deliveryDate: roundRows.find((round) => round[0] === row[1])?.[1] ?? "",
+      fulfilment,
+      fulfilmentLabel: fulfilment === "pickup" ? "รับเองหน้าร้าน" : "จัดส่งไปรษณีย์ · ซ่อนที่อยู่เพื่อความเป็นส่วนตัว",
+      subtotal: numberValue(row[7]),
+      shippingFee: numberValue(row[8]),
+      total: numberValue(row[9]),
+      paymentStatus,
+      orderStatus,
+      trackingNumber: row[16] || null,
+      items,
+    };
+  });
 }
 
 export async function findOrderByIdempotencyKey(idempotencyKey: string): Promise<{ orderId: string; paymentStatus: SheetPaymentStatus } | null> {

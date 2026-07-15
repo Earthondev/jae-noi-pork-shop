@@ -28,6 +28,10 @@ test("admin CMS mutations require login, same-origin checks, and private respons
   assert.match(dashboard, /admin-bottom-nav/);
   assert.match(dashboard, /ออเดอร์/);
   assert.match(dashboard, /รอบขาย/);
+  assert.match(dashboard, /เปิดรอบขาย/);
+  assert.match(dashboard, /serverClockLabel/);
+  assert.match(dashboard, /history\.replaceState/);
+  assert.match(dashboard, /ไม่ต้องรีโหลดหน้า/);
   assert.match(dashboard, /สินค้า/);
   assert.match(dashboard, /หน้าร้าน/);
   assert.match(dashboard, /ConfirmDialog/);
