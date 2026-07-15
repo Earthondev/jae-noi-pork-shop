@@ -60,12 +60,8 @@ img { display: block; }
   height: 44px;
   flex: 0 0 auto;
   overflow: hidden;
-  border-radius: 50%;
-  background: var(--red-700);
-  border: 2px solid var(--gold-400);
   display: grid;
   place-items: center;
-  box-shadow: 0 2px 8px rgba(181, 21, 25, 0.25);
   transition: transform 0.3s ease;
 }
 .brand:hover .brand-mark { transform: rotate(10deg); }
