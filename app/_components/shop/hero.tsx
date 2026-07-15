@@ -109,21 +109,21 @@ export function Hero({ storeLoading, rounds, nextRound, content }: HeroProps) {
             )}
           </span>
           {storeLoading ? (
-            <>
+            <div>
               <span className="sr-only">กำลังโหลดข้อมูลรอบพรีออเดอร์</span>
               <span className="round-skeleton round-skeleton-title" aria-hidden="true" />
               <span className="round-skeleton round-skeleton-detail" aria-hidden="true" />
-            </>
+            </div>
           ) : rounds[0] ? (
-            <>
+            <div>
               <strong>{rounds[0].label}</strong>
               <span>ปิดตะกร้า {rounds[0].closesAt}</span>
-            </>
+            </div>
           ) : (
-            <>
+            <div>
               <strong>ยังไม่มีรอบที่เปิดรับ</strong>
               <span>{nextRound ? `รอบถัดไปเปิดวันที่ ${nextRound.opensAt}` : "ติดตามรอบถัดไปเร็ว ๆ นี้"}</span>
-            </>
+            </div>
           )}
         </div>
       </section>
