@@ -24,9 +24,10 @@ bodies, cookies, authorization headers, raw error messages, or query strings.
 4. In Sentry, enable Spike Protection.
 5. Enable spike email alerts and usage notifications for the owner email. Keep
    the near-quota and depleted notifications enabled.
-6. Create an external uptime monitor for the public storefront URL. It must
-   make a real GET request every 5-10 minutes (or the closest interval offered),
-   require HTTP 200, and assert that the response contains `เจ๊น้อย`.
+6. Create an external uptime monitor for `/api/storefront`. It must make a real
+   GET request every minute, use a five-second timeout, require HTTP 2xx, and
+   assert that `$.content.storeName` equals `เจ๊น้อย เขียงหมูตะคร้อ`. Open an
+   issue after three consecutive failures and resolve it after one success.
 7. Send one controlled test event and one uptime test notification, then verify
    that both arrive at the owner mailbox.
 
