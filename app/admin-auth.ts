@@ -1,9 +1,11 @@
 import { env } from "cloudflare:workers";
-import { cookies } from "next/headers";
+import { cookies, headers } from "next/headers";
 import { redirect } from "next/navigation";
 import {
   ADMIN_SESSION_COOKIE,
+  authenticateCloudflareAccess,
   authenticateAdminSession,
+  isPasswordFallbackEnabled,
   safeAdminReturnPath,
   type AdminAuthBindings,
   type AdminUser,
@@ -18,9 +20,13 @@ export async function getAdminSessionToken(): Promise<string | undefined> {
 }
 
 export async function getAdminUser(): Promise<AdminUser | null> {
+  const bindings = adminAuthBindings();
+  const accessUser = await authenticateCloudflareAccess(await headers(), bindings);
+  if (accessUser) return accessUser;
+  if (!isPasswordFallbackEnabled(bindings)) return null;
   return authenticateAdminSession(
     await getAdminSessionToken(),
-    adminAuthBindings(),
+    bindings,
   );
 }
 

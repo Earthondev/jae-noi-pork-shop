@@ -7,6 +7,7 @@ import {
   createAdminSession,
   getLoginThrottle,
   isAdminAuthReady,
+  isPasswordFallbackEnabled,
   isSameOriginMutation,
   recordFailedLogin,
   verifyAdminCredentials,
@@ -23,6 +24,9 @@ export async function POST(request: Request) {
   }
 
   const bindings = adminAuthBindings();
+  if (!isPasswordFallbackEnabled(bindings)) {
+    return privateJson({ error: "ระบบนี้ใช้การเข้าสู่ระบบผ่าน Cloudflare Access" }, 403);
+  }
   if (!isAdminAuthReady(bindings)) {
     return privateJson({ error: "ระบบหลังบ้านยังตั้งค่าไม่ครบ กรุณาติดต่อผู้ดูแล" }, 503);
   }

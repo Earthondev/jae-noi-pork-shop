@@ -1,3 +1,5 @@
+import { createRemoteJWKSet, jwtVerify, type JWTVerifyGetKey } from "jose";
+
 export const ADMIN_SESSION_COOKIE = "jae_noi_admin_session";
 export const ADMIN_SESSION_MAX_AGE_SECONDS = 8 * 60 * 60;
 
@@ -15,14 +17,22 @@ export type AdminAuthBindings = {
   ADMIN_USERNAME?: string;
   ADMIN_PASSWORD_HASH?: string;
   ADMIN_AUTH_SECRET?: string;
+  ADMIN_ALLOWED_EMAILS?: string;
+  ADMIN_PASSWORD_FALLBACK_ENABLED?: string;
+  CLOUDFLARE_ACCESS_AUD?: string;
+  CLOUDFLARE_ACCESS_TEAM_DOMAIN?: string;
   UPLOADS?: R2Bucket;
 };
 
 export type AdminUser = {
   displayName: string;
   username: string;
-  provider: "password";
+  provider: "cloudflare-access" | "password";
 };
+
+type HeaderReader = Pick<Headers, "get">;
+
+const accessJwksByDomain = new Map<string, JWTVerifyGetKey>();
 
 type AdminSessionRecord = {
   username: string;
@@ -51,6 +61,48 @@ export function isAdminAuthReady(bindings: AdminAuthBindings): boolean {
       bindings.ADMIN_AUTH_SECRET &&
       new TextEncoder().encode(bindings.ADMIN_AUTH_SECRET).byteLength >= 32,
   );
+}
+
+export function isPasswordFallbackEnabled(bindings: AdminAuthBindings): boolean {
+  return bindings.ADMIN_PASSWORD_FALLBACK_ENABLED?.trim().toLowerCase() === "true";
+}
+
+export function isCloudflareAccessReady(bindings: AdminAuthBindings): boolean {
+  return accessConfiguration(bindings) !== null;
+}
+
+export async function authenticateCloudflareAccess(
+  headers: HeaderReader,
+  bindings: AdminAuthBindings,
+): Promise<AdminUser | null> {
+  const configuration = accessConfiguration(bindings);
+  const token = headers.get("cf-access-jwt-assertion");
+  if (!configuration || !token || token.length > 16_384) return null;
+
+  try {
+    const { payload, protectedHeader } = await jwtVerify(
+      token,
+      accessJwks(configuration.teamDomain),
+      {
+        algorithms: ["RS256"],
+        issuer: configuration.teamDomain,
+        audience: configuration.audience,
+        requiredClaims: ["exp", "iat", "iss", "aud", "email"],
+        clockTolerance: 5,
+      },
+    );
+    if (protectedHeader.alg !== "RS256" || payload.type !== "app") return null;
+    const email = typeof payload.email === "string" ? payload.email.trim().toLowerCase() : "";
+    if (!configuration.allowedEmails.has(email)) return null;
+
+    return {
+      displayName: email,
+      username: email,
+      provider: "cloudflare-access",
+    };
+  } catch {
+    return null;
+  }
 }
 
 export async function createAdminPasswordHash(
@@ -303,6 +355,51 @@ function parsePasswordHash(value: string | undefined): {
 function isValidPasswordInput(password: string): boolean {
   const byteLength = new TextEncoder().encode(password).byteLength;
   return byteLength > 0 && byteLength <= 256;
+}
+
+function accessConfiguration(bindings: AdminAuthBindings): {
+  teamDomain: string;
+  audience: string;
+  allowedEmails: Set<string>;
+} | null {
+  const teamDomain = normalizedAccessTeamDomain(bindings.CLOUDFLARE_ACCESS_TEAM_DOMAIN);
+  const audience = bindings.CLOUDFLARE_ACCESS_AUD?.trim() ?? "";
+  const allowedEmails = new Set(
+    (bindings.ADMIN_ALLOWED_EMAILS ?? "")
+      .split(/[;,\n]/)
+      .map((email) => email.trim().toLowerCase())
+      .filter((email) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)),
+  );
+  return teamDomain && /^[a-f0-9]{64}$/i.test(audience) && allowedEmails.size > 0
+    ? { teamDomain, audience, allowedEmails }
+    : null;
+}
+
+function normalizedAccessTeamDomain(value: string | undefined): string | null {
+  if (!value) return null;
+  try {
+    const url = new URL(value.trim());
+    if (
+      url.protocol !== "https:" ||
+      !url.hostname.endsWith(".cloudflareaccess.com") ||
+      url.pathname !== "/" ||
+      url.search ||
+      url.hash
+    ) {
+      return null;
+    }
+    return url.origin;
+  } catch {
+    return null;
+  }
+}
+
+function accessJwks(teamDomain: string): JWTVerifyGetKey {
+  const existing = accessJwksByDomain.get(teamDomain);
+  if (existing) return existing;
+  const jwks = createRemoteJWKSet(new URL(`${teamDomain}/cdn-cgi/access/certs`));
+  accessJwksByDomain.set(teamDomain, jwks);
+  return jwks;
 }
 
 function constantTimeEqualBytes(left: Uint8Array, right: Uint8Array): boolean {

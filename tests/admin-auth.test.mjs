@@ -1,14 +1,19 @@
 import assert from "node:assert/strict";
+import { generateKeyPairSync } from "node:crypto";
 import { readFile } from "node:fs/promises";
 import test from "node:test";
+import { exportJWK, SignJWT } from "jose";
 import {
   ADMIN_SESSION_COOKIE,
+  authenticateCloudflareAccess,
   authenticateAdminSession,
   clearFailedLogins,
   createAdminPasswordHash,
   createAdminSession,
   getLoginThrottle,
   isAdminAuthReady,
+  isCloudflareAccessReady,
+  isPasswordFallbackEnabled,
   isSameOriginMutation,
   recordFailedLogin,
   revokeAdminSession,
@@ -108,8 +113,85 @@ test("only permits same-origin mutations and safe admin return paths", () => {
   assert.equal(ADMIN_SESSION_COOKIE, "jae_noi_admin_session");
 });
 
-test("login UI and admin APIs enforce the password session contract", async () => {
-  const [loginPage, loginForm, loginRoute, logoutRoute, orderRoute, slipRoute] = await Promise.all([
+test("validates Cloudflare Access signatures, audience, and the exact email allowlist", async () => {
+  const { privateKey, publicKey } = generateKeyPairSync("rsa", { modulusLength: 2048 });
+  const publicJwk = await exportJWK(publicKey);
+  publicJwk.alg = "RS256";
+  publicJwk.kid = "test-access-key";
+  publicJwk.use = "sig";
+
+  const teamDomain = "https://jae-noi-test.cloudflareaccess.com";
+  const audience = "a".repeat(64);
+  const bindings = {
+    CLOUDFLARE_ACCESS_TEAM_DOMAIN: teamDomain,
+    CLOUDFLARE_ACCESS_AUD: audience,
+    ADMIN_ALLOWED_EMAILS: "owner@example.com, client@example.com",
+    ADMIN_PASSWORD_FALLBACK_ENABLED: "false",
+  };
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = async (input) => {
+    assert.equal(String(input), `${teamDomain}/cdn-cgi/access/certs`);
+    return new Response(JSON.stringify({ keys: [publicJwk] }), {
+      headers: { "content-type": "application/json" },
+    });
+  };
+
+  try {
+    const token = await new SignJWT({ email: "OWNER@EXAMPLE.COM", type: "app" })
+      .setProtectedHeader({ alg: "RS256", kid: "test-access-key" })
+      .setIssuer(teamDomain)
+      .setAudience(audience)
+      .setIssuedAt()
+      .setNotBefore("0s")
+      .setExpirationTime("5m")
+      .sign(privateKey);
+    const headers = new Headers({ "Cf-Access-Jwt-Assertion": token });
+
+    assert.equal(isCloudflareAccessReady(bindings), true);
+    assert.equal(isPasswordFallbackEnabled(bindings), false);
+    assert.deepEqual(await authenticateCloudflareAccess(headers, bindings), {
+      displayName: "owner@example.com",
+      username: "owner@example.com",
+      provider: "cloudflare-access",
+    });
+
+    const unlistedToken = await new SignJWT({ email: "intruder@example.com", type: "app" })
+      .setProtectedHeader({ alg: "RS256", kid: "test-access-key" })
+      .setIssuer(teamDomain)
+      .setAudience(audience)
+      .setIssuedAt()
+      .setExpirationTime("5m")
+      .sign(privateKey);
+    assert.equal(
+      await authenticateCloudflareAccess(
+        new Headers({ "Cf-Access-Jwt-Assertion": unlistedToken }),
+        bindings,
+      ),
+      null,
+    );
+
+    const wrongAudienceToken = await new SignJWT({ email: "owner@example.com", type: "app" })
+      .setProtectedHeader({ alg: "RS256", kid: "test-access-key" })
+      .setIssuer(teamDomain)
+      .setAudience("b".repeat(64))
+      .setIssuedAt()
+      .setExpirationTime("5m")
+      .sign(privateKey);
+    assert.equal(
+      await authenticateCloudflareAccess(
+        new Headers({ "Cf-Access-Jwt-Assertion": wrongAudienceToken }),
+        bindings,
+      ),
+      null,
+    );
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
+test("admin routes prefer Cloudflare Access and keep the password path as an explicit fallback", async () => {
+  const [adminAuth, loginPage, loginForm, loginRoute, logoutRoute, orderRoute, slipRoute] = await Promise.all([
+    readFile(new URL("../app/admin-auth.ts", import.meta.url), "utf8"),
     readFile(new URL("../app/admin/login/page.tsx", import.meta.url), "utf8"),
     readFile(new URL("../app/admin/login/login-form.tsx", import.meta.url), "utf8"),
     readFile(new URL("../app/api/admin/login/route.ts", import.meta.url), "utf8"),
@@ -124,7 +206,11 @@ test("login UI and admin APIs enforce the password session contract", async () =
   assert.match(loginRoute, /httpOnly: true/);
   assert.match(loginRoute, /sameSite: "strict"/);
   assert.match(loginRoute, /getLoginThrottle/);
+  assert.match(loginRoute, /isPasswordFallbackEnabled/);
+  assert.match(adminAuth, /authenticateCloudflareAccess/);
+  assert.match(adminAuth, /isPasswordFallbackEnabled/);
   assert.match(logoutRoute, /revokeAdminSession/);
+  assert.match(logoutRoute, /\/cdn-cgi\/access\/logout/);
   assert.match(orderRoute, /getAdminUser/);
   assert.match(orderRoute, /isSameOriginMutation/);
   assert.match(slipRoute, /getAdminUser/);

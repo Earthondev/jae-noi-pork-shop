@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import {
   adminAuthBindings,
+  getAdminUser,
   getAdminSessionToken,
 } from "../../../admin-auth";
 import {
@@ -17,8 +18,12 @@ export async function POST(request: Request) {
     );
   }
 
+  const user = await getAdminUser();
   await revokeAdminSession(await getAdminSessionToken(), adminAuthBindings());
-  const response = NextResponse.redirect(new URL("/admin/login", request.url), 303);
+  const logoutPath = user?.provider === "cloudflare-access"
+    ? "/cdn-cgi/access/logout"
+    : "/admin/login";
+  const response = NextResponse.redirect(new URL(logoutPath, request.url), 303);
   response.cookies.set({
     name: ADMIN_SESSION_COOKIE,
     value: "",

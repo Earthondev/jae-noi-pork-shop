@@ -37,6 +37,12 @@ export default defineConfig(async ({ command }) => {
         ADMIN_USERNAME: process.env.ADMIN_USERNAME ?? "admin",
         ADMIN_PASSWORD_HASH: process.env.ADMIN_PASSWORD_HASH ?? "",
         ADMIN_AUTH_SECRET: process.env.ADMIN_AUTH_SECRET ?? "",
+        ADMIN_ALLOWED_EMAILS: process.env.ADMIN_ALLOWED_EMAILS ?? "",
+        ADMIN_PASSWORD_FALLBACK_ENABLED:
+          process.env.ADMIN_PASSWORD_FALLBACK_ENABLED ?? "true",
+        CLOUDFLARE_ACCESS_AUD: process.env.CLOUDFLARE_ACCESS_AUD ?? "",
+        CLOUDFLARE_ACCESS_TEAM_DOMAIN:
+          process.env.CLOUDFLARE_ACCESS_TEAM_DOMAIN ?? "",
         GOOGLE_SHEET_ID: process.env.GOOGLE_SHEET_ID ?? "",
         GOOGLE_SERVICE_ACCOUNT_EMAIL:
           process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL ?? "",

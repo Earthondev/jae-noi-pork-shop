@@ -58,11 +58,11 @@ npm run dev
 
 ### ระบบล็อกอินหลังบ้าน
 
-หน้า `/admin/login` ใช้ชื่อผู้ใช้ `admin` และตรวจรหัสผ่านจาก PBKDF2 hash ที่เก็บ
-เป็น Cloudflare Secret เท่านั้น session เก็บใน R2 ส่วนตัวและป้องกันทั้งหน้า
-`/admin` กับ `/api/admin/*` ตั้งค่า `ADMIN_PASSWORD_HASH` และ
-`ADMIN_AUTH_SECRET` ตาม `docs/cloudflare-client-handoff.md` ห้ามเก็บรหัสจริงใน Git
-หรือ Google Sheets
+ระบบจริงใช้ Cloudflare Access ป้องกันทั้ง `/admin*` และ `/api/admin/*` ใน
+application เดียวกัน รองรับ Google และอีเมล OTP พร้อมตรวจลายเซ็น Access JWT,
+issuer, audience และอีเมล allowlist ซ้ำใน Worker รหัสผ่าน PBKDF2 เดิมเก็บเป็น
+ทางสำรองและปิดด้วย `ADMIN_PASSWORD_FALLBACK_ENABLED=false` ในระบบจริง
+ห้ามเก็บรหัสจริงหรือรายชื่ออีเมลผู้ดูแลใน Git หรือ Google Sheets
 
 ### SlipOK (เตรียมไว้แต่ยังปิดอยู่)
 
