@@ -284,7 +284,7 @@ export function Shop() {
       <SiteHeader cartCount={cartCount} onOpenCart={() => setCartOpen(true)} storeName={storefront.content.storeName} />
       <Hero storeLoading={storefront.storeLoading} rounds={storefront.rounds} nextRound={storefront.nextRound} content={storefront.content} />
       
-      {bestSellers.length > 0 && !storefront.storeLoading && (
+      {bestSellers.length > 0 && storefront.products.length > 4 && !storefront.storeLoading && (
         <section className="best-sellers-section">
           <div className="section-heading">
             <span className="eyebrow">เมนูยอดนิยม</span>
