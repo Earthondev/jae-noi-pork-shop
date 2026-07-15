@@ -247,6 +247,9 @@ async function readRangesWithRenderOption(
   valueRenderOption: "FORMATTED_VALUE" | "UNFORMATTED_VALUE" | "FORMULA",
   signal?: AbortSignal,
 ): Promise<SheetScalar[][][]> {
+  if (!serviceCredentials()) {
+    return ranges.map(() => []);
+  }
   const query = new URLSearchParams({ valueRenderOption, dateTimeRenderOption: "SERIAL_NUMBER" });
   for (const range of ranges) query.append("ranges", range);
   const response = await sheetsRequest(`/values:batchGet?${query.toString()}`, undefined, signal);
