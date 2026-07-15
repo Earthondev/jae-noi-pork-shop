@@ -153,8 +153,13 @@ export function OrderTracker({ initialOrderId = "", storeName, phonePrimary, pho
 
   return (
     <main className="track-page">
-      <header className="track-header">
-        <Link href="/" aria-label="กลับหน้าร้าน"><Image src="/images/products/jae-noi-shop-logo.jpg" alt={storeName} width={130} height={78} priority /></Link>
+      <header className="site-header">
+        <Link href="/" className="brand" aria-label="ไปที่หน้าหลักร้านเจ๊น้อย">
+          <span className="brand-mark">
+            <Image src="/images/products/jae-noi-shop-logo.jpg" alt="" width={80} height={80} priority />
+          </span>
+          <span className="brand-name">เจ๊น้อย<br /><small>เขียงหมูตะคร้อ</small></span>
+        </Link>
       </header>
 
       <section className="track-hero">

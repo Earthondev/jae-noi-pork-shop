@@ -1268,19 +1268,7 @@ footer .footer-phone-links a:active { background: rgba(255, 255, 255, 0.1); }
 .track-page {
   min-height: 100dvh;
   padding-bottom: 40px;
-  background: linear-gradient(180deg, var(--red-700) 0 340px, var(--cream-50) 340px);
-}
-.track-header {
-  min-height: 68px;
-  padding: 8px 16px;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-}
-.track-header img {
-  width: 78px;
-  height: 78px;
-  object-fit: cover;
+  background: var(--cream-50);
 }
 
 
@@ -1504,8 +1492,7 @@ footer .footer-phone-links a:active { background: rgba(255, 255, 255, 0.1); }
   .form-grid { grid-template-columns: 1fr 1fr; }
   .form-grid .full { grid-column: 1 / -1; }
   
-  .track-page { background: linear-gradient(180deg, var(--red-700) 0 380px, var(--cream-50) 380px); }
-  .track-header { padding-inline: 6vw; }
+  .track-page { background: var(--cream-50); }
   .track-hero, .track-result, .tracking-skeleton { width: min(720px, calc(100% - 40px)); margin-inline: auto; }
   .track-form { grid-template-columns: 1.5fr 0.8fr auto; align-items: end; }
   .track-form button { margin-top: 0; }
