@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { QRCodeSVG } from "qrcode.react";
+import { useEffect, useState } from "react";
 import type { FormEvent, RefObject } from "react";
 import type { Quantities } from "../../_hooks/use-checkout-draft";
 import type { Fulfilment, PreorderRound, Product } from "../../_hooks/use-storefront";
@@ -54,9 +55,58 @@ export type CartDrawerProps = Readonly<{
 }>;
 
 export function CartDrawer({ drawerRef, onClose, cart, checkout, storefront, order }: CartDrawerProps) {
+  const [copiedId, setCopiedId] = useState(false);
+  const [copiedAmount, setCopiedAmount] = useState(false);
+  const [slipFile, setSlipFile] = useState<File | null>(null);
+  const [slipPreviewUrl, setSlipPreviewUrl] = useState<string | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (slipPreviewUrl) {
+        URL.revokeObjectURL(slipPreviewUrl);
+      }
+    };
+  }, [slipPreviewUrl]);
+
+  const copyToClipboard = async (text: string, type: "id" | "amount") => {
+    try {
+      await navigator.clipboard.writeText(text);
+      if (type === "id") {
+        setCopiedId(true);
+        setTimeout(() => setCopiedId(false), 2000);
+      } else {
+        setCopiedAmount(true);
+        setTimeout(() => setCopiedAmount(false), 2000);
+      }
+    } catch {
+      // fallback
+    }
+  };
+
+  const handleSlipChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0] || null;
+    setSlipFile(file);
+    if (slipPreviewUrl) {
+      URL.revokeObjectURL(slipPreviewUrl);
+      setSlipPreviewUrl(null);
+    }
+    if (file) {
+      setSlipPreviewUrl(URL.createObjectURL(file));
+    }
+  };
+
+  const removeSlip = () => {
+    setSlipFile(null);
+    if (slipPreviewUrl) {
+      URL.revokeObjectURL(slipPreviewUrl);
+      setSlipPreviewUrl(null);
+    }
+  };
+
   return (
     <div className="drawer-backdrop" role="presentation" onMouseDown={(event) => event.target === event.currentTarget && onClose()}>
       <aside ref={drawerRef} className="cart-drawer" role="dialog" aria-modal="true" aria-labelledby="cart-title">
+        <div className="drawer-handle" />
         <div className="drawer-heading">
           <div>
             <p className="eyebrow">รายการของคุณ</p>
@@ -183,11 +233,22 @@ export function CartDrawer({ drawerRef, onClose, cart, checkout, storefront, ord
                     <label className="full">ที่อยู่จัดส่ง<textarea name="address" required autoComplete="street-address" rows={3} placeholder="บ้านเลขที่ หมู่ ตำบล อำเภอ จังหวัด รหัสไปรษณีย์" value={checkout.address} onChange={(event) => checkout.onChange("address", event.target.value)} /></label>
                   )}
                   <label className="full">หมายเหตุ<textarea name="note" rows={2} placeholder="เช่น เวลาที่สะดวกรับสินค้า (ถ้ามี)" value={checkout.note} onChange={(event) => checkout.onChange("note", event.target.value)} /></label>
-                  <section className="payment-card full" aria-labelledby="promptpay-title">
+                   <section className="payment-card full" aria-labelledby="promptpay-title">
                     <div className="payment-heading">
                       <span>พร้อมเพย์</span>
                       <strong id="promptpay-title">{storefront.promptPayName ?? "รอชื่อบัญชี"}</strong>
-                      <small>{storefront.promptPayId ?? "รอเลขพร้อมเพย์"}</small>
+                      <small style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
+                        {storefront.promptPayId ?? "รอเลขพร้อมเพย์"}
+                        {storefront.promptPayId && (
+                          <button
+                            type="button"
+                            className="copy-badge-btn"
+                            onClick={() => copyToClipboard(storefront.promptPayId!, "id")}
+                          >
+                            {copiedId ? "คัดลอกแล้ว!" : "คัดลอก"}
+                          </button>
+                        )}
+                      </small>
                     </div>
                     {order.promptPayPayload ? (
                       <div className="qr-frame">
@@ -199,13 +260,68 @@ export function CartDrawer({ drawerRef, onClose, cart, checkout, storefront, ord
                         <p>{cart.items.length === 0 ? "เลือกสินค้าก่อนเพื่อสร้าง QR พร้อมยอด" : "ยังสร้าง QR ไม่ได้ กรุณาตรวจสอบยอดออเดอร์"}</p>
                       </div>
                     )}
-                    <p className="payment-amount">ยอดใน QR <strong>{order.promptPayPayload ? `${order.orderTotal.toLocaleString("th-TH")} บาท` : "—"}</strong></p>
+                    <p className="payment-amount">
+                      ยอดใน QR <strong>{order.promptPayPayload ? `${order.orderTotal.toLocaleString("th-TH")} บาท` : "—"}</strong>
+                      {order.promptPayPayload && (
+                        <button
+                          type="button"
+                          className="copy-badge-btn"
+                          style={{ marginLeft: 8 }}
+                          onClick={() => copyToClipboard(order.orderTotal.toString(), "amount")}
+                        >
+                          {copiedAmount ? "คัดลอกแล้ว!" : "คัดลอกยอด"}
+                        </button>
+                      )}
+                    </p>
                     <p className="payment-check">ตรวจสอบชื่อผู้รับและยอดเงินในแอปธนาคารก่อนยืนยันทุกครั้ง</p>
                   </section>
-                  <label className="full file-label">แนบสลิป (ส่งภายหลังได้)<input name="slip" type="file" accept="image/jpeg,image/png,image/webp" /><small className="field-help">เพื่อความปลอดภัย ระบบไม่บันทึกไฟล์สลิปไว้ หากรีเฟรชหน้าต้องเลือกสลิปใหม่</small></label>
+                  <label className="full file-label">
+                    แนบสลิป (ส่งภายหลังได้)
+                    <input
+                      key={slipFile ? "active" : "empty"}
+                      name="slip"
+                      type="file"
+                      accept="image/jpeg,image/png,image/webp"
+                      onChange={handleSlipChange}
+                    />
+                    <small className="field-help">เพื่อความปลอดภัย ระบบไม่บันทึกไฟล์สลิปไว้ หากรีเฟรชหน้าต้องเลือกสลิปใหม่</small>
+                    {slipPreviewUrl && slipFile && (
+                      <div className="slip-preview-container">
+                        <div className="slip-preview-thumb">
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          <img src={slipPreviewUrl} alt="Slip Preview" />
+                        </div>
+                        <div className="slip-preview-info">
+                          <strong>{slipFile.name}</strong>
+                          <small>{(slipFile.size / 1024).toFixed(1)} KB</small>
+                        </div>
+                        <button type="button" className="slip-preview-remove-btn" onClick={removeSlip}>
+                          ลบรูป
+                        </button>
+                      </div>
+                    )}
+                  </label>
                 </div>
                 {!storefront.secureWriteReady && <p className="preview-mode">โหมดดูตัวอย่าง · ยังไม่รับข้อมูลลูกค้าจนกว่าจะเชื่อมบัญชีระบบที่ปลอดภัย</p>}
-                <button className="submit-order" type="submit" disabled={order.submitting || cart.items.length === 0}>{order.submitting ? "กำลังบันทึก..." : "ยืนยันคำสั่งซื้อ"}</button>
+                <button className="submit-order" type="submit" disabled={order.submitting || cart.items.length === 0}>
+                  {order.submitting ? (
+                    <span style={{ display: "inline-flex", alignItems: "center", gap: 8, justifyContent: "center" }}>
+                      <svg className="spin" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" style={{ width: 18, height: 18 }}>
+                        <line x1="12" y1="2" x2="12" y2="6"></line>
+                        <line x1="12" y1="18" x2="12" y2="22"></line>
+                        <line x1="4.93" y1="4.93" x2="7.76" y2="7.76"></line>
+                        <line x1="16.24" y1="16.24" x2="19.07" y2="19.07"></line>
+                        <line x1="2" y1="12" x2="6" y2="12"></line>
+                        <line x1="18" y1="12" x2="22" y2="12"></line>
+                        <line x1="4.93" y1="19.07" x2="7.76" y2="16.24"></line>
+                        <line x1="16.24" y1="7.76" x2="19.07" y2="4.93"></line>
+                      </svg>
+                      กำลังบันทึก...
+                    </span>
+                  ) : (
+                    "ยืนยันคำสั่งซื้อ"
+                  )}
+                </button>
               </form>
             )}
           </>

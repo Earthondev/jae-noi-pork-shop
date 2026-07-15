@@ -20,6 +20,8 @@ export function Shop() {
   const [submitting, setSubmitting] = useState(false);
   const [orderId, setOrderId] = useState<string | null>(null);
   const [orderPaymentStatus, setOrderPaymentStatus] = useState<ClientPaymentStatus>("waiting");
+  const [selectedCategory, setSelectedCategory] = useState<string>("ทั้งหมด");
+  const [activeTab, setActiveTab] = useState<"home" | "products">("home");
   const drawerRef = useRef<HTMLElement>(null);
   const idempotencyKeyRef = useRef<string | null>(null);
 
@@ -68,6 +70,57 @@ export function Shop() {
   }, [checkoutRestored, setStorefrontNotice, storefrontNotice, storeLoading]);
 
   useEffect(() => {
+    if (typeof window === "undefined") return;
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("cart") === "open") {
+      setCartOpen(true);
+      const url = new URL(window.location.href);
+      url.searchParams.delete("cart");
+      window.history.replaceState({}, document.title, url.pathname + url.search);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (entry.isIntersecting) {
+            if (entry.target.id === "products") {
+              setActiveTab("products");
+            } else if (entry.target.id === "top") {
+              setActiveTab("home");
+            }
+          }
+        });
+      },
+      { threshold: 0.15, rootMargin: "-80px 0px -40% 0px" }
+    );
+
+    const productsEl = document.getElementById("products");
+    const topEl = document.getElementById("top");
+
+    if (productsEl) observer.observe(productsEl);
+    if (topEl) observer.observe(topEl);
+
+    const handleHashChange = () => {
+      if (window.location.hash === "#products") {
+        setActiveTab("products");
+      } else if (window.location.hash === "#top" || window.location.hash === "") {
+        setActiveTab("home");
+      }
+    };
+    window.addEventListener("hashchange", handleHashChange);
+    handleHashChange();
+
+    return () => {
+      observer.disconnect();
+      window.removeEventListener("hashchange", handleHashChange);
+    };
+  }, []);
+
+  useEffect(() => {
     if (!cartOpen) return;
     const drawer = drawerRef.current;
     const previousFocus = document.activeElement instanceof HTMLElement ? document.activeElement : null;
@@ -91,6 +144,33 @@ export function Shop() {
       previousFocus?.focus();
     };
   }, [cartOpen]);
+
+  const categories = useMemo(() => {
+    const list = new Set<string>();
+    list.add("ทั้งหมด");
+    storefront.products.forEach((product) => {
+      const name = product.name;
+      if (name.includes("แหนม")) list.add("แหนมหมู");
+      else if (name.includes("ไส้กรอก")) list.add("ไส้กรอกอีสาน");
+      else if (name.includes("แคปหมู") || name.includes("แคบหมู") || name.includes("กากหมู")) list.add("แคปหมู");
+      else list.add("อื่น ๆ");
+    });
+    return Array.from(list);
+  }, [storefront.products]);
+
+  const filteredProducts = useMemo(() => {
+    if (selectedCategory === "ทั้งหมด") return storefront.products;
+    return storefront.products.filter((product) => {
+      const name = product.name;
+      if (selectedCategory === "แหนมหมู") return name.includes("แหนม");
+      if (selectedCategory === "ไส้กรอกอีสาน") return name.includes("ไส้กรอก");
+      if (selectedCategory === "แคปหมู") return name.includes("แคปหมู") || name.includes("แคบหมู") || name.includes("กากหมู");
+      if (selectedCategory === "อื่น ๆ") {
+        return !name.includes("แหนม") && !name.includes("ไส้กรอก") && !name.includes("แคปหมู") && !name.includes("แคบหมู") && !name.includes("กากหมู");
+      }
+      return true;
+    });
+  }, [storefront.products, selectedCategory]);
 
   const cartItems = storefront.products.filter((product) => (quantities[product.id] ?? 0) > 0);
   const cartCount = cartItems.reduce((sum, product) => sum + (quantities[product.id] ?? 0), 0);
@@ -170,14 +250,17 @@ export function Shop() {
   }
 
   return (
-    <main>
+    <main id="top">
       <SiteHeader cartCount={cartCount} onOpenCart={() => setCartOpen(true)} storeName={storefront.content.storeName} />
       <Hero storeLoading={storefront.storeLoading} rounds={storefront.rounds} nextRound={storefront.nextRound} content={storefront.content} />
       <ProductGrid
         storeLoading={storefront.storeLoading}
-        products={storefront.products}
+        products={filteredProducts}
         quantities={quantities}
         onUpdateQuantity={updateQuantity}
+        categories={categories}
+        selectedCategory={selectedCategory}
+        onSelectCategory={setSelectedCategory}
       />
       <PhoneStrip phonePrimary={storefront.content.phonePrimary} phoneSecondary={storefront.content.phoneSecondary} />
 
@@ -249,12 +332,15 @@ export function Shop() {
       )}
       {cartCount > 0 && !cartOpen && (
         <button className="floating-cart" type="button" onClick={() => setCartOpen(true)} aria-label={`เปิดตะกร้า มีสินค้า ${cartCount} ชิ้น รวมค่าสินค้า ${subtotal} บาท`}>
-          <span className="floating-cart-copy"><strong>ตะกร้า · {cartCount} ชิ้น</strong><small>รวมสินค้า {subtotal.toLocaleString("th-TH")} บาท</small></span>
+          <span className="floating-cart-copy">
+            <strong key={cartCount}>ตะกร้า · {cartCount} ชิ้น</strong>
+            <small key={subtotal}>รวมสินค้า {subtotal.toLocaleString("th-TH")} บาท</small>
+          </span>
           <span className="floating-cart-arrow" aria-hidden="true">ดูตะกร้า →</span>
         </button>
       )}
 
-      <BottomNav cartCount={cartCount} onOpenCart={() => setCartOpen(true)} />
+      <BottomNav cartCount={cartCount} onOpenCart={() => setCartOpen(true)} activeTab={activeTab} />
     </main>
   );
 }

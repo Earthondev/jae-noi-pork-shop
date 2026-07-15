@@ -7,9 +7,20 @@ export type ProductGridProps = Readonly<{
   products: readonly Product[];
   quantities: Quantities;
   onUpdateQuantity: (productId: string, delta: number) => void;
+  categories: readonly string[];
+  selectedCategory: string;
+  onSelectCategory: (category: string) => void;
 }>;
 
-export function ProductGrid({ storeLoading, products, quantities, onUpdateQuantity }: ProductGridProps) {
+export function ProductGrid({
+  storeLoading,
+  products,
+  quantities,
+  onUpdateQuantity,
+  categories,
+  selectedCategory,
+  onSelectCategory,
+}: ProductGridProps) {
   return (
     <section className="products-section" id="products">
       <div className="section-heading">
@@ -19,6 +30,22 @@ export function ProductGrid({ storeLoading, products, quantities, onUpdateQuanti
         </div>
         <p>กดเพิ่มลงตะกร้าได้ทันที รายการที่ข้อมูลยังไม่ครบจะแสดง “รอข้อมูล” อย่างชัดเจน</p>
       </div>
+      {categories.length > 1 && (
+        <div className="categories-container" role="tablist" aria-label="หมวดหมู่สินค้า">
+          {categories.map((category) => (
+            <button
+              key={category}
+              className={`category-tab${selectedCategory === category ? " active" : ""}`}
+              type="button"
+              role="tab"
+              aria-selected={selectedCategory === category}
+              onClick={() => onSelectCategory(category)}
+            >
+              {category}
+            </button>
+          ))}
+        </div>
+      )}
       <div className="product-grid" aria-busy={storeLoading && products.length === 0}>
         {storeLoading && products.length === 0
           ? Array.from({ length: 3 }, (_, index) => (

@@ -40,10 +40,13 @@ export function ProductCard({ product, quantity, index, onUpdateQuantity }: Prod
         </div>
         {quantity === 0 ? (
           <div className="product-purchase-row">
-            <p className={product.price === null ? "price pending" : "price"}>{product.price === null ? "รอข้อมูลราคา" : `${product.price} บาท`}</p>
+            <p className={product.price === null ? "price pending" : "price"}>{product.price === null ? "รอข้อมูลราคา" : product.price}</p>
             {isPurchasable ? (
               <button className="product-add-button" type="button" onClick={() => onUpdateQuantity(product.id, 1)} aria-label={`เพิ่ม ${product.name} ลงตะกร้า`}>
-                <span aria-hidden="true">+</span>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" style={{ width: 18, height: 18 }}>
+                  <line x1="12" y1="5" x2="12" y2="19"></line>
+                  <line x1="5" y1="12" x2="19" y2="12"></line>
+                </svg>
               </button>
             ) : (
               <span className={`product-unavailable${product.status === "ปิดชั่วคราว" ? " closed" : ""}`}>
@@ -52,10 +55,22 @@ export function ProductCard({ product, quantity, index, onUpdateQuantity }: Prod
             )}
           </div>
         ) : (
-          <div className="stepper" aria-label={`จำนวน ${product.name}`}>
-            <button className="decrease-button" type="button" onClick={() => onUpdateQuantity(product.id, -1)} aria-label={`ลดจำนวน ${product.name}`}>−</button>
-            <output aria-live="polite">{quantity}</output>
-            <button className="increase-button" type="button" onClick={() => onUpdateQuantity(product.id, 1)} aria-label={`เพิ่มจำนวน ${product.name}`}>+</button>
+          <div className="product-purchase-row">
+            <p className="price">{product.price}</p>
+            <div className="stepper" aria-label={`จำนวน ${product.name}`}>
+              <button className="decrease-button" type="button" onClick={() => onUpdateQuantity(product.id, -1)} aria-label={`ลดจำนวน ${product.name}`}>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" style={{ width: 14, height: 14 }}>
+                  <line x1="5" y1="12" x2="19" y2="12"></line>
+                </svg>
+              </button>
+              <output key={quantity} aria-live="polite">{quantity}</output>
+              <button className="increase-button" type="button" onClick={() => onUpdateQuantity(product.id, 1)} aria-label={`เพิ่มจำนวน ${product.name}`}>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" style={{ width: 14, height: 14 }}>
+                  <line x1="12" y1="5" x2="12" y2="19"></line>
+                  <line x1="5" y1="12" x2="19" y2="12"></line>
+                </svg>
+              </button>
+            </div>
           </div>
         )}
       </div>

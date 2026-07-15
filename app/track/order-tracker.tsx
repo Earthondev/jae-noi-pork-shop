@@ -3,6 +3,8 @@
 import Image from "next/image";
 import Link from "next/link";
 import { FormEvent, useEffect, useRef, useState } from "react";
+import { BottomNav } from "../_components/shop/bottom-nav";
+import { useCheckoutDraft } from "../_hooks/use-checkout-draft";
 import {
   trackingStepIndex,
   type PublicOrderTracking,
@@ -111,6 +113,13 @@ export function OrderTracker({ initialOrderId = "", storeName, phonePrimary, pho
   const [receiptError, setReceiptError] = useState<string | null>(null);
   const resultHeadingRef = useRef<HTMLHeadingElement>(null);
 
+  const { draft } = useCheckoutDraft();
+  const cartCount = Object.values(draft.quantities).reduce((a, b) => a + b, 0);
+
+  const handleOpenCart = () => {
+    window.location.href = "/?cart=open";
+  };
+
   useEffect(() => {
     if (order) resultHeadingRef.current?.focus();
   }, [order]);
@@ -172,7 +181,20 @@ export function OrderTracker({ initialOrderId = "", storeName, phonePrimary, pho
 
           {order.orderStatus === "cancelled" ? <p className="track-warning" role="status">ออเดอร์นี้ถูกยกเลิก หากมีการชำระเงินแล้วกรุณาติดต่อร้าน</p> : (
             <ol className="tracking-steps" aria-label="ความคืบหน้าออเดอร์">
-              {steps.map((step, index) => <li className={index <= currentStep ? "done" : ""} key={step} aria-current={index === currentStep ? "step" : undefined}><span aria-hidden="true">{index < currentStep ? "✓" : index + 1}</span><strong>{step}</strong></li>)}
+              {steps.map((step, index) => (
+                <li className={index <= currentStep ? "done" : ""} key={step} aria-current={index === currentStep ? "step" : undefined}>
+                  <span aria-hidden="true">
+                    {index < currentStep ? (
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" style={{ width: 14, height: 14 }}>
+                        <polyline points="20 6 9 17 4 12"></polyline>
+                      </svg>
+                    ) : (
+                      index + 1
+                    )}
+                  </span>
+                  <strong>{step}</strong>
+                </li>
+              ))}
             </ol>
           )}
 
@@ -185,7 +207,17 @@ export function OrderTracker({ initialOrderId = "", storeName, phonePrimary, pho
 
           {order.paymentStatus === "paid" && (
             <section className="track-receipt" aria-labelledby="receipt-title">
-              <p className="receipt-mark" aria-hidden="true">✓</p><p className="eyebrow">ชำระเงินเรียบร้อย</p><h3 id="receipt-title">ใบยืนยันการชำระเงิน</h3><p>เลขออเดอร์ <strong>{order.orderId}</strong></p><div className="receipt-items">{order.items.map((item, index) => <p key={`${item.name}-receipt-${index}`}><span>{item.name} × {item.quantity}</span><strong>{item.lineTotal.toLocaleString("th-TH")} บาท</strong></p>)}</div><p>ยอดชำระ <strong>{order.total.toLocaleString("th-TH")} บาท</strong></p><p>รอบจัดส่ง <strong>{order.deliveryDate}</strong></p>
+              <div className="receipt-mark" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" style={{ width: 22, height: 22 }}>
+                  <polyline points="20 6 9 17 4 12"></polyline>
+                </svg>
+              </div>
+              <p className="eyebrow">ชำระเงินเรียบร้อย</p>
+              <h3 id="receipt-title">ใบยืนยันการชำระเงิน</h3>
+              <p>เลขออเดอร์ <strong>{order.orderId}</strong></p>
+              <div className="receipt-items">{order.items.map((item, index) => <p key={`${item.name}-receipt-${index}`}><span>{item.name} × {item.quantity}</span><strong>{item.lineTotal.toLocaleString("th-TH")} บาท</strong></p>)}</div>
+              <p>ยอดชำระ <strong>{order.total.toLocaleString("th-TH")} บาท</strong></p>
+              <p>รอบจัดส่ง <strong>{order.deliveryDate}</strong></p>
               <div className="receipt-actions"><button type="button" onClick={() => { setReceiptError(null); void saveReceiptPng(order, storeName).catch((saveError: unknown) => setReceiptError(saveError instanceof Error ? saveError.message : "บันทึกรูปไม่สำเร็จ")); }}>บันทึกเป็นรูป PNG</button><button type="button" onClick={() => window.print()}>พิมพ์หรือบันทึก PDF</button></div>
               {receiptError && <p className="track-error" role="alert">{receiptError}</p>}
             </section>
@@ -193,7 +225,25 @@ export function OrderTracker({ initialOrderId = "", storeName, phonePrimary, pho
         </section>
       )}
 
-      <footer className="track-footer"><p>ต้องการความช่วยเหลือ โทรหาร้านได้ทันที</p><div className="track-phone-links" aria-label="เบอร์โทรร้านเจ๊น้อย"><a href={`tel:${phonePrimary.replace(/[^\d+]/g, "")}`}>☎ {phonePrimary}</a><a href={`tel:${phoneSecondary.replace(/[^\d+]/g, "")}`}>☎ {phoneSecondary}</a></div><Link href="/">กลับไปเลือกสินค้า</Link></footer>
+      <footer className="track-footer">
+        <p>ต้องการความช่วยเหลือ โทรหาร้านได้ทันที</p>
+        <div className="track-phone-links" aria-label="เบอร์โทรร้านเจ๊น้อย">
+          <a href={`tel:${phonePrimary.replace(/[^\d+]/g, "")}`}>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ width: 14, height: 14, marginRight: 6, display: "inline-block", verticalAlign: "middle" }}>
+              <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"></path>
+            </svg>
+            <span style={{ verticalAlign: "middle" }}>{phonePrimary}</span>
+          </a>
+          <a href={`tel:${phoneSecondary.replace(/[^\d+]/g, "")}`}>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ width: 14, height: 14, marginRight: 6, display: "inline-block", verticalAlign: "middle" }}>
+              <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"></path>
+            </svg>
+            <span style={{ verticalAlign: "middle" }}>{phoneSecondary}</span>
+          </a>
+        </div>
+        <Link href="/">กลับไปเลือกสินค้า</Link>
+      </footer>
+      <BottomNav cartCount={cartCount} onOpenCart={handleOpenCart} activeTab="track" />
     </main>
   );
 }
