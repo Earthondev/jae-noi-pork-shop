@@ -17,6 +17,12 @@ import type { CatalogProduct } from "../lib/product-catalog";
 
 type ClientPaymentStatus = "waiting" | "verified" | "review" | "invalid";
 
+const StarIcon = () => (
+  <svg viewBox="0 0 24 24" fill="var(--gold-500)" style={{ width: 14, height: 14, display: "inline-block", marginRight: 2 }}>
+    <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
+  </svg>
+);
+
 export function Shop() {
   const [cartOpen, setCartOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
@@ -281,7 +287,7 @@ export function Shop() {
       {bestSellers.length > 0 && !storefront.storeLoading && (
         <section className="best-sellers-section">
           <div className="section-heading">
-            <span className="eyebrow">🔥 ยอดนิยม</span>
+            <span className="eyebrow">เมนูยอดนิยม</span>
             <h2>สินค้าแนะนำ (Best Sellers)</h2>
             <p>เมนูแนะนำ ทำสดใหม่ทุกวัน ขายดีจนต้องลอง</p>
           </div>
@@ -326,13 +332,19 @@ export function Shop() {
 
       <section className="reviews-section" id="reviews">
         <div className="section-heading">
-          <span className="eyebrow">💬 เสียงตอบรับจากลูกค้า</span>
+          <span className="eyebrow">เสียงตอบรับจากลูกค้า</span>
           <h2>การันตีความอร่อยจากลูกค้าจริง</h2>
           <p>ส่งจริง อร่อยจริง ทั่วประเทศไทย</p>
         </div>
         <div className="reviews-grid">
           <div className="review-card">
-            <div className="review-stars">⭐⭐⭐⭐⭐</div>
+            <div className="review-stars" aria-label="คะแนน 5 ดาวเต็ม">
+              <StarIcon />
+              <StarIcon />
+              <StarIcon />
+              <StarIcon />
+              <StarIcon />
+            </div>
             <p className="review-text">“แหนมหมูสามชั้นอร่อยมาก สั่งพรีออเดอร์มาทานกับที่บ้าน ทำสดสะอาด แพ็กสูญญากาศดีมากครับ”</p>
             <div className="review-author">
               <strong>คุณสมชาย</strong>
@@ -340,7 +352,13 @@ export function Shop() {
             </div>
           </div>
           <div className="review-card">
-            <div className="review-stars">⭐⭐⭐⭐⭐</div>
+            <div className="review-stars" aria-label="คะแนน 5 ดาวเต็ม">
+              <StarIcon />
+              <StarIcon />
+              <StarIcon />
+              <StarIcon />
+              <StarIcon />
+            </div>
             <p className="review-text">“ไส้กรอกอีสานเปรี้ยวกำลังดี ย่างทานร้อนๆ หอมมากค่ะ สั่งไปรษณีย์ส่งไวมาก แพ็กแน่นหนา”</p>
             <div className="review-author">
               <strong>คุณสุรีย์</strong>
@@ -348,7 +366,13 @@ export function Shop() {
             </div>
           </div>
           <div className="review-card">
-            <div className="review-stars">⭐⭐⭐⭐⭐</div>
+            <div className="review-stars" aria-label="คะแนน 5 ดาวเต็ม">
+              <StarIcon />
+              <StarIcon />
+              <StarIcon />
+              <StarIcon />
+              <StarIcon />
+            </div>
             <p className="review-text">“แคปหมูติดมันกรอบอร่อยมาก ไม่เหม็นหืน ซื้อเป็นของฝากญาติๆ ชอบกันทุกคนเลยครับ”</p>
             <div className="review-author">
               <strong>คุณปอนด์</strong>
