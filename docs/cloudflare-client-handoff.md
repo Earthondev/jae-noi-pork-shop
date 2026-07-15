@@ -60,6 +60,11 @@ Build command:
 npm run build:cloudflare
 ```
 
+เผยแพร่จริงผ่าน `npm run deploy:cloudflare` เท่านั้น คำสั่งนี้ตรวจซ้ำว่า
+`UPLOADS` และ `PRODUCT_MEDIA` ชี้ไป bucket production ก่อนอัปโหลด ห้ามเรียก
+`wrangler deploy --config dist/server/wrangler.json` หลัง `npm test` หรือ
+`npm run build` โดยตรง เพราะสองคำสั่งนั้นสร้างไฟล์สำหรับทดสอบในเครื่อง
+
 Deploy command:
 
 ```text
