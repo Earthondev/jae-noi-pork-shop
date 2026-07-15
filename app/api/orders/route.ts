@@ -9,6 +9,8 @@ import {
   type SheetPaymentStatus,
 } from "../../../lib/order-workflow";
 import { verifySlipWithSlipOk } from "../../../lib/slipok";
+import { publicErrorBody } from "../../../lib/public-errors";
+import { reportServerError } from "../../../lib/server-monitoring";
 
 type OrderItemInput = { productId?: string; quantity?: number };
 type UploadBindings = { UPLOADS?: R2Bucket };
@@ -46,6 +48,7 @@ export async function POST(request: Request) {
   let slipKey: string | null = null;
   let orderWritten = false;
   let ownsReceipt = false;
+  let operation = "order.parse_request";
 
   try {
     const form = await request.formData();
@@ -69,6 +72,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "สลิปต้องเป็นรูป JPG, PNG หรือ WebP ขนาดไม่เกิน 5 MB" }, { status: 400 });
     }
 
+    operation = "order.load_storefront";
     const storefront = await getStorefrontData();
     const selectedRound = storefront.rounds.find((round) => round.id === roundId);
     if (!selectedRound) return NextResponse.json({ error: "รอบพรีออเดอร์นี้ยังไม่เปิดรับหรือปิดรับแล้ว" }, { status: 400 });
@@ -91,7 +95,15 @@ export async function POST(request: Request) {
     });
 
     uploads = (env as unknown as UploadBindings).UPLOADS;
-    if (!uploads) return NextResponse.json({ error: "ระบบป้องกันออเดอร์ซ้ำยังไม่พร้อม กรุณาลองใหม่ภายหลัง" }, { status: 503 });
+    if (!uploads) {
+      reportServerError({
+        event: "order_storage_unavailable",
+        operation: "order.resolve_storage",
+        path: "/api/orders",
+        method: "POST",
+      });
+      return NextResponse.json(publicErrorBody("ORDER_UNAVAILABLE"), { status: 503 });
+    }
 
     const subtotal = items.reduce((sum, item) => sum + item.unitPrice * item.quantity, 0);
     const shippingFee = fulfilment === "postal" ? storefront.shippingFee ?? 0 : 0;
@@ -110,6 +122,7 @@ export async function POST(request: Request) {
     receiptKey = `idempotency/orders/${await sha256Hex(idempotencyKey)}.json`;
     let receipt: IdempotencyReceipt = { state: "processing", orderId, fingerprint, createdAt };
 
+    operation = "order.claim_idempotency";
     const acquired = await uploads.put(receiptKey, JSON.stringify(receipt), {
       onlyIf: { etagDoesNotMatch: "*" },
       httpMetadata: { contentType: "application/json" },
@@ -152,6 +165,7 @@ export async function POST(request: Request) {
     let adminNote = "";
 
     if (slip instanceof File && slip.size > 0) {
+      operation = "order.store_slip";
       slipKey = `slips/${orderId}/original`;
       await uploads.put(slipKey, slip.stream(), { httpMetadata: { contentType: slip.type }, customMetadata: { orderId } });
       const clientKey = request.headers.get("cf-connecting-ip") ?? request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ?? "local";
@@ -161,6 +175,7 @@ export async function POST(request: Request) {
       adminNote = decision.adminNote;
     }
 
+    operation = "order.append_sheet";
     await appendOrder({
       id: orderId,
       roundId,
@@ -183,6 +198,7 @@ export async function POST(request: Request) {
     orderWritten = true;
 
     const responsePaymentStatus = clientPaymentStatus(paymentStatus);
+    operation = "order.complete_idempotency";
     await uploads.put(receiptKey, JSON.stringify({ ...receipt, state: "completed", orderId, paymentStatus: responsePaymentStatus }), {
       httpMetadata: { contentType: "application/json" },
     });
@@ -190,7 +206,17 @@ export async function POST(request: Request) {
   } catch (error) {
     if (uploads && receiptKey && ownsReceipt && !orderWritten) await uploads.delete(receiptKey).catch(() => undefined);
     if (uploads && slipKey && !orderWritten) await uploads.delete(slipKey).catch(() => undefined);
-    const status = error instanceof OrderRequestError ? error.status : 500;
-    return NextResponse.json({ error: error instanceof Error ? error.message : "บันทึกออเดอร์ไม่สำเร็จ" }, { status });
+    if (error instanceof OrderRequestError) {
+      return NextResponse.json({ error: error.message }, { status: error.status });
+    }
+    reportServerError({
+      event: "order_write_failed",
+      operation,
+      error,
+      path: "/api/orders",
+      method: "POST",
+      tags: { receiptClaimed: ownsReceipt, orderWritten },
+    });
+    return NextResponse.json(publicErrorBody("ORDER_UNAVAILABLE"), { status: 500 });
   }
 }

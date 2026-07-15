@@ -51,11 +51,19 @@ export default defineConfig(async ({ command }) => {
         SLIPOK_ENABLED: process.env.SLIPOK_ENABLED ?? "false",
         SLIPOK_BRANCH_ID: process.env.SLIPOK_BRANCH_ID ?? "",
         SLIPOK_API_KEY: process.env.SLIPOK_API_KEY ?? "",
+        SENTRY_DSN: process.env.SENTRY_DSN ?? "",
+        SENTRY_ENVIRONMENT: process.env.SENTRY_ENVIRONMENT ?? "development",
+        SENTRY_RELEASE: process.env.SENTRY_RELEASE ?? "local",
       }
     : isCloudflareDeployment
       ? {
           ADMIN_USERNAME: "admin",
           PRODUCT_MEDIA_ORIGIN: productMediaOrigin,
+          SENTRY_ENVIRONMENT: "production",
+          SENTRY_RELEASE:
+            process.env.CF_PAGES_COMMIT_SHA ??
+            process.env.GITHUB_SHA ??
+            "production",
         }
       : {};
 

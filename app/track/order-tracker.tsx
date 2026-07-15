@@ -9,6 +9,11 @@ import {
   trackingStepIndex,
   type PublicOrderTracking,
 } from "../../lib/order-tracking";
+import {
+  CustomerFacingError,
+  PUBLIC_ERROR_MESSAGES,
+  safeClientApiMessage,
+} from "../../lib/public-errors";
 
 const paymentLabels: Record<PublicOrderTracking["paymentStatus"], string> = {
   waiting_for_payment: "รอชำระเงิน",
@@ -136,11 +141,17 @@ export function OrderTracker({ initialOrderId = "", storeName, phonePrimary, pho
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ orderId: orderId.trim().toUpperCase(), phoneLast4 }),
       });
-      const result = await response.json() as { order?: PublicOrderTracking; error?: string };
-      if (!response.ok || !result.order) throw new Error(result.error ?? "ตรวจสอบออเดอร์ไม่สำเร็จ");
+      const result = await response.json().catch(() => null) as { order?: PublicOrderTracking; error?: string } | null;
+      if (!response.ok || !result?.order) {
+        throw new CustomerFacingError(safeClientApiMessage(response.status, result, "TRACKING_UNAVAILABLE"));
+      }
       setOrder(result.order);
     } catch (lookupError) {
-      setError(lookupError instanceof Error ? lookupError.message : "ตรวจสอบออเดอร์ไม่สำเร็จ");
+      setError(
+        lookupError instanceof CustomerFacingError
+          ? lookupError.message
+          : PUBLIC_ERROR_MESSAGES.TRACKING_UNAVAILABLE,
+      );
     } finally {
       setLoading(false);
     }

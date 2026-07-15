@@ -3,6 +3,8 @@ import { NextResponse } from "next/server";
 import { getAdminUser } from "../../../admin-auth";
 import { isSameOriginMutation } from "../../../../lib/admin-auth";
 import { normalizeProductId } from "../../../../lib/admin-cms";
+import { publicErrorBody } from "../../../../lib/public-errors";
+import { reportServerError } from "../../../../lib/server-monitoring";
 
 const MAX_IMAGE_BYTES = 5 * 1024 * 1024;
 
@@ -28,13 +30,18 @@ export async function POST(request: Request) {
   const imageType = detectImageType(bytes);
   if (!imageType) return response({ error: "รองรับเฉพาะรูป JPG, PNG หรือ WebP ที่ถูกต้อง" }, 400);
 
-  const key = `products/${id.toLowerCase()}-${Date.now()}-${crypto.randomUUID().slice(0, 8)}.${imageType.extension}`;
-  await bindings.PRODUCT_MEDIA.put(key, bytes, {
-    httpMetadata: { contentType: imageType.contentType, cacheControl: "public, max-age=31536000, immutable" },
-    customMetadata: { uploadedBy: user.username, uploadedAt: new Date().toISOString() },
-  });
-  const origin = (bindings.PRODUCT_MEDIA_ORIGIN || "https://pub-152b30e9e62f4e82aa0893fd90576e96.r2.dev").replace(/\/+$/, "");
-  return response({ imageUrl: `${origin}/${key}`, previewUrl: `/media/${key}` });
+  try {
+    const key = `products/${id.toLowerCase()}-${Date.now()}-${crypto.randomUUID().slice(0, 8)}.${imageType.extension}`;
+    await bindings.PRODUCT_MEDIA.put(key, bytes, {
+      httpMetadata: { contentType: imageType.contentType, cacheControl: "public, max-age=31536000, immutable" },
+      customMetadata: { uploadedBy: user.username, uploadedAt: new Date().toISOString() },
+    });
+    const origin = (bindings.PRODUCT_MEDIA_ORIGIN || "https://pub-152b30e9e62f4e82aa0893fd90576e96.r2.dev").replace(/\/+$/, "");
+    return response({ imageUrl: `${origin}/${key}`, previewUrl: `/media/${key}` });
+  } catch (error) {
+    reportServerError({ event: "admin_product_image_failed", operation: "admin.product_image.upload", error, path: "/api/admin/product-image", method: "POST" });
+    return response(publicErrorBody("ADMIN_UNAVAILABLE"), 502);
+  }
 }
 
 function detectImageType(bytes: Uint8Array): { extension: "jpg" | "png" | "webp"; contentType: string } | null {

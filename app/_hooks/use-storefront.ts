@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { VisibleProductStatus } from "../../lib/product-catalog";
+import { PUBLIC_ERROR_MESSAGES } from "../../lib/public-errors";
 
 export type Product = {
   id: string;
@@ -121,7 +122,7 @@ export function useStorefront({
       try {
         const response = await fetch("/api/storefront", { cache: "no-store" });
         const data = (await response.json()) as StorefrontResponse;
-        if (!response.ok) throw new Error(data.error ?? "โหลดข้อมูลร้านไม่สำเร็จ");
+        if (!response.ok) throw new Error(PUBLIC_ERROR_MESSAGES.STORE_UNAVAILABLE);
         if (!mountedRef.current) return;
 
         const removedProductNames = pruneUnavailable(data.products);
@@ -146,9 +147,9 @@ export function useStorefront({
         setPromptPayName(data.promptPayName);
         setContent(data.content);
         setSecureWriteReady(data.secureWriteReady);
-      } catch (error: unknown) {
+      } catch {
         if (mountedRef.current && !hasLoadedProductsRef.current) {
-          setNotice(error instanceof Error ? error.message : "โหลดข้อมูลร้านไม่สำเร็จ");
+          setNotice(PUBLIC_ERROR_MESSAGES.STORE_UNAVAILABLE);
         }
       } finally {
         if (mountedRef.current) setStoreLoading(false);

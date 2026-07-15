@@ -6,6 +6,8 @@ import {
   type StorefrontData,
 } from "../../../lib/google-sheets";
 import { loadResilientStorefront } from "../../../lib/storefront-resilience";
+import { publicErrorBody } from "../../../lib/public-errors";
+import { reportServerError } from "../../../lib/server-monitoring";
 
 const STOREFRONT_CACHE_SECONDS = 30;
 const STOREFRONT_CACHE_CONTROL = `public, max-age=0, s-maxage=${STOREFRONT_CACHE_SECONDS}`;
@@ -58,13 +60,30 @@ export async function GET(request: Request) {
       "X-Storefront-Source": result.source,
     });
     if (result.source === "r2-stale") headers.set("Warning", '110 - "Response is stale"');
+    if (result.source === "r2-stale") {
+      reportServerError({
+        event: "storefront_stale_snapshot",
+        operation: "storefront.load",
+        path: "/api/storefront",
+        method: "GET",
+        level: "warning",
+        tags: { attempts: result.attempts },
+      });
+    }
 
     const response = NextResponse.json(result.data, { headers });
     if (cache) await cache.put(cacheKey, response.clone()).catch(() => undefined);
     return response;
   } catch (error) {
+    reportServerError({
+      event: "storefront_unavailable",
+      operation: "storefront.load",
+      error,
+      path: "/api/storefront",
+      method: "GET",
+    });
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : "โหลดข้อมูลร้านไม่สำเร็จ" },
+      publicErrorBody("STORE_UNAVAILABLE"),
       { status: 503, headers: { "Cache-Control": "no-store", "Retry-After": "30" } },
     );
   }

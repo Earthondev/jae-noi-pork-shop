@@ -1816,6 +1816,18 @@ footer .footer-phone-links a:active { background: rgba(255, 255, 255, 0.1); }
   .admin-slip-control { grid-column: 1 / -1; }
 }
 
+/* Safe system fallback */
+.system-error-page { min-height: 100dvh; padding: max(24px, env(safe-area-inset-top)) 16px max(24px, env(safe-area-inset-bottom)); display: grid; place-items: center; background: radial-gradient(circle at top, var(--cream-100), var(--cream-50) 56%); }
+.system-error-card { width: min(100%, 520px); padding: 28px 20px; border: 1px solid var(--line); border-radius: var(--radius-lg); background: var(--white); box-shadow: var(--shadow-lg); text-align: center; animation: rise .28s both; }
+.system-error-mark { width: 58px; height: 58px; margin: 0 auto 18px; display: grid; place-items: center; border-radius: 50%; background: var(--gold-300); color: var(--red-950); font-family: var(--font-display), serif; font-size: 2rem; font-weight: 800; }
+.system-error-card h1 { margin: 4px 0 12px; color: var(--red-800); font-family: var(--font-display), serif; font-size: clamp(1.8rem, 8vw, 2.6rem); line-height: 1.2; }
+.system-error-card > p:not(.eyebrow) { margin: 0 auto; max-width: 38ch; color: var(--muted); line-height: 1.7; }
+.system-error-actions { margin-top: 24px; display: grid; gap: 10px; }
+.system-error-actions button, .system-error-actions a { min-height: var(--tap); padding: 0 16px; border-radius: 13px; display: inline-flex; align-items: center; justify-content: center; background: var(--red-700); color: var(--white); font-weight: 800; text-decoration: none; box-shadow: 0 4px 0 var(--red-950); transition: transform .15s, box-shadow .15s; }
+.system-error-actions .secondary { border: 1px solid var(--line); background: var(--cream-50); color: var(--red-800); box-shadow: none; }
+.system-error-actions button:active, .system-error-actions a:active { transform: translateY(3px); box-shadow: 0 1px 0 var(--red-950); }
+@media (prefers-reduced-motion: reduce) { .system-error-card { animation: none; } .system-error-actions button, .system-error-actions a { transition: none; } }
+
 /* Mobile admin CMS */
 .admin-shell { padding-bottom: calc(94px + env(safe-area-inset-bottom)); }
 .admin-cms-header { position: sticky; top: 0; z-index: 22; margin: -22px -16px 0; padding: max(18px, env(safe-area-inset-top)) 16px 13px; border-bottom: 1px solid rgb(228 190 186 / 70%); background: rgb(246 239 226 / 92%); backdrop-filter: blur(16px); }

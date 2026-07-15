@@ -14,6 +14,11 @@ import { SiteHeader } from "./_components/shop/site-header";
 import { useCheckoutDraft } from "./_hooks/use-checkout-draft";
 import { useStorefront } from "./_hooks/use-storefront";
 import type { CatalogProduct } from "../lib/product-catalog";
+import {
+  CustomerFacingError,
+  PUBLIC_ERROR_MESSAGES,
+  safeClientApiMessage,
+} from "../lib/public-errors";
 
 type ClientPaymentStatus = "waiting" | "verified" | "review" | "invalid";
 
@@ -259,15 +264,21 @@ export function Shop() {
 
     try {
       const response = await fetch("/api/orders", { method: "POST", body: form });
-      const result = (await response.json()) as { orderId?: string; paymentStatus?: ClientPaymentStatus; error?: string };
-      if (!response.ok || !result.orderId) throw new Error(result.error ?? "บันทึกออเดอร์ไม่สำเร็จ");
+      const result = (await response.json().catch(() => null)) as { orderId?: string; paymentStatus?: ClientPaymentStatus; error?: string } | null;
+      if (!response.ok || !result?.orderId) {
+        throw new CustomerFacingError(safeClientApiMessage(response.status, result, "ORDER_UNAVAILABLE"));
+      }
       setOrderId(result.orderId);
       setOrderPaymentStatus(result.paymentStatus ?? "waiting");
       idempotencyKeyRef.current = null;
       clearDraft();
     } catch (error) {
       await storefront.refreshStorefront();
-      storefront.setNotice(error instanceof Error ? error.message : "เกิดข้อผิดพลาด กรุณาลองใหม่");
+      storefront.setNotice(
+        error instanceof CustomerFacingError
+          ? error.message
+          : PUBLIC_ERROR_MESSAGES.ORDER_UNAVAILABLE,
+      );
     } finally {
       setSubmitting(false);
     }

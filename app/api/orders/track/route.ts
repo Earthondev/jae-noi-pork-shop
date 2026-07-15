@@ -2,6 +2,8 @@ import { env } from "cloudflare:workers";
 import { NextResponse } from "next/server";
 import { getPublicOrderTracking } from "../../../../lib/google-sheets";
 import { isTrackingLookupInput } from "../../../../lib/order-tracking";
+import { publicErrorBody } from "../../../../lib/public-errors";
+import { reportServerError } from "../../../../lib/server-monitoring";
 
 type UploadBindings = { UPLOADS?: R2Bucket };
 type RateLimitReceipt = { count: number; expiresAt: number };
@@ -63,7 +65,10 @@ export async function POST(request: Request) {
     }
 
     const uploads = (env as unknown as UploadBindings).UPLOADS;
-    if (!uploads) return privateJson({ error: "ระบบติดตามยังไม่พร้อม กรุณาลองใหม่ภายหลัง" }, 503);
+    if (!uploads) {
+      reportServerError({ event: "order_tracking_failed", operation: "tracking.resolve_storage", path: "/api/orders/track", method: "POST" });
+      return privateJson(publicErrorBody("TRACKING_UNAVAILABLE"), 503);
+    }
     const clientKey = request.headers.get("cf-connecting-ip")
       ?? request.headers.get("x-forwarded-for")?.split(",")[0]?.trim()
       ?? "local";
@@ -74,7 +79,8 @@ export async function POST(request: Request) {
     const order = await getPublicOrderTracking(orderId, phoneLast4);
     if (!order) return privateJson({ error: NOT_FOUND_MESSAGE }, 404);
     return privateJson({ order });
-  } catch {
-    return privateJson({ error: "ตรวจสอบออเดอร์ไม่สำเร็จ กรุณาลองใหม่ภายหลัง" }, 500);
+  } catch (error) {
+    reportServerError({ event: "order_tracking_failed", operation: "tracking.lookup", error, path: "/api/orders/track", method: "POST" });
+    return privateJson(publicErrorBody("TRACKING_UNAVAILABLE"), 500);
   }
 }

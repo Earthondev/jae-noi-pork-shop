@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import { getAdminUser } from "../../../admin-auth";
 import { isSameOriginMutation } from "../../../../lib/admin-auth";
+import { publicErrorBody } from "../../../../lib/public-errors";
+import { reportServerError } from "../../../../lib/server-monitoring";
 import {
   PRODUCT_STATUSES,
   ROUND_STATUSES,
@@ -22,13 +24,16 @@ import {
 type ActionBody = Record<string, unknown> & { action?: unknown };
 type CloudflareCacheStorage = CacheStorage & { default?: Cache };
 
+class AdminInputError extends Error {}
+
 export async function GET() {
   const user = await getAdminUser();
   if (!user) return json({ error: "กรุณาเข้าสู่ระบบผู้ดูแล" }, 401);
   try {
     return json(await getAdminCmsData());
   } catch (error) {
-    return json({ error: errorMessage(error) }, 502);
+    reportServerError({ event: "admin_cms_read_failed", operation: "admin.cms.read", error, path: "/api/admin/cms", method: "GET" });
+    return json(publicErrorBody("ADMIN_UNAVAILABLE"), 502);
   }
 }
 
@@ -73,14 +78,16 @@ export async function POST(request: Request) {
     await invalidateStorefrontCache(request);
     return json({ ok: true });
   } catch (error) {
-    return json({ error: errorMessage(error) }, 400);
+    if (error instanceof AdminInputError) return json({ error: error.message }, 400);
+    reportServerError({ event: "admin_cms_write_failed", operation: "admin.cms.write", error, path: "/api/admin/cms", method: "POST" });
+    return json(publicErrorBody("ADMIN_UNAVAILABLE"), 502);
   }
 }
 
 function productInput(value: unknown): ProductInput {
   const product = record(value, "ข้อมูลสินค้า");
   const status = requiredString(product.status, "สถานะสินค้า");
-  if (!PRODUCT_STATUSES.includes(status as ProductInput["status"])) throw new Error("สถานะสินค้าไม่ถูกต้อง");
+  if (!PRODUCT_STATUSES.includes(status as ProductInput["status"])) throw new AdminInputError("สถานะสินค้าไม่ถูกต้อง");
   const price = product.price === null || product.price === "" || product.price === undefined ? null : Number(product.price);
   return {
     id: requiredString(product.id, "รหัสสินค้า"),
@@ -97,7 +104,7 @@ function productInput(value: unknown): ProductInput {
 function roundInput(value: unknown): RoundInput {
   const round = record(value, "ข้อมูลรอบขาย");
   const status = requiredString(round.status, "สถานะรอบ");
-  if (!ROUND_STATUSES.includes(status as RoundInput["status"])) throw new Error("สถานะรอบไม่ถูกต้อง");
+  if (!ROUND_STATUSES.includes(status as RoundInput["status"])) throw new AdminInputError("สถานะรอบไม่ถูกต้อง");
   return {
     deliveryDate: requiredString(round.deliveryDate, "วันจัดส่ง"),
     opensAt: requiredString(round.opensAt, "เวลาเปิดรับ"),
@@ -131,26 +138,22 @@ function settingsInput(value: unknown): Omit<AdminStorefrontSettings, "fingerpri
 }
 
 function direction(value: unknown): "up" | "down" {
-  if (value !== "up" && value !== "down") throw new Error("ทิศทางการเรียงสินค้าไม่ถูกต้อง");
+  if (value !== "up" && value !== "down") throw new AdminInputError("ทิศทางการเรียงสินค้าไม่ถูกต้อง");
   return value;
 }
 
 function record(value: unknown, label: string): Record<string, unknown> {
-  if (!value || typeof value !== "object" || Array.isArray(value)) throw new Error(`${label}ไม่ถูกต้อง`);
+  if (!value || typeof value !== "object" || Array.isArray(value)) throw new AdminInputError(`${label}ไม่ถูกต้อง`);
   return value as Record<string, unknown>;
 }
 
 function requiredString(value: unknown, label: string): string {
-  if (typeof value !== "string" || !value.trim()) throw new Error(`กรุณากรอก${label}`);
+  if (typeof value !== "string" || !value.trim()) throw new AdminInputError(`กรุณากรอก${label}`);
   return value;
 }
 
 function optionalString(value: unknown): string | undefined {
   return typeof value === "string" ? value : undefined;
-}
-
-function errorMessage(error: unknown): string {
-  return error instanceof Error ? error.message : "บันทึกข้อมูลไม่สำเร็จ";
 }
 
 function json(body: unknown, status = 200) {

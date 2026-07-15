@@ -14,6 +14,11 @@ import {
   type ProductInput,
   type RoundInput,
 } from "../../lib/admin-cms";
+import {
+  CustomerFacingError,
+  PUBLIC_ERROR_MESSAGES,
+  safeClientApiMessage,
+} from "../../lib/public-errors";
 
 type AdminTab = "orders" | "rounds" | "products" | "storefront";
 
@@ -52,7 +57,7 @@ export function AdminDashboard({
     const response = await fetch("/api/admin/cms", { cache: "no-store" });
     if (response.status === 401) return redirectToLogin();
     const result = await response.json() as AdminCmsData & { error?: string };
-    if (!response.ok) throw new Error(result.error ?? "โหลดข้อมูลหลังบ้านไม่สำเร็จ");
+    if (!response.ok) throw new CustomerFacingError(safeClientApiMessage(response.status, result, "ADMIN_UNAVAILABLE"));
     setCms(result);
   }
 
@@ -67,12 +72,12 @@ export function AdminDashboard({
       });
       if (response.status === 401) return redirectToLogin();
       const result = await response.json().catch(() => null) as { error?: string } | null;
-      if (!response.ok) throw new Error(result?.error ?? "บันทึกไม่สำเร็จ");
+      if (!response.ok) throw new CustomerFacingError(safeClientApiMessage(response.status, result, "ADMIN_UNAVAILABLE"));
       await refreshCms();
       setNotice(successMessage);
       return true;
     } catch (error) {
-      setNotice(error instanceof Error ? error.message : "บันทึกไม่สำเร็จ กรุณาลองใหม่");
+      setNotice(error instanceof CustomerFacingError ? error.message : PUBLIC_ERROR_MESSAGES.ADMIN_UNAVAILABLE);
       return false;
     } finally {
       setSaving(null);
@@ -134,7 +139,7 @@ function OrdersPanel({ orders, setOrders, saving, setSaving, setNotice }: {
       });
       if (response.status === 401) return redirectToLogin();
       const result = await response.json().catch(() => null) as { error?: string } | null;
-      if (!response.ok) throw new Error(result?.error ?? "บันทึกออเดอร์ไม่สำเร็จ");
+      if (!response.ok) throw new CustomerFacingError(safeClientApiMessage(response.status, result, "ADMIN_UNAVAILABLE"));
       setOrders((current) => current.map((order) => order.id === id ? {
         ...order,
         order_status: update.orderStatus ?? order.order_status,
@@ -143,7 +148,7 @@ function OrdersPanel({ orders, setOrders, saving, setSaving, setNotice }: {
       } : order));
       setNotice(successMessage);
     } catch (error) {
-      setNotice(error instanceof Error ? error.message : "เชื่อมต่อระบบไม่ได้");
+      setNotice(error instanceof CustomerFacingError ? error.message : PUBLIC_ERROR_MESSAGES.ADMIN_UNAVAILABLE);
     } finally { setSaving(null); }
   }
 
@@ -220,10 +225,12 @@ function ProductsPanel({ products, saving, mutate, setNotice }: { products: Admi
       const response = await fetch("/api/admin/product-image", { method: "POST", body: form });
       if (response.status === 401) return redirectToLogin();
       const result = await response.json() as { imageUrl?: string; error?: string };
-      if (!response.ok || !result.imageUrl) throw new Error(result.error ?? "อัปโหลดรูปไม่สำเร็จ");
+      if (!response.ok || !result.imageUrl) {
+        throw new CustomerFacingError(safeClientApiMessage(response.status, result, "ADMIN_UNAVAILABLE"));
+      }
       setDraft((current) => ({ ...current, imageUrl: result.imageUrl ?? current.imageUrl }));
       setNotice("อัปโหลดรูปแล้ว กดบันทึกสินค้าเพื่อใช้งาน");
-    } catch (error) { setNotice(error instanceof Error ? error.message : "อัปโหลดรูปไม่สำเร็จ"); }
+    } catch (error) { setNotice(error instanceof CustomerFacingError ? error.message : PUBLIC_ERROR_MESSAGES.ADMIN_UNAVAILABLE); }
     finally { setUploading(false); }
   }
 

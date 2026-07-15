@@ -1,4 +1,5 @@
 import { env } from "cloudflare:workers";
+import { reportServerError } from "./server-monitoring";
 
 type SlipOkBindings = {
   SLIPOK_ENABLED?: string;
@@ -114,7 +115,15 @@ export async function verifySlipWithSlipOk(
       verifiedAt: result.data.transTimestamp ?? new Date().toISOString(),
       senderName: result.data.sender?.displayName?.trim() || null,
     };
-  } catch {
+  } catch (error) {
+    reportServerError({
+      event: "slipok_unavailable",
+      operation: "slipok.verify",
+      error,
+      path: "/api/orders",
+      method: "POST",
+      level: "warning",
+    });
     return { status: "pending", reason: "เชื่อมต่อระบบตรวจสลิปไม่ได้ ร้านจะตรวจสอบให้ภายหลัง" };
   }
 }
