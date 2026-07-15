@@ -54,6 +54,7 @@ export async function loadResilientStorefront<T>(
     attemptsMade = attempt;
     try {
       const data = await loadWithTimeout(options.loadFresh, timeoutMs);
+      if (!options.validate(data)) throw new InvalidFreshStorefrontError();
       const savedAt = now().toISOString();
       await writeSnapshot(options.bucket, { version: 1, savedAt, data });
       return { data, source: "google-sheets", savedAt, attempts: attempt };
@@ -76,6 +77,13 @@ export async function loadResilientStorefront<T>(
   }
 
   throw lastError;
+}
+
+class InvalidFreshStorefrontError extends Error {
+  constructor() {
+    super("Fresh storefront data failed validation");
+    this.name = "InvalidFreshStorefrontError";
+  }
 }
 
 async function loadWithTimeout<T>(

@@ -5,6 +5,13 @@ import { catalogProductsFromRows, safeProductImageUrl, PRODUCT_IMAGE_PLACEHOLDER
 import { normalizeProductStatus } from "./product-catalog";
 import { safePickupMapUrl } from "./storefront-settings";
 import {
+  assertGoogleSheetsCredentialsConfigured,
+  assertGoogleSheetsWriteAllowed,
+  assertStorefrontSheetStructure,
+  GoogleSheetsConfigurationError,
+  type GoogleSheetsSafetyBindings,
+} from "./google-sheets-safety";
+import {
   cleanStorefrontSettings,
   dateInputFromSheetsSerial,
   dateTimeInputFromSheetsSerial,
@@ -22,10 +29,7 @@ import {
   type RoundInput,
 } from "./admin-cms";
 
-type GoogleBindings = {
-  GOOGLE_SHEET_ID?: string;
-  GOOGLE_SERVICE_ACCOUNT_EMAIL?: string;
-  GOOGLE_PRIVATE_KEY?: string;
+type GoogleBindings = GoogleSheetsSafetyBindings & {
   PRODUCT_MEDIA_ORIGIN?: string;
 };
 
@@ -34,7 +38,9 @@ function googleBindings(): GoogleBindings {
 }
 
 function spreadsheetId(): string {
-  return googleBindings().GOOGLE_SHEET_ID || "10kwcEYyyOA3tIKTpmdwH21KIdpidLaiU04RC6ON6tJE";
+  const id = googleBindings().GOOGLE_SHEET_ID?.trim();
+  if (!id) throw new GoogleSheetsConfigurationError("Google Sheet ID is missing");
+  return id;
 }
 const SHEETS_SCOPE = "https://www.googleapis.com/auth/spreadsheets";
 const TOKEN_URL = "https://oauth2.googleapis.com/token";
@@ -68,6 +74,7 @@ export class GoogleSheetsUpstreamError extends Error {
 }
 
 export function shouldRetryGoogleSheetsError(error: unknown): boolean {
+  if (error instanceof GoogleSheetsConfigurationError) return false;
   if (error instanceof GoogleSheetsUpstreamError) return error.retryable;
   if (error instanceof DOMException && error.name === "AbortError") return true;
   return error instanceof TypeError;
@@ -164,7 +171,7 @@ function pemToArrayBuffer(pem: string): ArrayBuffer {
 async function getAccessToken(signal?: AbortSignal): Promise<string> {
   if (cachedAccessToken && cachedAccessToken.expiresAt > Date.now() + 60_000) return cachedAccessToken.value;
   const credentials = serviceCredentials();
-  if (!credentials) throw new Error("ยังไม่ได้ตั้งค่าบัญชีระบบ Google Sheets");
+  if (!credentials) throw new GoogleSheetsConfigurationError("Google Sheets credentials are incomplete");
 
   const issuedAt = Math.floor(Date.now() / 1000);
   const unsignedJwt = `${encodeJson({ alg: "RS256", typ: "JWT" })}.${encodeJson({
@@ -212,6 +219,10 @@ async function getAccessToken(signal?: AbortSignal): Promise<string> {
 }
 
 async function sheetsRequest(path: string, init?: RequestInit, signal?: AbortSignal): Promise<Response> {
+  const bindings = googleBindings();
+  assertGoogleSheetsCredentialsConfigured(bindings);
+  const method = (init?.method ?? "GET").toUpperCase();
+  if (method !== "GET" && method !== "HEAD") assertGoogleSheetsWriteAllowed(bindings);
   const token = await getAccessToken(signal);
   let response: Response;
   try {
@@ -247,9 +258,7 @@ async function readRangesWithRenderOption(
   valueRenderOption: "FORMATTED_VALUE" | "UNFORMATTED_VALUE" | "FORMULA",
   signal?: AbortSignal,
 ): Promise<SheetScalar[][][]> {
-  if (!serviceCredentials()) {
-    return ranges.map(() => []);
-  }
+  assertGoogleSheetsCredentialsConfigured(googleBindings());
   const query = new URLSearchParams({ valueRenderOption, dateTimeRenderOption: "SERIAL_NUMBER" });
   for (const range of ranges) query.append("ranges", range);
   const response = await sheetsRequest(`/values:batchGet?${query.toString()}`, undefined, signal);
@@ -280,10 +289,12 @@ function settingsFromRows(rows: string[][]): Record<string, { value: string; sta
 }
 
 export async function getStorefrontData(options: { signal?: AbortSignal } = {}) {
-  const [productRows, roundRows, settingRows] = await readRanges(
+  const storefrontRanges = await readRanges(
     ["สินค้า!A:I", "รอบจัดส่ง!A:J", "ตั้งค่าร้าน!A:D"],
     options.signal,
   );
+  assertStorefrontSheetStructure(storefrontRanges);
+  const [productRows, roundRows, settingRows] = storefrontRanges;
   const products: StorefrontProduct[] = catalogProductsFromRows(productRows, googleBindings().PRODUCT_MEDIA_ORIGIN);
 
   const allRoundRows = roundRows.slice(1).filter((row) => row[0]);

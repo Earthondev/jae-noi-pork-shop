@@ -40,6 +40,8 @@ export default defineConfig(async ({ command }) => {
         ADMIN_ALLOWED_EMAILS: process.env.ADMIN_ALLOWED_EMAILS ?? "",
         ADMIN_PASSWORD_FALLBACK_ENABLED:
           process.env.ADMIN_PASSWORD_FALLBACK_ENABLED ?? "true",
+        ALLOW_DEV_WRITES: process.env.ALLOW_DEV_WRITES ?? "false",
+        APP_ENV: process.env.APP_ENV ?? "development",
         CLOUDFLARE_ACCESS_AUD: process.env.CLOUDFLARE_ACCESS_AUD ?? "",
         CLOUDFLARE_ACCESS_TEAM_DOMAIN:
           process.env.CLOUDFLARE_ACCESS_TEAM_DOMAIN ?? "",
@@ -58,6 +60,7 @@ export default defineConfig(async ({ command }) => {
     : isCloudflareDeployment
       ? {
           ADMIN_USERNAME: "admin",
+          APP_ENV: "production",
           PRODUCT_MEDIA_ORIGIN: productMediaOrigin,
           SENTRY_ENVIRONMENT: "production",
           SENTRY_RELEASE:

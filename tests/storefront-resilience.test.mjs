@@ -137,3 +137,27 @@ test("fresh storefront data remains available if writing its R2 snapshot fails",
   assert.equal(result.source, "google-sheets");
   assert.deepEqual(result.data, freshData);
 });
+
+test("never saves malformed fresh data over the last-known-good snapshot", async () => {
+  const bucket = new MemoryR2();
+  await bucket.put(STOREFRONT_SNAPSHOT_KEY, JSON.stringify({
+    version: 1,
+    savedAt: "2026-07-15T08:30:00.000Z",
+    data: freshData,
+  }));
+
+  const result = await loadResilientStorefront({
+    bucket,
+    validate: isStorefrontData,
+    loadFresh: async () => ({ products: [], rounds: [] }),
+    shouldRetry: () => false,
+    maxAttempts: 2,
+    retryDelayMs: 0,
+    timeoutMs: 50,
+  });
+
+  assert.equal(result.source, "r2-stale");
+  assert.deepEqual(result.data, freshData);
+  const stored = JSON.parse(bucket.objects.get(STOREFRONT_SNAPSHOT_KEY));
+  assert.deepEqual(stored.data, freshData);
+});

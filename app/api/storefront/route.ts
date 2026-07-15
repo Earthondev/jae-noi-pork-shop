@@ -97,6 +97,8 @@ function isStorefrontData(value: unknown): value is StorefrontData {
       Array.isArray(candidate.rounds) &&
       candidate.content &&
       typeof candidate.content === "object" &&
-      typeof candidate.secureWriteReady === "boolean",
+      typeof (candidate.content as { storeName?: unknown }).storeName === "string" &&
+      (candidate.content as { storeName: string }).storeName.trim().length > 0 &&
+      candidate.secureWriteReady === true,
   );
 }
