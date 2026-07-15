@@ -22,31 +22,59 @@ export function Hero({ storeLoading, rounds, nextRound, content }: HeroProps) {
           <div className="hero-actions">
             <a className="primary-action" href="#products">เลือกสินค้า</a>
           </div>
-          <div className="hero-features">
-            <span>
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ width: 14, height: 14, marginRight: 4 }}>
-                <rect x="1" y="3" width="15" height="13"></rect>
-                <polygon points="16 8 20 8 23 11 23 16 16 16 16 8"></polygon>
-                <circle cx="5.5" cy="18.5" r="2.5"></circle>
-                <circle cx="18.5" cy="18.5" r="2.5"></circle>
-              </svg>
-              ส่งด่วนทั่วประเทศ
-            </span>
-            <span>
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ width: 14, height: 14, marginRight: 4 }}>
-                <line x1="16.5" y1="9.4" x2="7.5" y2="4.21"></line>
-                <polygon points="12 22.08 12 12 3 6.92 3 17.08 12 22.08"></polygon>
-                <polygon points="12 22.08 21 17.08 21 6.92 12 12 12 22.08"></polygon>
-                <polygon points="12 12 21 6.92 12 1.84 3 6.92 12 12"></polygon>
-              </svg>
-              แพ็กสูญญากาศปลอดภัย
-            </span>
-            <span>
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ width: 14, height: 14, marginRight: 4 }}>
-                <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"></path>
-              </svg>
-              ทำสดใหม่ทุกวัน
-            </span>
+          <div className="hero-features-container">
+            <div className="hero-features">
+              {/* Set 1 */}
+              <span>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ width: 14, height: 14, marginRight: 4 }}>
+                  <rect x="1" y="3" width="15" height="13"></rect>
+                  <polygon points="16 8 20 8 23 11 23 16 16 16 16 8"></polygon>
+                  <circle cx="5.5" cy="18.5" r="2.5"></circle>
+                  <circle cx="18.5" cy="18.5" r="2.5"></circle>
+                </svg>
+                ส่งด่วนทั่วประเทศ
+              </span>
+              <span>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ width: 14, height: 14, marginRight: 4 }}>
+                  <line x1="16.5" y1="9.4" x2="7.5" y2="4.21"></line>
+                  <polygon points="12 22.08 12 12 3 6.92 3 17.08 12 22.08"></polygon>
+                  <polygon points="12 22.08 21 17.08 21 6.92 12 12 12 22.08"></polygon>
+                  <polygon points="12 12 21 6.92 12 1.84 3 6.92 12 12"></polygon>
+                </svg>
+                แพ็กสูญญากาศปลอดภัย
+              </span>
+              <span>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ width: 14, height: 14, marginRight: 4 }}>
+                  <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"></path>
+                </svg>
+                ทำสดใหม่ทุกวัน
+              </span>
+              {/* Set 2 (Duplicate for seamless loop) */}
+              <span>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ width: 14, height: 14, marginRight: 4 }}>
+                  <rect x="1" y="3" width="15" height="13"></rect>
+                  <polygon points="16 8 20 8 23 11 23 16 16 16 16 8"></polygon>
+                  <circle cx="5.5" cy="18.5" r="2.5"></circle>
+                  <circle cx="18.5" cy="18.5" r="2.5"></circle>
+                </svg>
+                ส่งด่วนทั่วประเทศ
+              </span>
+              <span>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ width: 14, height: 14, marginRight: 4 }}>
+                  <line x1="16.5" y1="9.4" x2="7.5" y2="4.21"></line>
+                  <polygon points="12 22.08 12 12 3 6.92 3 17.08 12 22.08"></polygon>
+                  <polygon points="12 22.08 21 17.08 21 6.92 12 12 12 22.08"></polygon>
+                  <polygon points="12 12 21 6.92 12 1.84 3 6.92 12 12"></polygon>
+                </svg>
+                แพ็กสูญญากาศปลอดภัย
+              </span>
+              <span>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ width: 14, height: 14, marginRight: 4 }}>
+                  <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"></path>
+                </svg>
+                ทำสดใหม่ทุกวัน
+              </span>
+            </div>
           </div>
         </div>
         <div className="hero-image-wrap">

@@ -193,11 +193,22 @@ img { display: block; }
   font-size: 1.05rem;
   line-height: 1.7;
 }
+.hero-features-container {
+  overflow: hidden;
+  width: 100%;
+  position: relative;
+  margin-top: 18px;
+  mask-image: linear-gradient(to right, transparent, white 8%, white 92%, transparent);
+  -webkit-mask-image: linear-gradient(to right, transparent, white 8%, white 92%, transparent);
+}
 .hero-features {
   display: flex;
-  flex-wrap: wrap;
-  gap: 8px 12px;
-  margin-top: 18px;
+  gap: 12px;
+  width: max-content;
+  animation: hero-marquee-right 14s linear infinite;
+}
+.hero-features:hover {
+  animation-play-state: paused;
 }
 .hero-features span {
   display: inline-flex;
@@ -211,6 +222,12 @@ img { display: block; }
   border-radius: 99px;
   border: 1px solid rgba(156, 42, 42, 0.1);
   box-shadow: var(--shadow-sm);
+  white-space: nowrap;
+}
+
+@keyframes hero-marquee-right {
+  0% { transform: translate3d(-50%, 0, 0); }
+  100% { transform: translate3d(0, 0, 0); }
 }
 .hero-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 16px; }
 .primary-action {
