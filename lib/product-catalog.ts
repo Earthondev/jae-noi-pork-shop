@@ -1,5 +1,7 @@
 export const DEFAULT_PRODUCT_MEDIA_ORIGIN = "https://pub-152b30e9e62f4e82aa0893fd90576e96.r2.dev";
 export const PRODUCT_IMAGE_PLACEHOLDER = "/images/products/product-placeholder.svg";
+export const DEFAULT_STORE_LOGO = "/images/products/jae-noi-shop-logo.jpg";
+export const DEFAULT_STORE_COVER = "/images/products/jae-noi-holding-two-naem-pork-bags.jpg";
 
 export type ProductStatus = "เปิดขาย" | "ปิดชั่วคราว" | "รอข้อมูล" | "ซ่อนสินค้า";
 export type VisibleProductStatus = Exclude<ProductStatus, "ซ่อนสินค้า">;
@@ -12,6 +14,7 @@ export type CatalogProduct = {
   price: number | null;
   status: VisibleProductStatus;
   image: string;
+  category: string;
 };
 
 export function normalizeProductStatus(value: string | undefined): ProductStatus {
@@ -35,6 +38,31 @@ export function safeProductImageUrl(value: string | undefined, mediaOrigin = DEF
   } catch {
     return PRODUCT_IMAGE_PLACEHOLDER;
   }
+}
+
+export function safeStorefrontAssetUrl(
+  value: string | undefined,
+  fallback: string,
+  mediaOrigin = DEFAULT_PRODUCT_MEDIA_ORIGIN,
+): string {
+  const normalizedOrigin = mediaOrigin.trim().replace(/\/+$/, "");
+  if (!value || !normalizedOrigin) return fallback;
+  try {
+    const assetUrl = new URL(value.trim());
+    const allowedOrigin = new URL(normalizedOrigin);
+    if (assetUrl.protocol !== "https:" || assetUrl.origin !== allowedOrigin.origin) return fallback;
+    if (!assetUrl.pathname.startsWith("/brand/") || assetUrl.username || assetUrl.password) return fallback;
+    return `/media${assetUrl.pathname}`;
+  } catch {
+    return fallback;
+  }
+}
+
+function fallbackCategory(name: string): string {
+  if (name.includes("แหนม")) return "แหนมหมู";
+  if (name.includes("ไส้กรอก")) return "ไส้กรอกอีสาน";
+  if (name.includes("แคปหมู")) return "แคปหมู";
+  return "อื่น ๆ";
 }
 
 function positivePrice(value: string | undefined): number | null {
@@ -66,6 +94,7 @@ export function catalogProductsFromRows(rows: string[][], mediaOrigin = DEFAULT_
       price,
       status,
       image: safeProductImageUrl(row[8], mediaOrigin),
+      category: row[9]?.trim() || fallbackCategory(name),
     }];
   });
 }

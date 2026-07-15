@@ -105,7 +105,7 @@ test("prevents fulfilment progress until payment is confirmed", async () => {
   assert.match(sheets, /return "payment_required"/);
   assert.match(adminRoute, /result === "payment_required"/);
   assert.match(admin, /order\.payment_status !== "paid"/);
-  assert.match(admin, /order_status: update\.orderStatus/);
+  assert.match(admin, /order_status: patch\.orderStatus/);
 });
 
 test("revalidates product availability with product-specific messages", async () => {
@@ -114,7 +114,7 @@ test("revalidates product availability with product-specific messages", async ()
     projectFile("lib/google-sheets.ts"),
   ]);
 
-  assert.match(sheets, /สินค้า!A:I/);
+  assert.match(sheets, /สินค้า!A:J/);
   assert.match(orderRoute, /product\.status === "ปิดชั่วคราว"/);
   assert.match(orderRoute, /\$\{product\.name\} ปิดรับชั่วคราว/);
   assert.doesNotMatch(orderRoute, /ไส้กรอกอีสานยังรอข้อมูลราคา/);

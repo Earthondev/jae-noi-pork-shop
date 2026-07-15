@@ -1,4 +1,5 @@
 import type { ProductStatus } from "./product-catalog";
+import { safeStorefrontAssetUrl } from "./product-catalog";
 import { safePickupMapUrl } from "./storefront-settings";
 
 export const PRODUCT_STATUSES: readonly ProductStatus[] = ["เปิดขาย", "ปิดชั่วคราว", "รอข้อมูล", "ซ่อนสินค้า"];
@@ -14,6 +15,7 @@ export type AdminProduct = {
   price: number | null;
   status: ProductStatus;
   imageUrl: string;
+  category: string;
   updatedAt: string;
   fingerprint: string;
 };
@@ -45,6 +47,8 @@ export type AdminStorefrontSettings = {
   shippingFee: number | null;
   pickupAddress: string;
   pickupMapUrl: string;
+  storeLogoUrl: string;
+  storeCoverUrl: string;
   fingerprint: string;
 };
 
@@ -63,6 +67,7 @@ export type ProductInput = {
   price: number | null;
   status: ProductStatus;
   imageUrl: string;
+  category: string;
   fingerprint?: string;
 };
 
@@ -99,13 +104,14 @@ export function validateProductInput(input: ProductInput): ProductInput {
   const unit = cleanText(input.unit, 80);
   const detail = cleanText(input.detail, 500);
   const imageUrl = input.imageUrl.trim().slice(0, 500);
+  const category = cleanText(input.category, 80) || "อื่น ๆ";
   if (!/^[A-Z0-9_-]{2,40}$/.test(id)) throw new Error("รหัสสินค้าต้องมี 2-40 ตัว ใช้อักษรอังกฤษ ตัวเลข - หรือ _");
   if (!name) throw new Error("กรุณากรอกชื่อสินค้า");
   if (!PRODUCT_STATUSES.includes(input.status)) throw new Error("สถานะสินค้าไม่ถูกต้อง");
   const price = input.price === null ? null : Number(input.price);
   if (price !== null && (!Number.isFinite(price) || price <= 0 || price > 1_000_000)) throw new Error("ราคาสินค้าไม่ถูกต้อง");
   if (input.status === "เปิดขาย" && (!unit || !detail || price === null)) throw new Error("สินค้าที่เปิดขายต้องมีหน่วย รายละเอียด และราคาให้ครบ");
-  return { ...input, id, name, unit, detail, price, imageUrl };
+  return { ...input, id, name, unit, detail, price, imageUrl, category };
 }
 
 export function validateRoundInput(input: RoundInput): RoundInput {
@@ -127,6 +133,10 @@ export function cleanStorefrontSettings(input: Omit<AdminStorefrontSettings, "fi
   }
   const pickupMapUrl = input.pickupMapUrl.trim().slice(0, 500);
   if (pickupMapUrl && !safePickupMapUrl(pickupMapUrl)) throw new Error("ลิงก์แผนที่ต้องเป็น Google Maps แบบ HTTPS");
+  const storeLogoUrl = input.storeLogoUrl.trim().slice(0, 500);
+  const storeCoverUrl = input.storeCoverUrl.trim().slice(0, 500);
+  if (storeLogoUrl && safeStorefrontAssetUrl(storeLogoUrl, "") === "") throw new Error("โลโก้ต้องมาจากพื้นที่รูปของร้านเท่านั้น");
+  if (storeCoverUrl && safeStorefrontAssetUrl(storeCoverUrl, "") === "") throw new Error("ภาพปกต้องมาจากพื้นที่รูปของร้านเท่านั้น");
   return {
     storeName: requiredText(input.storeName, 100, "ชื่อร้าน"),
     heroTitle: requiredText(input.heroTitle, 100, "หัวข้อหน้าร้าน"),
@@ -140,6 +150,8 @@ export function cleanStorefrontSettings(input: Omit<AdminStorefrontSettings, "fi
     shippingFee,
     pickupAddress: cleanText(input.pickupAddress, 500),
     pickupMapUrl,
+    storeLogoUrl,
+    storeCoverUrl,
   };
 }
 

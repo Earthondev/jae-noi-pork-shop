@@ -12,6 +12,7 @@ export default async function AdminPage() {
       initialOrders={orders}
       initialCms={cms}
       userName={user.displayName}
+      serverNow={new Date().toISOString()}
     />
   );
 }

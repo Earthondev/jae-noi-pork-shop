@@ -12,6 +12,7 @@ export type Product = {
   price: number | null;
   image: string;
   status: VisibleProductStatus;
+  category: string;
 };
 
 export type PreorderRound = { id: string; deliveryDate: string; opensAt: string; closesAt: string; label: string; note: string };
@@ -26,6 +27,8 @@ export type StorefrontContent = {
   storyDescription: string;
   phonePrimary: string;
   phoneSecondary: string;
+  storeLogoUrl: string;
+  storeCoverUrl: string;
 };
 
 type StorefrontResponse = {
@@ -102,6 +105,8 @@ export function useStorefront({
     storyDescription: "รสชาติคุ้นเคยจากร้านท้องถิ่น ส่งต่อด้วยวัตถุดิบที่คัดแล้วและความตั้งใจในทุกแพ็ก จากมือเจ๊น้อยถึงมือลูกค้า",
     phonePrimary: "087-2416773",
     phoneSecondary: "087-8755479",
+    storeLogoUrl: "/images/products/jae-noi-shop-logo.jpg",
+    storeCoverUrl: "/images/products/jae-noi-holding-two-naem-pork-bags.jpg",
   });
   const [secureWriteReady, setSecureWriteReady] = useState(false);
   const [storeLoading, setStoreLoading] = useState(true);

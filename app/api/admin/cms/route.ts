@@ -97,6 +97,7 @@ function productInput(value: unknown): ProductInput {
     price,
     status: status as ProductInput["status"],
     imageUrl: optionalString(product.imageUrl) ?? "",
+    category: optionalString(product.category) ?? "อื่น ๆ",
     fingerprint: optionalString(product.fingerprint),
   };
 }
@@ -133,6 +134,8 @@ function settingsInput(value: unknown): Omit<AdminStorefrontSettings, "fingerpri
     shippingFee,
     pickupAddress: optionalString(settings.pickupAddress) ?? "",
     pickupMapUrl: optionalString(settings.pickupMapUrl) ?? "",
+    storeLogoUrl: optionalString(settings.storeLogoUrl) ?? "",
+    storeCoverUrl: optionalString(settings.storeCoverUrl) ?? "",
     fingerprint: optionalString(settings.fingerprint),
   };
 }

@@ -7,14 +7,15 @@ export type SiteHeaderProps = Readonly<{
   cartCount: number;
   onOpenCart: () => void;
   storeName: string;
-}>;
+  storeLogoUrl: string;
+}>; 
 
-export function SiteHeader({ cartCount, onOpenCart, storeName }: SiteHeaderProps) {
+export function SiteHeader({ cartCount, onOpenCart, storeName, storeLogoUrl }: SiteHeaderProps) {
   return (
     <header className="site-header">
       <a className="brand" href="#top" aria-label="กลับไปด้านบน">
         <span className="brand-mark">
-          <Image src="/images/products/jae-noi-shop-logo.jpg" alt="" width={80} height={80} priority />
+          <Image src={storeLogoUrl} alt="" width={80} height={80} priority unoptimized={storeLogoUrl.startsWith("/media/")} />
         </span>
         <span className="brand-name">{storeName}</span>
       </a>

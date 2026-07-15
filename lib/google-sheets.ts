@@ -1,7 +1,15 @@
 import { env } from "cloudflare:workers";
 import type { AdminOrder, OrderStatus, PaymentStatus } from "../db/orders";
 import { maskPhone, matchesPhoneLast4, type PublicOrderTracking } from "./order-tracking";
-import { catalogProductsFromRows, safeProductImageUrl, PRODUCT_IMAGE_PLACEHOLDER, type CatalogProduct } from "./product-catalog";
+import {
+  catalogProductsFromRows,
+  DEFAULT_STORE_COVER,
+  DEFAULT_STORE_LOGO,
+  safeProductImageUrl,
+  safeStorefrontAssetUrl,
+  PRODUCT_IMAGE_PLACEHOLDER,
+  type CatalogProduct,
+} from "./product-catalog";
 import { normalizeProductStatus } from "./product-catalog";
 import { safePickupMapUrl } from "./storefront-settings";
 import {
@@ -290,7 +298,7 @@ function settingsFromRows(rows: string[][]): Record<string, { value: string; sta
 
 export async function getStorefrontData(options: { signal?: AbortSignal } = {}) {
   const storefrontRanges = await readRanges(
-    ["สินค้า!A:I", "รอบจัดส่ง!A:J", "ตั้งค่าร้าน!A:D"],
+    ["สินค้า!A:J", "รอบจัดส่ง!A:J", "ตั้งค่าร้าน!A:D"],
     options.signal,
   );
   assertStorefrontSheetStructure(storefrontRanges);
@@ -341,6 +349,8 @@ export async function getStorefrontData(options: { signal?: AbortSignal } = {}) 
       storyDescription: settings.story_description?.value || DEFAULT_STOREFRONT_CONTENT.storyDescription,
       phonePrimary: settings.phone_primary?.value || "087-2416773",
       phoneSecondary: settings.phone_secondary?.value || "087-8755479",
+      storeLogoUrl: safeStorefrontAssetUrl(settings.store_logo_url?.value, DEFAULT_STORE_LOGO, googleBindings().PRODUCT_MEDIA_ORIGIN),
+      storeCoverUrl: safeStorefrontAssetUrl(settings.store_cover_url?.value, DEFAULT_STORE_COVER, googleBindings().PRODUCT_MEDIA_ORIGIN),
     },
     secureWriteReady: serviceCredentials() !== null,
   };
@@ -354,13 +364,13 @@ function isRetryableGoogleStatus(status: number): boolean {
 
 export async function getAdminCmsData(): Promise<AdminCmsData> {
   const [productRows, roundRows, settingRows] = await readRangesWithRenderOption(
-    ["สินค้า!A:I", "รอบจัดส่ง!A:J", "ตั้งค่าร้าน!A:D"],
+    ["สินค้า!A:J", "รอบจัดส่ง!A:J", "ตั้งค่าร้าน!A:D"],
     "UNFORMATTED_VALUE",
   );
   const formattedRoundRows = (await readRanges(["รอบจัดส่ง!A:J"]))[0];
 
   const products: AdminProduct[] = await Promise.all(productRows.slice(1).filter((row) => row[0]).map(async (row) => {
-    const source = row.slice(0, 9);
+    const source = row.slice(0, 10);
     return {
       id: String(row[0] ?? ""),
       name: String(row[1] ?? ""),
@@ -370,6 +380,7 @@ export async function getAdminCmsData(): Promise<AdminCmsData> {
       status: normalizeProductStatus(String(row[5] ?? "")),
       updatedAt: String(row[7] ?? ""),
       imageUrl: String(row[8] ?? ""),
+      category: String(row[9] ?? "") || "อื่น ๆ",
       fingerprint: await fingerprint(source),
     };
   }));
@@ -407,6 +418,8 @@ export async function getAdminCmsData(): Promise<AdminCmsData> {
     shippingFee: settingsByKey.postal_shipping_fee?.value ? numberValue(settingsByKey.postal_shipping_fee.value) : null,
     pickupAddress: settingsByKey.pickup_address?.value || "",
     pickupMapUrl: settingsByKey.pickup_map_url?.value || "",
+    storeLogoUrl: settingsByKey.store_logo_url?.value || "",
+    storeCoverUrl: settingsByKey.store_cover_url?.value || "",
   };
   const settings: AdminStorefrontSettings = {
     ...settingsBase,
@@ -421,7 +434,7 @@ export type CmsMutationResult = "updated" | "not_found" | "conflict" | "duplicat
 export async function createAdminProduct(input: ProductInput): Promise<CmsMutationResult> {
   const product = validateProductInput(input);
   assertSafeProductImage(product.imageUrl);
-  const rows = (await readRangesWithRenderOption(["สินค้า!A:I"], "UNFORMATTED_VALUE"))[0];
+  const rows = (await readRangesWithRenderOption(["สินค้า!A:J"], "UNFORMATTED_VALUE"))[0];
   if (rows.slice(1).some((row) => String(row[0] ?? "").toUpperCase() === product.id)) return "duplicate";
   const rowNumber = firstBlankRow(rows);
   await sheetsRequest(":batchUpdate", {
@@ -431,7 +444,7 @@ export async function createAdminProduct(input: ProductInput): Promise<CmsMutati
       rows: [{ values: [
         cell(product.id), cell(product.name), cell(product.unit), cell(product.detail),
         product.price === null ? cell("") : cell(product.price), cell(product.status), cell(""),
-        cell(new Date().toISOString()), cell(product.imageUrl),
+        cell(new Date().toISOString()), cell(product.imageUrl), cell(product.category),
       ] }],
       fields: "userEnteredValue",
     } }] }),
@@ -442,32 +455,33 @@ export async function createAdminProduct(input: ProductInput): Promise<CmsMutati
 export async function updateAdminProduct(id: string, input: ProductInput): Promise<CmsMutationResult> {
   const product = validateProductInput({ ...input, id });
   assertSafeProductImage(product.imageUrl);
-  const rows = (await readRangesWithRenderOption(["สินค้า!A:I"], "UNFORMATTED_VALUE"))[0];
+  const rows = (await readRangesWithRenderOption(["สินค้า!A:J"], "UNFORMATTED_VALUE"))[0];
   const index = rows.slice(1).findIndex((row) => String(row[0] ?? "") === id);
   if (index < 0) return "not_found";
   const currentRow = rows[index + 1] ?? [];
-  if (input.fingerprint && await fingerprint(currentRow.slice(0, 9)) !== input.fingerprint) return "conflict";
+  if (input.fingerprint && await fingerprint(currentRow.slice(0, 10)) !== input.fingerprint) return "conflict";
   const rowNumber = index + 2;
   await writeRawValues([
     { range: `สินค้า!B${rowNumber}:F${rowNumber}`, values: [[product.name, product.unit, product.detail, product.price ?? "", product.status]] },
     { range: `สินค้า!H${rowNumber}:I${rowNumber}`, values: [[new Date().toISOString(), product.imageUrl]] },
+    { range: `สินค้า!J${rowNumber}`, values: [[product.category]] },
   ]);
   return "updated";
 }
 
 export async function moveAdminProduct(id: string, direction: "up" | "down", expectedFingerprint?: string): Promise<CmsMutationResult> {
-  const rows = (await readRangesWithRenderOption(["สินค้า!A:I"], "UNFORMATTED_VALUE"))[0];
+  const rows = (await readRangesWithRenderOption(["สินค้า!A:J"], "UNFORMATTED_VALUE"))[0];
   const index = rows.slice(1).findIndex((row) => String(row[0] ?? "") === id);
   if (index < 0) return "not_found";
   const rowIndex = index + 1;
-  if (expectedFingerprint && await fingerprint((rows[rowIndex] ?? []).slice(0, 9)) !== expectedFingerprint) return "conflict";
+  if (expectedFingerprint && await fingerprint((rows[rowIndex] ?? []).slice(0, 10)) !== expectedFingerprint) return "conflict";
   const targetIndex = direction === "up" ? rowIndex - 1 : rowIndex + 1;
   if (targetIndex < 1 || targetIndex >= rows.length || !rows[targetIndex]?.[0]) return "updated";
-  const current = padRow(rows[rowIndex] ?? [], 9);
-  const target = padRow(rows[targetIndex] ?? [], 9);
+  const current = padRow(rows[rowIndex] ?? [], 10);
+  const target = padRow(rows[targetIndex] ?? [], 10);
   await writeRawValues([
-    { range: `สินค้า!A${rowIndex + 1}:I${rowIndex + 1}`, values: [target] },
-    { range: `สินค้า!A${targetIndex + 1}:I${targetIndex + 1}`, values: [current] },
+    { range: `สินค้า!A${rowIndex + 1}:J${rowIndex + 1}`, values: [target] },
+    { range: `สินค้า!A${targetIndex + 1}:J${targetIndex + 1}`, values: [current] },
   ]);
   return "updated";
 }
@@ -533,6 +547,8 @@ export async function updateAdminStorefrontSettings(
     ["announcement_text", settings.announcementText, "ข้อความแถบประกาศ", "พร้อมใช้"],
     ["story_title", settings.storyTitle, "หัวข้อเรื่องของร้าน", "พร้อมใช้"],
     ["story_description", settings.storyDescription, "เนื้อหาเรื่องของร้าน", "พร้อมใช้"],
+    ["store_logo_url", settings.storeLogoUrl, "โลโก้ร้านบนเว็บไซต์", settings.storeLogoUrl ? "พร้อมใช้" : "รอข้อมูล"],
+    ["store_cover_url", settings.storeCoverUrl, "ภาพปกส่วนบนเว็บไซต์", settings.storeCoverUrl ? "พร้อมใช้" : "รอข้อมูล"],
   ];
   const existingRows = new Map(currentRows.slice(1).map((row, index) => [String(row[0] ?? ""), index + 2]));
   let nextRow = firstBlankRow(currentRows);
@@ -630,7 +646,7 @@ export async function getAdminOrders(): Promise<AdminOrder[]> {
     itemsByOrder.set(row[1], current);
   }
   return orderRows.filter((row) => row[0]).map((row) => ({
-    id: row[0], customer_name: row[3] ?? "", phone: row[4] ?? "", address: row[6] ?? "",
+    id: row[0], round_id: row[1] ?? "", customer_name: row[3] ?? "", phone: row[4] ?? "", address: row[6] ?? "",
     note: row[13] ?? "", admin_note: row[14] ?? "", subtotal: numberValue(row[7]), shipping_fee: numberValue(row[8]),
     total: numberValue(row[9]), slip_key: row[10] || null,
     payment_status: sheetPaymentStatusToApp[row[11]] ?? (row[10] ? "waiting_for_slip_review" : "waiting_for_payment"),

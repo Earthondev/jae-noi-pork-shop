@@ -7,6 +7,7 @@ export type OrderStatus = "received" | "preparing" | "ready_for_pickup" | "shipp
 
 export type AdminOrder = {
   id: string;
+  round_id: string;
   customer_name: string;
   phone: string;
   address: string;

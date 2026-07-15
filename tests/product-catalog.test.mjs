@@ -7,6 +7,7 @@ import {
   isProductPurchasable,
   normalizeProductStatus,
   safeProductImageUrl,
+  safeStorefrontAssetUrl,
 } from "../lib/product-catalog.ts";
 
 const mediaUrl = (name) => `${DEFAULT_PRODUCT_MEDIA_ORIGIN}/products/${name}`;
@@ -19,8 +20,8 @@ test("normalizes legacy status without destroying the old value", () => {
 
 test("keeps sheet row order, hides hidden products, and downgrades incomplete rows", () => {
   const products = catalogProductsFromRows([
-    ["รหัสสินค้า", "ชื่อสินค้า", "หน่วยขาย", "รายละเอียด", "ราคา", "สถานะ", "ไฟล์เดิม", "แก้ไข", "URL"],
-    ["FIRST", "รายการแรก", "1 ชิ้น", "รายละเอียดแรก", "20", "เปิดขาย", "", "", mediaUrl("first-v1.jpg")],
+    ["รหัสสินค้า", "ชื่อสินค้า", "หน่วยขาย", "รายละเอียด", "ราคา", "สถานะ", "ไฟล์เดิม", "แก้ไข", "URL", "หมวดหมู่"],
+    ["FIRST", "รายการแรก", "1 ชิ้น", "รายละเอียดแรก", "20", "เปิดขาย", "", "", mediaUrl("first-v1.jpg"), "ของแนะนำ"],
     ["LEGACY", "รายการค่าเก่า", "1 แพ็ก", "รายละเอียดเดิม", "30", "หยุดขาย", "", "", mediaUrl("legacy-v1.jpg")],
     ["HIDDEN", "รายการซ่อน", "1 ชิ้น", "ไม่แสดง", "40", "ซ่อนสินค้า", "", "", mediaUrl("hidden-v1.jpg")],
     ["INCOMPLETE", "รายการข้อมูลไม่ครบ", "1 ชิ้น", "", "50", "เปิดขาย", "", "", mediaUrl("incomplete-v1.jpg")],
@@ -31,6 +32,12 @@ test("keeps sheet row order, hides hidden products, and downgrades incomplete ro
   assert.equal(products[1].status, "ปิดชั่วคราว");
   assert.equal(products[2].status, "รอข้อมูล");
   assert.equal(products[3].image, PRODUCT_IMAGE_PLACEHOLDER);
+  assert.equal(products[0].category, "ของแนะนำ");
+});
+
+test("only allows storefront brand assets from the configured R2 origin", () => {
+  assert.equal(safeStorefrontAssetUrl(`${DEFAULT_PRODUCT_MEDIA_ORIGIN}/brand/logo.jpg`, "fallback"), "/media/brand/logo.jpg");
+  assert.equal(safeStorefrontAssetUrl(`${DEFAULT_PRODUCT_MEDIA_ORIGIN}/products/logo.jpg`, "fallback"), "fallback");
 });
 
 test("only allows HTTPS product paths from the configured R2 media origin", () => {

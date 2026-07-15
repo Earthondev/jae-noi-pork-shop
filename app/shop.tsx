@@ -164,28 +164,13 @@ export function Shop() {
   const categories = useMemo(() => {
     const list = new Set<string>();
     list.add("ทั้งหมด");
-    storefront.products.forEach((product) => {
-      const name = product.name;
-      if (name.includes("แหนม")) list.add("แหนมหมู");
-      else if (name.includes("ไส้กรอก")) list.add("ไส้กรอกอีสาน");
-      else if (name.includes("แคปหมู") || name.includes("แคบหมู") || name.includes("กากหมู")) list.add("แคปหมู");
-      else list.add("อื่น ๆ");
-    });
+    storefront.products.forEach((product) => list.add(product.category || "อื่น ๆ"));
     return Array.from(list);
   }, [storefront.products]);
 
   const filteredProducts = useMemo(() => {
     if (selectedCategory === "ทั้งหมด") return storefront.products;
-    return storefront.products.filter((product) => {
-      const name = product.name;
-      if (selectedCategory === "แหนมหมู") return name.includes("แหนม");
-      if (selectedCategory === "ไส้กรอกอีสาน") return name.includes("ไส้กรอก");
-      if (selectedCategory === "แคปหมู") return name.includes("แคปหมู") || name.includes("แคบหมู") || name.includes("กากหมู");
-      if (selectedCategory === "อื่น ๆ") {
-        return !name.includes("แหนม") && !name.includes("ไส้กรอก") && !name.includes("แคปหมู") && !name.includes("แคบหมู") && !name.includes("กากหมู");
-      }
-      return true;
-    });
+    return storefront.products.filter((product) => (product.category || "อื่น ๆ") === selectedCategory);
   }, [storefront.products, selectedCategory]);
   
   const bestSellers = useMemo(() => {
@@ -292,7 +277,7 @@ export function Shop() {
 
   return (
     <main id="top">
-      <SiteHeader cartCount={cartCount} onOpenCart={() => setCartOpen(true)} storeName={storefront.content.storeName} />
+      <SiteHeader cartCount={cartCount} onOpenCart={() => setCartOpen(true)} storeName={storefront.content.storeName} storeLogoUrl={storefront.content.storeLogoUrl} />
       <Hero storeLoading={storefront.storeLoading} rounds={storefront.rounds} nextRound={storefront.nextRound} content={storefront.content} />
       
       {bestSellers.length > 0 && storefront.products.length > 4 && !storefront.storeLoading && (
@@ -390,7 +375,7 @@ export function Shop() {
         </div>
       </section>
 
-      <footer><Image src="/images/products/jae-noi-shop-logo.jpg" alt={storefront.content.storeName} width={150} height={90} /><p>โทรสั่งซื้อ / สอบถาม</p><div className="footer-phone-links" aria-label="เบอร์โทรร้านเจ๊น้อย"><a href={`tel:${storefront.content.phonePrimary.replace(/[^\d+]/g, "")}`}>{storefront.content.phonePrimary}</a><a href={`tel:${storefront.content.phoneSecondary.replace(/[^\d+]/g, "")}`}>{storefront.content.phoneSecondary}</a></div><Link href="/track">ติดตามออเดอร์</Link></footer>
+      <footer><Image src={storefront.content.storeLogoUrl} alt={storefront.content.storeName} width={150} height={90} unoptimized={storefront.content.storeLogoUrl.startsWith("/media/")} /><p>โทรสั่งซื้อ / สอบถาม</p><div className="footer-phone-links" aria-label="เบอร์โทรร้านเจ๊น้อย"><a href={`tel:${storefront.content.phonePrimary.replace(/[^\d+]/g, "")}`}>{storefront.content.phonePrimary}</a><a href={`tel:${storefront.content.phoneSecondary.replace(/[^\d+]/g, "")}`}>{storefront.content.phoneSecondary}</a></div><Link href="/track">ติดตามออเดอร์</Link></footer>
 
       {cartOpen && (
         <CartDrawer

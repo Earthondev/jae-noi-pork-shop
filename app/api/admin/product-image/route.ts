@@ -23,15 +23,19 @@ export async function POST(request: Request) {
   const form = await request.formData().catch(() => null);
   const file = form?.get("image");
   const id = normalizeProductId(String(form?.get("productId") ?? "PRODUCT")) || "PRODUCT";
-  if (!(file instanceof File)) return response({ error: "กรุณาเลือกรูปสินค้า" }, 400);
-  if (file.size <= 0 || file.size > MAX_IMAGE_BYTES) return response({ error: "รูปสินค้าต้องมีขนาดไม่เกิน 5 MB" }, 400);
+  const assetType = form?.get("assetType") === "brand" ? "brand" : "product";
+  const assetSlot = form?.get("assetSlot") === "logo" ? "logo" : "cover";
+  if (!(file instanceof File)) return response({ error: "กรุณาเลือกรูป" }, 400);
+  if (file.size <= 0 || file.size > MAX_IMAGE_BYTES) return response({ error: "รูปต้องมีขนาดไม่เกิน 5 MB" }, 400);
 
   const bytes = new Uint8Array(await file.arrayBuffer());
   const imageType = detectImageType(bytes);
   if (!imageType) return response({ error: "รองรับเฉพาะรูป JPG, PNG หรือ WebP ที่ถูกต้อง" }, 400);
 
   try {
-    const key = `products/${id.toLowerCase()}-${Date.now()}-${crypto.randomUUID().slice(0, 8)}.${imageType.extension}`;
+    const key = assetType === "brand"
+      ? `brand/${assetSlot}-${Date.now()}-${crypto.randomUUID().slice(0, 8)}.${imageType.extension}`
+      : `products/${id.toLowerCase()}-${Date.now()}-${crypto.randomUUID().slice(0, 8)}.${imageType.extension}`;
     await bindings.PRODUCT_MEDIA.put(key, bytes, {
       httpMetadata: { contentType: imageType.contentType, cacheControl: "public, max-age=31536000, immutable" },
       customMetadata: { uploadedBy: user.username, uploadedAt: new Date().toISOString() },
