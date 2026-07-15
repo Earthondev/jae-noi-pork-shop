@@ -1,23 +1,23 @@
 @import "tailwindcss";
 
 :root {
-  /* Dynamic Design System (Sleek Market Premium Theme) */
-  --red-950: #6a040b;
-  --red-800: #8c0f16;
-  --red-700: #b51519;
-  --red-600: #cf2025;
-  --red-500: #e03238;
-  --gold-500: #ffbc0a;
-  --gold-400: #ffcf56;
-  --gold-300: #ffe59c;
-  --cream-50: #fdfaf7;
-  --cream-100: #f6efe8;
+  /* Dynamic Design System (Thai Isan Style – อบอุ่น น่าเชื่อถือ อร่อย) */
+  --red-950: #571414;
+  --red-800: #7a1f1f;
+  --red-700: #9C2A2A;   /* สีแดงหลัก - สื่อถึงเนื้อหมูสด + ความดั้งเดิม */
+  --red-600: #b53838;
+  --red-500: #c44646;
+  --gold-500: #D4A017;  /* สีน้ำตาลทอง - สดใหม่ อาหารโฮมเมด */
+  --gold-400: #e6b433;
+  --gold-300: #f7ce65;
+  --cream-50: #FAF9F6;  /* สีพื้นหลังขาวสะอาดอมครีม */
+  --cream-100: #F5E8C7; /* สีครีมรอง */
   --cream-200: #eddcd0;
-  --ink: #2a1816;
-  --muted: #6e5855;
+  --ink: #2a1816;       /* สีข้อความน้ำตาลเข้มเกือบดำ */
+  --muted: #6e5855;     /* สีข้อความรองสีน้ำตาลหม่น */
   --line: #ebd6c8;
   --white: #ffffff;
-  --success: #1d723e;
+  --success: #4A7043;   /* สีเขียวสด (ใบตะคร้อ) */
   --warning: #c25f00;
   --shadow-sm: 0 4px 16px rgba(42, 24, 22, 0.04);
   --shadow-md: 0 10px 30px rgba(42, 24, 22, 0.08);
