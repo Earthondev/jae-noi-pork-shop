@@ -315,10 +315,6 @@ export function Shop() {
       />
       <PhoneStrip phonePrimary={storefront.content.phonePrimary} phoneSecondary={storefront.content.phoneSecondary} />
 
-      <section className="marquee" aria-label="จุดเด่นสินค้า">
-        <div>{storefront.content.announcementText} <span aria-hidden="true">◆</span> {storefront.content.announcementText}</div>
-      </section>
-
       <section className="order-flow" id="how-to-order">
         <div><span>1</span><h3>เลือกสินค้า</h3><p>เพิ่มจำนวนที่ต้องการลงตะกร้า</p></div>
         <div><span>2</span><h3>กรอกที่อยู่</h3><p>แจ้งชื่อ เบอร์โทร และที่จัดส่ง</p></div>
