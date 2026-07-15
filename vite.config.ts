@@ -45,10 +45,6 @@ export default defineConfig(async ({ command }) => {
         CLOUDFLARE_ACCESS_AUD: process.env.CLOUDFLARE_ACCESS_AUD ?? "",
         CLOUDFLARE_ACCESS_TEAM_DOMAIN:
           process.env.CLOUDFLARE_ACCESS_TEAM_DOMAIN ?? "",
-        GOOGLE_SHEET_ID: process.env.GOOGLE_SHEET_ID ?? "",
-        GOOGLE_SERVICE_ACCOUNT_EMAIL:
-          process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL ?? "",
-        GOOGLE_PRIVATE_KEY: process.env.GOOGLE_PRIVATE_KEY ?? "",
         PRODUCT_MEDIA_ORIGIN: productMediaOrigin,
         SLIPOK_ENABLED: process.env.SLIPOK_ENABLED ?? "false",
         SLIPOK_BRANCH_ID: process.env.SLIPOK_BRANCH_ID ?? "",

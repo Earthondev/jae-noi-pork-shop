@@ -1,11 +1,6 @@
 import { readFile } from "node:fs/promises";
 
-export const DEVELOPMENT_SHEET_ID = "114-ldhzwxBg1wixg0W-DSiTzM_W1GX5WpiSF4L_ysWM";
-export const PRODUCTION_SHEET_ID = "10kwcEYyyOA3tIKTpmdwH21KIdpidLaiU04RC6ON6tJE";
 export const LOCAL_ENV_PATH = new URL("../.dev.vars", import.meta.url);
-export const SERVICE_ACCOUNT_PATH = new URL(
-  "file:///Users/earthondev/.config/jae-noi-pork-shop/google-service-account.json",
-);
 
 export function parseEnvFile(source) {
   const values = {};

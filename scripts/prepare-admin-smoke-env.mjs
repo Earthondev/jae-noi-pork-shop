@@ -11,9 +11,6 @@ const values = {
   ADMIN_AUTH_SECRET: required("ADMIN_AUTH_SECRET"),
   ADMIN_PASSWORD_HASH: passwordHash,
   ADMIN_PASSWORD_FALLBACK_ENABLED: "true",
-  GOOGLE_PRIVATE_KEY: required("GOOGLE_PRIVATE_KEY"),
-  GOOGLE_SERVICE_ACCOUNT_EMAIL: required("GOOGLE_SERVICE_ACCOUNT_EMAIL"),
-  GOOGLE_SHEET_ID: required("GOOGLE_SHEET_ID"),
   SLIPOK_ENABLED: "false",
 };
 const body = Object.entries(values)

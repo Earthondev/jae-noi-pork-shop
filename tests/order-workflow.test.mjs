@@ -105,12 +105,12 @@ test("prevents fulfilment progress until payment is confirmed", async () => {
 });
 
 test("revalidates product availability with product-specific messages", async () => {
-  const [orderRoute, sheets] = await Promise.all([
+  const [orderRoute, repository] = await Promise.all([
     projectFile("app/api/orders/route.ts"),
-    projectFile("lib/google-sheets.ts"),
+    projectFile("db/storefront-repository.ts"),
   ]);
 
-  assert.match(sheets, /สินค้า!A:J/);
+  assert.match(repository, /FROM products/);
   assert.match(orderRoute, /product\.status === "ปิดชั่วคราว"/);
   assert.match(orderRoute, /\$\{product\.name\} ปิดรับชั่วคราว/);
   assert.doesNotMatch(orderRoute, /ไส้กรอกอีสานยังรอข้อมูลราคา/);

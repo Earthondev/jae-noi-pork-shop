@@ -290,7 +290,7 @@ export function CartDrawer({ drawerRef, onClose, cart, checkout, storefront, ord
                 <span className="closed-round-mark" aria-hidden="true">ปิด</span>
                 <p className="eyebrow">ขณะนี้ยังไม่เปิดรับออเดอร์</p>
                 <h3 id="closed-round-title">ตะกร้ารอบนี้ยังปิดอยู่</h3>
-                <p className="closed-round-date">{storefront.nextRound ? `รอบถัดไปเปิดวันที่ ${storefront.nextRound.opensAt}` : "ติดตามรอบถัดไปเร็ว ๆ นี้"}</p>
+                <p className="closed-round-date">{storefront.nextRound ? `รอบถัดไปเปิดวันที่ ${formatStorefrontDateTime(storefront.nextRound.opensAt)}` : "ติดตามรอบถัดไปเร็ว ๆ นี้"}</p>
                 <p className="closed-round-note">สินค้าในตะกร้ายังไม่ถูกจองและยังไม่ต้องชำระเงิน หากต้องการสอบถาม โทรหาร้านได้ทันที</p>
                 <div className="closed-round-phone-links" aria-label="โทรสอบถามร้านเจ๊น้อย">
                   <a href={`tel:${storefront.phonePrimary.replace(/[^\d+]/g, "")}`} aria-label={`โทรหาร้านเจ๊น้อยที่เบอร์ ${storefront.phonePrimary}`}>☎ {storefront.phonePrimary}</a>
@@ -320,14 +320,14 @@ export function CartDrawer({ drawerRef, onClose, cart, checkout, storefront, ord
                     {storefront.rounds.length === 1 ? (
                       <div className="round-selection-state selected" role="status">
                         <strong>{storefront.rounds[0].label}</strong>
-                        <small>เลือกรอบนี้ให้อัตโนมัติ · ปิดรับ {storefront.rounds[0].closesAt}</small>
+                        <small>เลือกรอบนี้ให้อัตโนมัติ · ปิดรับ {formatStorefrontDateTime(storefront.rounds[0].closesAt)}</small>
                       </div>
                     ) : (
                       <label className="round-select-label">
                         <span className="sr-only">เลือกรอบจัดส่ง</span>
                         <select name="roundId" required value={storefront.selectedRound} onChange={(event) => storefront.onSelectRound(event.target.value)}>
                           <option value="">เลือกรอบ</option>
-                          {storefront.rounds.map((round) => <option value={round.id} key={round.id}>{round.label} · ปิดรับ {round.closesAt}</option>)}
+                          {storefront.rounds.map((round) => <option value={round.id} key={round.id}>{round.label} · ปิดรับ {formatStorefrontDateTime(round.closesAt)}</option>)}
                         </select>
                       </label>
                     )}
@@ -545,4 +545,20 @@ function downloadBlob(blob: Blob, filename: string) {
 function showQrSaveSuccess(setStatus: (status: "idle" | "saving" | "saved" | "error") => void) {
   setStatus("saved");
   window.setTimeout(() => setStatus("idle"), 2_500);
+}
+
+const THAI_MONTHS = ["ม.ค.", "ก.พ.", "มี.ค.", "เม.ย.", "พ.ค.", "มิ.ย.", "ก.ค.", "ส.ค.", "ก.ย.", "ต.ค.", "พ.ย.", "ธ.ค."];
+function formatStorefrontDateTime(value: string): string {
+  if (!value) return "—";
+  try {
+    const [date, time] = value.split("T");
+    const [year, month, day] = date.split("-");
+    const mIdx = parseInt(month, 10) - 1;
+    const mStr = THAI_MONTHS[mIdx] ?? month;
+    const beYear = parseInt(year, 10) + 543;
+    const formattedTime = time ? ` เวลา ${time.slice(0, 5)} น.` : "";
+    return `${parseInt(day, 10)} ${mStr} ${beYear}${formattedTime}`;
+  } catch {
+    return value;
+  }
 }

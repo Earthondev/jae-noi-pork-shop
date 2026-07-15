@@ -117,16 +117,32 @@ export function Hero({ storeLoading, rounds, nextRound, content }: HeroProps) {
           ) : rounds[0] ? (
             <div>
               <strong>{rounds[0].label}</strong>
-              <span>ปิดตะกร้า {rounds[0].closesAt}</span>
+              <span>ปิดตะกร้า {formatStorefrontDateTime(rounds[0].closesAt)}</span>
             </div>
           ) : (
             <div>
               <strong>ยังไม่มีรอบที่เปิดรับ</strong>
-              <span>{nextRound ? `รอบถัดไปเปิดวันที่ ${nextRound.opensAt}` : "ติดตามรอบถัดไปเร็ว ๆ นี้"}</span>
+              <span>{nextRound ? `รอบถัดไปเปิดวันที่ ${formatStorefrontDateTime(nextRound.opensAt)}` : "ติดตามรอบถัดไปเร็ว ๆ นี้"}</span>
             </div>
           )}
         </div>
       </section>
     </>
   );
+}
+
+const THAI_MONTHS = ["ม.ค.", "ก.พ.", "มี.ค.", "เม.ย.", "พ.ค.", "มิ.ย.", "ก.ค.", "ส.ค.", "ก.ย.", "ต.ค.", "พ.ย.", "ธ.ค."];
+function formatStorefrontDateTime(value: string): string {
+  if (!value) return "—";
+  try {
+    const [date, time] = value.split("T");
+    const [year, month, day] = date.split("-");
+    const mIdx = parseInt(month, 10) - 1;
+    const mStr = THAI_MONTHS[mIdx] ?? month;
+    const beYear = parseInt(year, 10) + 543;
+    const formattedTime = time ? ` เวลา ${time.slice(0, 5)} น.` : "";
+    return `${parseInt(day, 10)} ${mStr} ${beYear}${formattedTime}`;
+  } catch {
+    return value;
+  }
 }
