@@ -3,8 +3,8 @@ import { readFile } from "node:fs/promises";
 const configPath = new URL("../dist/server/wrangler.json", import.meta.url);
 const config = JSON.parse(await readFile(configPath, "utf8"));
 const expected = new Map([
-  ["UPLOADS", process.env.CLOUDFLARE_R2_BUCKET_NAME],
-  ["PRODUCT_MEDIA", process.env.CLOUDFLARE_PRODUCT_MEDIA_BUCKET_NAME],
+  ["UPLOADS", process.env.CLOUDFLARE_R2_BUCKET_NAME ?? "jae-noi-pork-shop-uploads"],
+  ["PRODUCT_MEDIA", process.env.CLOUDFLARE_PRODUCT_MEDIA_BUCKET_NAME ?? "jae-noi-pork-shop-media"],
 ]);
 const bindings = new Map(
   (Array.isArray(config.r2_buckets) ? config.r2_buckets : [])
