@@ -155,7 +155,6 @@ export function OrderTracker({ initialOrderId = "", storeName, phonePrimary, pho
     <main className="track-page">
       <header className="track-header">
         <Link href="/" aria-label="กลับหน้าร้าน"><Image src="/images/products/jae-noi-shop-logo.jpg" alt={storeName} width={130} height={78} priority /></Link>
-        <Link href="/">กลับหน้าร้าน</Link>
       </header>
 
       <section className="track-hero">
@@ -241,7 +240,6 @@ export function OrderTracker({ initialOrderId = "", storeName, phonePrimary, pho
             <span style={{ verticalAlign: "middle" }}>{phoneSecondary}</span>
           </a>
         </div>
-        <Link href="/">กลับไปเลือกสินค้า</Link>
       </footer>
       <BottomNav cartCount={cartCount} onOpenCart={handleOpenCart} activeTab="track" />
     </main>

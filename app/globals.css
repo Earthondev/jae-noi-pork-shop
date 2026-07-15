@@ -1281,24 +1281,8 @@ footer .footer-phone-links a:active { background: rgba(255, 255, 255, 0.1); }
   width: 78px;
   height: 78px;
   object-fit: cover;
-  border-radius: 50%;
-  background: white;
-  border: 2px solid var(--gold-400);
 }
-.track-header > a:last-child {
-  min-height: 38px;
-  padding: 0 16px;
-  display: inline-flex;
-  align-items: center;
-  border: 1px solid rgba(255, 255, 255, 0.3);
-  border-radius: 999px;
-  color: white;
-  text-decoration: none;
-  font-size: 0.82rem;
-  font-weight: 700;
-  background: rgba(255, 255, 255, 0.1);
-  backdrop-filter: blur(10px);
-}
+
 
 .track-hero {
   margin: 16px 16px 0;
