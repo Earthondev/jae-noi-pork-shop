@@ -19,11 +19,11 @@ export async function generateMetadata(): Promise<Metadata> {
     description,
     icons: {
       icon: [
-        { url: "/favicon.ico", sizes: "48x48", type: "image/x-icon" },
-        { url: "/favicon-32x32.png", sizes: "32x32", type: "image/png" },
+        { url: "/favicon-shop-v2.ico", sizes: "48x48", type: "image/x-icon" },
+        { url: "/favicon-shop-v2-32.png", sizes: "32x32", type: "image/png" },
       ],
-      shortcut: "/favicon.ico",
-      apple: [{ url: "/apple-touch-icon.png", sizes: "180x180", type: "image/png" }],
+      shortcut: "/favicon-shop-v2.ico",
+      apple: [{ url: "/apple-touch-icon-v2.png", sizes: "180x180", type: "image/png" }],
     },
     openGraph: { title, description, type: "website", locale: "th_TH", images: [{ url: "/og.png", width: 1536, height: 909, alt: "เจ๊น้อย เขียงหมูตะคร้อ อร่อยถึงเครื่อง สั่งง่ายถึงบ้าน" }] },
     twitter: { card: "summary_large_image", title, description, images: ["/og.png"] },

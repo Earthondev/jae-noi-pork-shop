@@ -303,15 +303,6 @@ function ProductsPanel({ products, saving, mutate, setNotice }: { products: Admi
         <AdminIcon name="search" />
         <input value={searchQuery} onChange={(event) => setSearchQuery(event.target.value)} placeholder="ค้นหารหัส ชื่อสินค้า หรือหมวดหมู่..." />
       </label>
-      <button
-        type="button"
-        className={`admin-sort-mode-toggle-btn ${sortMode ? "active" : ""}`}
-        onClick={() => setSortMode(!sortMode)}
-        title="จัดเรียงลำดับสินค้า"
-      >
-        <AdminIcon name="list" />
-        <span>{sortMode ? "ปิดโหมดจัดเรียง" : "จัดเรียงสินค้า"}</span>
-      </button>
     </div>
 
     <div className="admin-product-toolbar">
@@ -328,6 +319,7 @@ function ProductsPanel({ products, saving, mutate, setNotice }: { products: Admi
         ))}
       </div>
       <div className="admin-view-toggle" aria-label="รูปแบบแสดงสินค้า">
+        <button className={`admin-sort-mode-btn ${sortMode ? "active" : ""}`} type="button" onClick={() => setSortMode(!sortMode)} title="โหมดจัดเรียงลำดับสินค้า"><AdminIcon name="sort" /></button>
         <button className={view === "list" ? "active" : ""} type="button" onClick={() => setView("list")} aria-label="แบบรายการ"><AdminIcon name="list" /></button>
         <button className={view === "grid" ? "active" : ""} type="button" onClick={() => setView("grid")} aria-label="แบบตาราง"><AdminIcon name="grid" /></button>
       </div>
@@ -355,7 +347,6 @@ function ProductsPanel({ products, saving, mutate, setNotice }: { products: Admi
     ) : (
       <div className={`admin-card-list admin-product-list view-${view}`}>
         {visible.map((product) => {
-          const index = products.findIndex((item) => item.id === product.id);
           if (editing === product.id) return <ProductForm key={product.id} title={`แก้ไข ${product.name}`} value={draft} disabled={saving !== null || uploading} uploading={uploading} lockId onChange={setDraft} onUpload={uploadImage} onCancel={() => setEditing(null)} onSubmit={async () => { if (await mutate("product.update", { product: draft }, "บันทึกสินค้าแล้ว")) setEditing(null); }} />;
 
           const firstImage = product.imageUrl ? product.imageUrl.split(",")[0] : "";
