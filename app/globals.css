@@ -1436,8 +1436,17 @@ footer .footer-phone-links a:active { background: rgba(255, 255, 255, 0.1); }
 .receipt-actions button:first-child { background: var(--red-700); color: white; box-shadow: 0 4px 12px rgba(181, 21, 25, 0.15); }
 .receipt-actions button:last-child { border: 1px solid var(--line); background: white; color: var(--red-700); }
 
-.track-footer { margin-top: 24px; padding: 16px; display: grid; justify-items: center; gap: 8px; color: var(--muted); text-align: center; font-size: 0.8rem; }
-.track-footer a { color: var(--red-700); font-weight: 800; text-decoration: none; }
+.track-footer {
+  margin-top: 24px;
+  padding: 28px 16px;
+  display: grid;
+  justify-items: center;
+  gap: 12px;
+  color: rgba(255, 255, 255, 0.88);
+  text-align: center;
+  font-size: 0.82rem;
+}
+.track-footer a { color: var(--gold-400); font-weight: 800; text-decoration: none; }
 .track-phone-links { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; }
 .track-phone-links a { min-height: 40px; padding: 0 14px; display: inline-flex; align-items: center; border: 1px solid var(--line); border-radius: 999px; background: white; text-decoration: none; color: var(--ink); font-weight: 700; font-size: 0.78rem; }
 
