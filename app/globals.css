@@ -205,7 +205,7 @@ img { display: block; }
   display: flex;
   gap: 12px;
   width: max-content;
-  animation: hero-marquee-right 14s linear infinite;
+  animation: hero-marquee-left 14s linear infinite;
 }
 .hero-features:hover {
   animation-play-state: paused;
@@ -225,9 +225,9 @@ img { display: block; }
   white-space: nowrap;
 }
 
-@keyframes hero-marquee-right {
-  0% { transform: translate3d(-50%, 0, 0); }
-  100% { transform: translate3d(0, 0, 0); }
+@keyframes hero-marquee-left {
+  0% { transform: translate3d(0, 0, 0); }
+  100% { transform: translate3d(-50%, 0, 0); }
 }
 .hero-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 16px; }
 .primary-action {
