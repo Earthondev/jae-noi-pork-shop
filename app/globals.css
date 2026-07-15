@@ -177,6 +177,8 @@ img { display: block; }
   font-size: 2.15rem;
   line-height: 1.25;
   letter-spacing: -0.02em;
+  font-weight: 900;
+  text-shadow: 0 1px 2px rgba(42, 24, 22, 0.04);
 }
 .hero h1 span {
   color: var(--red-700);
@@ -184,11 +186,30 @@ img { display: block; }
   display: inline-block;
 }
 .hero-lead {
-  margin: 16px 0 24px;
+  margin: 16px 0 20px;
   max-width: 520px;
   color: var(--muted);
-  font-size: 0.9rem;
+  font-size: 1.05rem;
   line-height: 1.7;
+}
+.hero-features {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 12px;
+  margin-top: 18px;
+}
+.hero-features span {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  background: var(--cream-100);
+  color: var(--ink);
+  font-size: 0.8rem;
+  font-weight: 800;
+  border-radius: 99px;
+  border: 1px solid rgba(156, 42, 42, 0.1);
+  box-shadow: var(--shadow-sm);
 }
 .hero-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 16px; }
 .primary-action {
@@ -226,11 +247,23 @@ img { display: block; }
   transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1);
 }
 .hero-image-wrap:hover { transform: rotate(0deg) scale(1.02); }
+.hero-image-inner {
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  border-radius: 26px;
+  position: relative;
+}
 .hero-image {
   width: 100%;
   height: 100%;
   object-fit: cover;
-  border-radius: 26px;
+  object-position: 50% 20%;
+  transform: scale(1.15);
+  transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.hero-image-wrap:hover .hero-image {
+  transform: scale(1.18);
 }
 .hero-stamp {
   position: absolute;
@@ -732,35 +765,38 @@ footer .footer-phone-links a:active { background: rgba(255, 255, 255, 0.1); }
 /* Floating Cart Banner Pill */
 .floating-cart {
   position: fixed;
-  left: 16px;
   right: 16px;
-  bottom: calc(max(16px, env(safe-area-inset-bottom)) + 70px);
+  left: auto;
+  width: auto;
+  max-width: calc(100% - 32px);
+  bottom: calc(max(16px, env(safe-area-inset-bottom)) + 74px);
   z-index: 45;
-  min-height: 58px;
-  padding: 6px 8px 6px 18px;
+  min-height: 54px;
+  padding: 6px 12px 6px 18px;
   display: flex;
   align-items: center;
-  justify-content: space-between;
   gap: 12px;
   border-radius: 999px;
   background: var(--red-700);
   color: white;
-  box-shadow: 0 12px 30px rgba(181, 21, 25, 0.3);
+  box-shadow: 0 12px 32px rgba(156, 42, 42, 0.25);
   animation: cart-rise 0.3s cubic-bezier(0.16, 1, 0.3, 1) both;
+  border: none;
+  cursor: pointer;
 }
 .floating-cart:active { transform: scale(0.98); }
 .floating-cart-copy { min-width: 0; display: grid; gap: 1px; text-align: left; }
-.floating-cart-copy strong { font-size: 0.88rem; font-weight: 800; }
-.floating-cart-copy small { color: var(--gold-300); font-size: 0.72rem; font-weight: 600; }
+.floating-cart-copy strong { font-size: 0.86rem; font-weight: 800; }
+.floating-cart-copy small { color: var(--gold-300); font-size: 0.7rem; font-weight: 700; }
 .floating-cart-arrow {
-  min-height: 42px;
-  padding: 0 18px;
+  min-height: 38px;
+  padding: 0 14px;
   display: inline-flex;
   align-items: center;
   border-radius: 999px;
   background: var(--gold-500);
   color: var(--red-950);
-  font-size: 0.8rem;
+  font-size: 0.78rem;
   font-weight: 800;
 }
 @keyframes cart-rise {
@@ -1460,7 +1496,7 @@ footer .footer-phone-links a:active { background: rgba(255, 255, 255, 0.1); }
   
   .hero { min-height: 600px; padding: 60px 6vw 40px; display: grid; grid-template-columns: 1.1fr 0.9fr; align-items: center; gap: 40px; }
   .hero h1 { font-size: clamp(2.5rem, 5.2vw, 3.8rem); line-height: 1.15; }
-  .hero-lead { font-size: 0.95rem; }
+  .hero-lead { font-size: 1.15rem; }
   .primary-action { width: min(100%, 280px); }
   .hero-image-wrap { width: min(35vw, 420px); margin: 0 auto; }
   .hero-stamp { left: -10%; top: 10%; }
@@ -1555,6 +1591,119 @@ footer .footer-phone-links a:active { background: rgba(255, 255, 255, 0.1); }
 
 .submit-order svg.spin {
   animation: spin 1s linear infinite;
+}
+
+/* Best Sellers Section */
+.best-sellers-section {
+  padding: 48px 16px 20px;
+  background: var(--cream-50);
+  text-align: center;
+  display: grid;
+  justify-items: center;
+  gap: 24px;
+}
+.best-sellers-section .section-heading {
+  max-width: 600px;
+  margin-bottom: 8px;
+  display: grid;
+  justify-items: center;
+}
+.best-sellers-section h2 {
+  font-family: var(--font-display), serif;
+  font-size: 2.2rem;
+  color: var(--ink);
+  margin: 6px 0 8px;
+}
+.best-sellers-section p {
+  color: var(--muted);
+  font-size: 0.95rem;
+  margin: 0;
+}
+.best-sellers-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(290px, 1fr));
+  gap: 20px;
+  width: min(1200px, 100%);
+  padding: 0 16px;
+}
+
+/* Reviews Section */
+.reviews-section {
+  padding: 60px 16px;
+  background: var(--white);
+  text-align: center;
+  display: grid;
+  justify-items: center;
+  gap: 32px;
+  border-top: 1px solid var(--line);
+}
+.reviews-section .section-heading {
+  display: grid;
+  justify-items: center;
+}
+.reviews-section h2 {
+  font-family: var(--font-display), serif;
+  font-size: 2.2rem;
+  color: var(--ink);
+  margin: 6px 0 8px;
+}
+.reviews-section p {
+  color: var(--muted);
+  font-size: 0.95rem;
+  margin: 0;
+}
+.reviews-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 24px;
+  width: min(1200px, 100%);
+  padding: 0 16px;
+}
+.review-card {
+  background: var(--cream-50);
+  padding: 24px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--line);
+  text-align: left;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  box-shadow: var(--shadow-sm);
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+.review-card:hover {
+  transform: translateY(-4px);
+  box-shadow: var(--shadow-md);
+}
+.review-stars {
+  font-size: 1rem;
+  margin-bottom: 12px;
+}
+.review-text {
+  color: var(--ink);
+  font-size: 0.92rem;
+  line-height: 1.6;
+  margin: 0 0 16px;
+  font-style: italic;
+}
+.review-author {
+  display: grid;
+  gap: 2px;
+}
+.review-author strong {
+  color: var(--ink);
+  font-size: 0.9rem;
+}
+.review-author span {
+  color: var(--muted);
+  font-size: 0.78rem;
+}
+
+@media (min-width: 720px) {
+  .best-sellers-section { padding: 64px 24px 30px; }
+  .best-sellers-section h2, .reviews-section h2 { font-size: 2.6rem; }
+  .reviews-section { padding: 80px 24px; }
+  .best-sellers-grid, .reviews-grid { padding: 0; }
 }
 
 /* ==========================================================================

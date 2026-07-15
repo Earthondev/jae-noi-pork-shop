@@ -8,10 +8,12 @@ import { BottomNav } from "./_components/shop/bottom-nav";
 import { CartDrawer } from "./_components/shop/cart-drawer";
 import { Hero } from "./_components/shop/hero";
 import { PhoneStrip } from "./_components/shop/phone-strip";
+import { ProductCard } from "./_components/shop/product-card";
 import { ProductGrid } from "./_components/shop/product-grid";
 import { SiteHeader } from "./_components/shop/site-header";
 import { useCheckoutDraft } from "./_hooks/use-checkout-draft";
 import { useStorefront } from "./_hooks/use-storefront";
+import type { CatalogProduct } from "../lib/product-catalog";
 
 type ClientPaymentStatus = "waiting" | "verified" | "review" | "invalid";
 
@@ -72,12 +74,15 @@ export function Shop() {
   useEffect(() => {
     if (typeof window === "undefined") return;
     const params = new URLSearchParams(window.location.search);
-    if (params.get("cart") === "open") {
-      setCartOpen(true);
-      const url = new URL(window.location.href);
-      url.searchParams.delete("cart");
-      window.history.replaceState({}, document.title, url.pathname + url.search);
-    }
+    if (params.get("cart") !== "open") return;
+
+    const url = new URL(window.location.href);
+    url.searchParams.delete("cart");
+    window.history.replaceState({}, document.title, url.pathname + url.search);
+
+    // Open after hydration so the server and first client render stay identical.
+    const timer = window.setTimeout(() => setCartOpen(true), 0);
+    return () => window.clearTimeout(timer);
   }, []);
 
   useEffect(() => {
@@ -171,6 +176,25 @@ export function Shop() {
       return true;
     });
   }, [storefront.products, selectedCategory]);
+  
+  const bestSellers = useMemo(() => {
+    const active = storefront.products.filter((p) => p.status === "เปิดขาย");
+    const naem = active.find((p) => p.name.includes("แหนม"));
+    const saikrok = active.find((p) => p.name.includes("ไส้กรอก"));
+    const capmoo = active.find((p) => p.name.includes("แคปหมู") || p.name.includes("แคบหมู"));
+    
+    const selected = new Set<CatalogProduct>();
+    if (naem) selected.add(naem);
+    if (saikrok) selected.add(saikrok);
+    if (capmoo) selected.add(capmoo);
+    
+    for (const p of active) {
+      if (selected.size >= 3) break;
+      selected.add(p);
+    }
+    
+    return Array.from(selected);
+  }, [storefront.products]);
 
   const cartItems = storefront.products.filter((product) => (quantities[product.id] ?? 0) > 0);
   const cartCount = cartItems.reduce((sum, product) => sum + (quantities[product.id] ?? 0), 0);
@@ -253,6 +277,27 @@ export function Shop() {
     <main id="top">
       <SiteHeader cartCount={cartCount} onOpenCart={() => setCartOpen(true)} storeName={storefront.content.storeName} />
       <Hero storeLoading={storefront.storeLoading} rounds={storefront.rounds} nextRound={storefront.nextRound} content={storefront.content} />
+      
+      {bestSellers.length > 0 && !storefront.storeLoading && (
+        <section className="best-sellers-section">
+          <div className="section-heading">
+            <span className="eyebrow">🔥 ยอดนิยม</span>
+            <h2>สินค้าแนะนำ (Best Sellers)</h2>
+            <p>เมนูแนะนำ ทำสดใหม่ทุกวัน ขายดีจนต้องลอง</p>
+          </div>
+          <div className="best-sellers-grid">
+            {bestSellers.map((product) => (
+              <ProductCard
+                key={`best-${product.id}`}
+                product={product}
+                quantity={quantities[product.id] ?? 0}
+                onUpdateQuantity={updateQuantity}
+              />
+            ))}
+          </div>
+        </section>
+      )}
+
       <ProductGrid
         storeLoading={storefront.storeLoading}
         products={filteredProducts}
@@ -277,6 +322,40 @@ export function Shop() {
       <section className="story" id="story">
         <Image src="/images/products/jae-noi-presenting-pork-rinds-large-tubs.jpg" alt="เจ๊น้อยนำเสนอแคปหมูบรรจุกล่อง" width={760} height={960} />
         <div><p className="eyebrow">ทำเอง ขายเอง ใส่ใจทุกกล่อง</p><h2>{storefront.content.storyTitle}</h2><p>{storefront.content.storyDescription}</p><blockquote>“ให้ลูกค้าได้ของอร่อย เหมือนมาซื้อถึงหน้าร้าน”</blockquote></div>
+      </section>
+
+      <section className="reviews-section" id="reviews">
+        <div className="section-heading">
+          <span className="eyebrow">💬 เสียงตอบรับจากลูกค้า</span>
+          <h2>การันตีความอร่อยจากลูกค้าจริง</h2>
+          <p>ส่งจริง อร่อยจริง ทั่วประเทศไทย</p>
+        </div>
+        <div className="reviews-grid">
+          <div className="review-card">
+            <div className="review-stars">⭐⭐⭐⭐⭐</div>
+            <p className="review-text">“แหนมหมูสามชั้นอร่อยมาก สั่งพรีออเดอร์มาทานกับที่บ้าน ทำสดสะอาด แพ็กสูญญากาศดีมากครับ”</p>
+            <div className="review-author">
+              <strong>คุณสมชาย</strong>
+              <span>กรุงเทพฯ</span>
+            </div>
+          </div>
+          <div className="review-card">
+            <div className="review-stars">⭐⭐⭐⭐⭐</div>
+            <p className="review-text">“ไส้กรอกอีสานเปรี้ยวกำลังดี ย่างทานร้อนๆ หอมมากค่ะ สั่งไปรษณีย์ส่งไวมาก แพ็กแน่นหนา”</p>
+            <div className="review-author">
+              <strong>คุณสุรีย์</strong>
+              <span>นครราชสีมา</span>
+            </div>
+          </div>
+          <div className="review-card">
+            <div className="review-stars">⭐⭐⭐⭐⭐</div>
+            <p className="review-text">“แคปหมูติดมันกรอบอร่อยมาก ไม่เหม็นหืน ซื้อเป็นของฝากญาติๆ ชอบกันทุกคนเลยครับ”</p>
+            <div className="review-author">
+              <strong>คุณปอนด์</strong>
+              <span>ขอนแก่น</span>
+            </div>
+          </div>
+        </div>
       </section>
 
       <footer><Image src="/images/products/jae-noi-shop-logo.jpg" alt={storefront.content.storeName} width={150} height={90} /><p>โทรสั่งซื้อ / สอบถาม</p><div className="footer-phone-links" aria-label="เบอร์โทรร้านเจ๊น้อย"><a href={`tel:${storefront.content.phonePrimary.replace(/[^\d+]/g, "")}`}>{storefront.content.phonePrimary}</a><a href={`tel:${storefront.content.phoneSecondary.replace(/[^\d+]/g, "")}`}>{storefront.content.phoneSecondary}</a></div><Link href="/track">ติดตามออเดอร์</Link></footer>

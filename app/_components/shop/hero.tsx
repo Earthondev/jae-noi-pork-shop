@@ -22,9 +22,16 @@ export function Hero({ storeLoading, rounds, nextRound, content }: HeroProps) {
           <div className="hero-actions">
             <a className="primary-action" href="#products">เลือกสินค้า</a>
           </div>
+          <div className="hero-features">
+            <span>🚚 ส่งด่วนทั่วประเทศ</span>
+            <span>📦 แพ็กสูญญากาศปลอดภัย</span>
+            <span>✨ ทำสดใหม่ทุกวัน</span>
+          </div>
         </div>
         <div className="hero-image-wrap">
-          <Image className="hero-image" src="/images/products/jae-noi-holding-two-naem-pork-bags.jpg" alt="เจ๊น้อยถือแหนมหมูสองถุงที่หน้าร้าน" width={900} height={900} priority />
+          <div className="hero-image-inner">
+            <Image className="hero-image" src="/images/products/jae-noi-holding-two-naem-pork-bags.jpg" alt="เจ๊น้อยถือแหนมหมูสองถุงที่หน้าร้าน" width={900} height={900} priority />
+          </div>
           <p className="hero-stamp">สดจริง<br /><strong>จากร้าน</strong></p>
         </div>
       </section>
