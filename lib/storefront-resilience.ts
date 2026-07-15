@@ -34,7 +34,7 @@ type ResilientStorefrontOptions<T> = {
 
 class StorefrontTimeoutError extends Error {
   constructor(timeoutMs: number) {
-    super(`Google Sheets request exceeded ${timeoutMs} ms`);
+    super(`Storefront request exceeded ${timeoutMs} ms`);
     this.name = "StorefrontTimeoutError";
   }
 }
@@ -58,7 +58,7 @@ export async function loadResilientStorefront<T>(
       if (!options.validate(data)) throw new InvalidFreshStorefrontError();
       const savedAt = now().toISOString();
       await writeSnapshot(options.bucket, { version: 1, savedAt, data });
-      return { data, source: options.freshSource ?? "google-sheets", savedAt, attempts: attempt };
+      return { data, source: options.freshSource ?? "d1", savedAt, attempts: attempt };
     } catch (error) {
       lastError = error;
       const retryable = error instanceof StorefrontTimeoutError || options.shouldRetry(error);

@@ -32,9 +32,13 @@ export async function getAdminCmsData(): Promise<AdminCmsData> {
     db.prepare("SELECT id,name,unit,detail,price,status,image_url,category,sort_order,version,updated_at FROM products ORDER BY sort_order"),
     db.prepare("SELECT id,delivery_date,opens_at,closes_at,status,label,note,version FROM delivery_rounds ORDER BY delivery_date"),
     db.prepare("SELECT key,value,version FROM storefront_settings"),
-    db.prepare("SELECT round_id, COUNT(*) AS order_count, COALESCE(SUM(total),0) AS sales FROM orders GROUP BY round_id"),
+    db.prepare(`SELECT round_id,
+      COUNT(*) AS order_count,
+      SUM(CASE WHEN payment_status='paid' AND order_status!='cancelled' THEN 1 ELSE 0 END) AS paid_order_count,
+      COALESCE(SUM(CASE WHEN payment_status='paid' AND order_status!='cancelled' THEN total ELSE 0 END),0) AS sales
+      FROM orders GROUP BY round_id`),
   ]);
-  const totals = new Map((totalsResult.results as Array<{ round_id: string; order_count: number; sales: number }>).map((row) => [row.round_id, row]));
+  const totals = new Map((totalsResult.results as Array<{ round_id: string; order_count: number; paid_order_count: number; sales: number }>).map((row) => [row.round_id, row]));
   const products = (productsResult.results as unknown as ProductRow[]).map((row) => ({
     id: row.id, name: row.name, unit: row.unit, detail: row.detail, price: row.price, status: row.status,
     imageUrl: row.image_url, category: row.category, updatedAt: row.updated_at, fingerprint: String(row.version),
@@ -44,6 +48,7 @@ export async function getAdminCmsData(): Promise<AdminCmsData> {
     return {
       id: row.id, deliveryDate: row.delivery_date, opensAt: row.opens_at, closesAt: row.closes_at,
       status: row.status, label: row.label, note: row.note, orderCount: total?.order_count ?? 0,
+      paidOrderCount: total?.paid_order_count ?? 0,
       sales: total?.sales ?? 0, displayState: displayState(row), fingerprint: String(row.version),
     };
   });

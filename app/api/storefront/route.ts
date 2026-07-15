@@ -1,10 +1,6 @@
 import { env } from "cloudflare:workers";
 import { NextResponse } from "next/server";
-import {
-  shouldRetryGoogleSheetsError,
-  type StorefrontData,
-} from "../../../lib/google-sheets";
-import { getStorefrontData } from "../../../db/storefront-repository";
+import { getStorefrontData, type StorefrontData } from "../../../db/storefront-repository";
 import { loadResilientStorefront } from "../../../lib/storefront-resilience";
 import { publicErrorBody } from "../../../lib/public-errors";
 import { reportServerError } from "../../../lib/server-monitoring";
@@ -45,7 +41,7 @@ export async function GET(request: Request) {
       bucket: bindings.UPLOADS,
       loadFresh: (signal) => getStorefrontData({ signal }),
       validate: isStorefrontData,
-      shouldRetry: shouldRetryGoogleSheetsError,
+      shouldRetry: () => false,
       timeoutMs: 5_000,
       maxAttempts: 2,
       retryDelayMs: 250,

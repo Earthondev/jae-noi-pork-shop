@@ -29,6 +29,7 @@ export type AdminRound = {
   label: string;
   note: string;
   orderCount: number;
+  paidOrderCount?: number;
   sales: number;
   displayState: string;
   fingerprint: string;

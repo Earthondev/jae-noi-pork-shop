@@ -1,17 +1,12 @@
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import test from "node:test";
-test("CMS validation covers dates, products, Maps links, and raw Sheets writes", async () => {
-  const [cms, sheets] = await Promise.all([
-    readFile(new URL("../lib/admin-cms.ts", import.meta.url), "utf8"),
-    readFile(new URL("../lib/google-sheets.ts", import.meta.url), "utf8"),
-  ]);
+test("CMS validation covers dates, products, and Maps links", async () => {
+  const cms = await readFile(new URL("../lib/admin-cms.ts", import.meta.url), "utf8");
   assert.match(cms, /roundIdFromDeliveryDate/);
   assert.match(cms, /เวลาเปิดรับต้องมาก่อนเวลาปิดรับ/);
   assert.match(cms, /สินค้าที่เปิดขายต้องมีหน่วย/);
   assert.match(cms, /safePickupMapUrl/);
-  assert.match(sheets, /valueInputOption: "RAW"/);
-  assert.match(sheets, /fingerprint/);
 });
 
 test("admin CMS mutations require login, same-origin checks, and private responses", async () => {
@@ -32,6 +27,8 @@ test("admin CMS mutations require login, same-origin checks, and private respons
   assert.match(dashboard, /serverClockLabel/);
   assert.match(dashboard, /history\.replaceState/);
   assert.match(dashboard, /ไม่ต้องรีโหลดหน้า/);
+  assert.match(dashboard, /ยอดชำระแล้วรอบนี้/);
+  assert.match(dashboard, /order\.payment_status === "paid"/);
   assert.match(dashboard, /สินค้า/);
   assert.match(dashboard, /หน้าร้าน/);
   assert.match(dashboard, /ConfirmDialog/);

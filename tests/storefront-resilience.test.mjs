@@ -59,7 +59,7 @@ test("retries one transient Google failure and stores the successful snapshot", 
   });
 
   assert.equal(calls, 2);
-  assert.equal(result.source, "google-sheets");
+  assert.equal(result.source, "d1");
   assert.equal(result.attempts, 2);
   assert.deepEqual(result.data, freshData);
   assert.ok(bucket.objects.has(STOREFRONT_SNAPSHOT_KEY));
@@ -134,7 +134,7 @@ test("fresh storefront data remains available if writing its R2 snapshot fails",
     timeoutMs: 50,
   });
 
-  assert.equal(result.source, "google-sheets");
+  assert.equal(result.source, "d1");
   assert.deepEqual(result.data, freshData);
 });
 

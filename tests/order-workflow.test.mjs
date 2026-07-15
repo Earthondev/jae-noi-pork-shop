@@ -7,14 +7,13 @@ import { paymentDecisionFromVerification } from "../lib/order-workflow.ts";
 const projectFile = (path) => readFile(new URL(`../${path}`, import.meta.url), "utf8");
 
 test("keeps payment and fulfilment statuses separated", async () => {
-  const [orderRoute, workflow, sheets, admin] = await Promise.all([
+  const [orderRoute, workflow, admin] = await Promise.all([
     projectFile("app/api/orders/route.ts"),
     projectFile("lib/order-workflow.ts"),
-    projectFile("lib/google-sheets.ts"),
     projectFile("app/admin/dashboard.tsx"),
   ]);
 
-  assert.doesNotMatch(`${orderRoute}\n${workflow}\n${sheets}\n${admin}`, /รอข้อมูลชำระเงิน/);
+  assert.doesNotMatch(`${orderRoute}\n${workflow}\n${admin}`, /รอข้อมูลชำระเงิน/);
   assert.match(workflow, /paymentStatus: "ชำระแล้ว"/);
   assert.match(workflow, /paymentStatus: "สลิปไม่ถูกต้อง"/);
   assert.doesNotMatch(orderRoute, /orderStatus = "ชำระแล้ว"/);
@@ -40,11 +39,10 @@ test("writes an order atomically to D1 and carries a stable idempotency key", as
 test("shows the next opening and blocks pickup until an address exists", async () => {
   // "nextRound" copy and the pickup-disabled control now live in the extracted
   // Hero / CartDrawer components rather than the shop.tsx container itself.
-  const [shop, hero, cartDrawer, sheets, orderRoute] = await Promise.all([
+  const [shop, hero, cartDrawer, orderRoute] = await Promise.all([
     projectFile("app/shop.tsx"),
     projectFile("app/_components/shop/hero.tsx"),
     projectFile("app/_components/shop/cart-drawer.tsx"),
-    projectFile("lib/google-sheets.ts"),
     projectFile("app/api/orders/route.ts"),
   ]);
   const shopAndComponents = `${shop}\n${hero}\n${cartDrawer}`;
@@ -52,7 +50,6 @@ test("shows the next opening and blocks pickup until an address exists", async (
   assert.match(shopAndComponents, /nextRound/);
   assert.match(shopAndComponents, /รอบถัดไปเปิดวันที่/);
   assert.match(cartDrawer, /disabled={!storefront\.pickupAddress}/);
-  assert.match(sheets, /nextRound/);
   assert.match(orderRoute, /ไม่สามารถรับเองหน้าร้านได้จนกว่าจะมีที่อยู่ร้าน/);
 });
 

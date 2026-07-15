@@ -9,11 +9,40 @@ import {
 } from "../lib/product-catalog";
 import { DEFAULT_STOREFRONT_CONTENT } from "../lib/admin-cms";
 import { safePickupMapUrl } from "../lib/storefront-settings";
-import {
-  getStorefrontData as getGoogleStorefrontData,
-  type StorefrontData,
-  type StorefrontRound,
-} from "../lib/google-sheets";
+
+export type StorefrontRound = {
+  id: string;
+  deliveryDate: string;
+  opensAt: string;
+  closesAt: string;
+  label: string;
+  note: string;
+};
+
+export type StorefrontData = {
+  products: CatalogProduct[];
+  rounds: StorefrontRound[];
+  nextRound: StorefrontRound | null;
+  shippingFee: number | null;
+  pickupAddress: string | null;
+  pickupMapUrl: string | null;
+  promptPayId: string | null;
+  promptPayName: string | null;
+  content: {
+    storeName: string;
+    heroTitle: string;
+    heroHighlight: string;
+    heroDescription: string;
+    announcementText: string;
+    storyTitle: string;
+    storyDescription: string;
+    phonePrimary: string;
+    phoneSecondary: string;
+    storeLogoUrl: string;
+    storeCoverUrl: string;
+  };
+  secureWriteReady: boolean;
+};
 
 type RuntimeBindings = { DB?: D1Database; PRODUCT_MEDIA_ORIGIN?: string };
 type ProductRow = {
@@ -38,15 +67,7 @@ type RoundRow = {
 type SettingRow = { key: string; value: string; status: string };
 
 export async function getStorefrontData(options: { signal?: AbortSignal } = {}): Promise<StorefrontData> {
-  try {
-    return await getD1StorefrontData();
-  } catch (d1Error) {
-    try {
-      return await getGoogleStorefrontData(options);
-    } catch (googleError) {
-      throw new AggregateError([d1Error, googleError], "D1 and Google Sheets storefront sources are unavailable");
-    }
-  }
+  return getD1StorefrontData();
 }
 
 export async function getD1StorefrontData(now = new Date()): Promise<StorefrontData> {
