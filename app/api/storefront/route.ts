@@ -1,10 +1,17 @@
+import { env } from "cloudflare:workers";
 import { NextResponse } from "next/server";
-import { getStorefrontData } from "../../../lib/google-sheets";
+import {
+  getStorefrontData,
+  shouldRetryGoogleSheetsError,
+  type StorefrontData,
+} from "../../../lib/google-sheets";
+import { loadResilientStorefront } from "../../../lib/storefront-resilience";
 
 const STOREFRONT_CACHE_SECONDS = 30;
 const STOREFRONT_CACHE_CONTROL = `public, max-age=0, s-maxage=${STOREFRONT_CACHE_SECONDS}`;
 
 type CloudflareCacheStorage = CacheStorage & { default?: Cache };
+type StorefrontBindings = { UPLOADS?: R2Bucket };
 
 function storefrontCache(): Cache | null {
   const cacheStorage = (globalThis as typeof globalThis & { caches?: CloudflareCacheStorage }).caches;
@@ -12,7 +19,9 @@ function storefrontCache(): Cache | null {
 }
 
 function cacheKeyFor(request: Request): Request {
-  return new Request(new URL(request.url).toString(), { method: "GET" });
+  const url = new URL(request.url);
+  url.search = "";
+  return new Request(url.toString(), { method: "GET" });
 }
 
 export async function GET(request: Request) {
@@ -29,19 +38,46 @@ export async function GET(request: Request) {
       }
     }
 
-    const response = NextResponse.json(await getStorefrontData(), {
-      headers: {
-        "Cache-Control": STOREFRONT_CACHE_CONTROL,
-        "Cloudflare-CDN-Cache-Control": `public, max-age=${STOREFRONT_CACHE_SECONDS}`,
-        "X-Storefront-Cache": "MISS",
-      },
+    const bindings = env as unknown as StorefrontBindings;
+    const result = await loadResilientStorefront({
+      bucket: bindings.UPLOADS,
+      loadFresh: (signal) => getStorefrontData({ signal }),
+      validate: isStorefrontData,
+      shouldRetry: shouldRetryGoogleSheetsError,
+      timeoutMs: 5_000,
+      maxAttempts: 2,
+      retryDelayMs: 250,
     });
+
+    const headers = new Headers({
+      "Cache-Control": STOREFRONT_CACHE_CONTROL,
+      "Cloudflare-CDN-Cache-Control": `public, max-age=${STOREFRONT_CACHE_SECONDS}`,
+      "X-Storefront-Attempts": String(result.attempts),
+      "X-Storefront-Cache": "MISS",
+      "X-Storefront-Snapshot-Saved-At": result.savedAt,
+      "X-Storefront-Source": result.source,
+    });
+    if (result.source === "r2-stale") headers.set("Warning", '110 - "Response is stale"');
+
+    const response = NextResponse.json(result.data, { headers });
     if (cache) await cache.put(cacheKey, response.clone()).catch(() => undefined);
     return response;
   } catch (error) {
     return NextResponse.json(
       { error: error instanceof Error ? error.message : "โหลดข้อมูลร้านไม่สำเร็จ" },
-      { status: 502, headers: { "Cache-Control": "no-store" } },
+      { status: 503, headers: { "Cache-Control": "no-store", "Retry-After": "30" } },
     );
   }
+}
+
+function isStorefrontData(value: unknown): value is StorefrontData {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return false;
+  const candidate = value as Partial<StorefrontData>;
+  return Boolean(
+    Array.isArray(candidate.products) &&
+      Array.isArray(candidate.rounds) &&
+      candidate.content &&
+      typeof candidate.content === "object" &&
+      typeof candidate.secureWriteReady === "boolean",
+  );
 }

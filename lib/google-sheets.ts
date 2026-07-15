@@ -55,6 +55,24 @@ const PRODUCT_SHEET_ID = 102;
 
 let cachedAccessToken: AccessToken | null = null;
 
+export class GoogleSheetsUpstreamError extends Error {
+  readonly status: number | null;
+  readonly retryable: boolean;
+
+  constructor(message: string, status: number | null, retryable: boolean) {
+    super(message);
+    this.name = "GoogleSheetsUpstreamError";
+    this.status = status;
+    this.retryable = retryable;
+  }
+}
+
+export function shouldRetryGoogleSheetsError(error: unknown): boolean {
+  if (error instanceof GoogleSheetsUpstreamError) return error.retryable;
+  if (error instanceof DOMException && error.name === "AbortError") return true;
+  return error instanceof TypeError;
+}
+
 export type StorefrontProduct = CatalogProduct;
 
 export type StorefrontRound = {
@@ -143,7 +161,7 @@ function pemToArrayBuffer(pem: string): ArrayBuffer {
   return Uint8Array.from(binary, (character) => character.charCodeAt(0)).buffer;
 }
 
-async function getAccessToken(): Promise<string> {
+async function getAccessToken(signal?: AbortSignal): Promise<string> {
   if (cachedAccessToken && cachedAccessToken.expiresAt > Date.now() + 60_000) return cachedAccessToken.value;
   const credentials = serviceCredentials();
   if (!credentials) throw new Error("ยังไม่ได้ตั้งค่าบัญชีระบบ Google Sheets");
@@ -165,43 +183,73 @@ async function getAccessToken(): Promise<string> {
   );
   const signature = await crypto.subtle.sign("RSASSA-PKCS1-v1_5", signingKey, new TextEncoder().encode(unsignedJwt));
   const assertion = `${unsignedJwt}.${base64Url(new Uint8Array(signature))}`;
-  const response = await fetch(TOKEN_URL, {
-    method: "POST",
-    headers: { "Content-Type": "application/x-www-form-urlencoded" },
-    body: new URLSearchParams({ grant_type: "urn:ietf:params:oauth:grant-type:jwt-bearer", assertion }),
-  });
-  const result = await response.json() as { access_token?: string; expires_in?: number; error_description?: string };
-  if (!response.ok || !result.access_token) throw new Error(result.error_description ?? "บัญชีระบบ Google ใช้งานไม่ได้");
+  let response: Response;
+  try {
+    response = await fetch(TOKEN_URL, {
+      method: "POST",
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      body: new URLSearchParams({ grant_type: "urn:ietf:params:oauth:grant-type:jwt-bearer", assertion }),
+      signal,
+    });
+  } catch (error) {
+    if (signal?.aborted) throw error;
+    throw new GoogleSheetsUpstreamError("เชื่อมต่อบัญชีระบบ Google ไม่สำเร็จ", null, true);
+  }
+  const result = await response.json().catch(() => null) as {
+    access_token?: string;
+    expires_in?: number;
+    error_description?: string;
+  } | null;
+  if (!response.ok || !result?.access_token) {
+    throw new GoogleSheetsUpstreamError(
+      result?.error_description ?? "บัญชีระบบ Google ใช้งานไม่ได้",
+      response.status,
+      isRetryableGoogleStatus(response.status),
+    );
+  }
   cachedAccessToken = { value: result.access_token, expiresAt: Date.now() + (result.expires_in ?? 3600) * 1000 };
   return result.access_token;
 }
 
-async function sheetsRequest(path: string, init?: RequestInit): Promise<Response> {
-  const token = await getAccessToken();
-  const response = await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId()}${path}`, {
-    ...init,
-    headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json", ...init?.headers },
-    cache: "no-store",
-  });
+async function sheetsRequest(path: string, init?: RequestInit, signal?: AbortSignal): Promise<Response> {
+  const token = await getAccessToken(signal);
+  let response: Response;
+  try {
+    response = await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId()}${path}`, {
+      ...init,
+      headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json", ...init?.headers },
+      cache: "no-store",
+      signal: init?.signal ?? signal,
+    });
+  } catch (error) {
+    if (signal?.aborted || init?.signal?.aborted) throw error;
+    throw new GoogleSheetsUpstreamError("เชื่อมต่อ Google Sheets ไม่สำเร็จ", null, true);
+  }
   if (!response.ok) {
     const result = await response.json().catch(() => null) as { error?: { message?: string } } | null;
-    throw new Error(result?.error?.message ?? "เชื่อมต่อ Google Sheets ไม่สำเร็จ");
+    if (response.status === 401) cachedAccessToken = null;
+    throw new GoogleSheetsUpstreamError(
+      result?.error?.message ?? "เชื่อมต่อ Google Sheets ไม่สำเร็จ",
+      response.status,
+      response.status === 401 || isRetryableGoogleStatus(response.status),
+    );
   }
   return response;
 }
 
-async function readRanges(ranges: string[]): Promise<string[][][]> {
-  const rows = await readRangesWithRenderOption(ranges, "FORMATTED_VALUE");
+async function readRanges(ranges: string[], signal?: AbortSignal): Promise<string[][][]> {
+  const rows = await readRangesWithRenderOption(ranges, "FORMATTED_VALUE", signal);
   return rows.map((range) => range.map((row) => row.map((value) => String(value ?? ""))));
 }
 
 async function readRangesWithRenderOption(
   ranges: string[],
   valueRenderOption: "FORMATTED_VALUE" | "UNFORMATTED_VALUE" | "FORMULA",
+  signal?: AbortSignal,
 ): Promise<SheetScalar[][][]> {
   const query = new URLSearchParams({ valueRenderOption, dateTimeRenderOption: "SERIAL_NUMBER" });
   for (const range of ranges) query.append("ranges", range);
-  const response = await sheetsRequest(`/values:batchGet?${query.toString()}`);
+  const response = await sheetsRequest(`/values:batchGet?${query.toString()}`, undefined, signal);
   const result = await response.json() as SheetsBatchGetResponse;
   return ranges.map((_, index) => result.valueRanges?.[index]?.values ?? []);
 }
@@ -228,8 +276,11 @@ function settingsFromRows(rows: string[][]): Record<string, { value: string; sta
   }]));
 }
 
-export async function getStorefrontData() {
-  const [productRows, roundRows, settingRows] = await readRanges(["สินค้า!A:I", "รอบจัดส่ง!A:J", "ตั้งค่าร้าน!A:D"]);
+export async function getStorefrontData(options: { signal?: AbortSignal } = {}) {
+  const [productRows, roundRows, settingRows] = await readRanges(
+    ["สินค้า!A:I", "รอบจัดส่ง!A:J", "ตั้งค่าร้าน!A:D"],
+    options.signal,
+  );
   const products: StorefrontProduct[] = catalogProductsFromRows(productRows, googleBindings().PRODUCT_MEDIA_ORIGIN);
 
   const allRoundRows = roundRows.slice(1).filter((row) => row[0]);
@@ -279,6 +330,12 @@ export async function getStorefrontData() {
     },
     secureWriteReady: serviceCredentials() !== null,
   };
+}
+
+export type StorefrontData = Awaited<ReturnType<typeof getStorefrontData>>;
+
+function isRetryableGoogleStatus(status: number): boolean {
+  return status === 429 || status >= 500;
 }
 
 export async function getAdminCmsData(): Promise<AdminCmsData> {

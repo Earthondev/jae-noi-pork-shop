@@ -292,11 +292,12 @@ export function Shop() {
             <p>เมนูแนะนำ ทำสดใหม่ทุกวัน ขายดีจนต้องลอง</p>
           </div>
           <div className="best-sellers-grid">
-            {bestSellers.map((product) => (
+            {bestSellers.map((product, index) => (
               <ProductCard
                 key={`best-${product.id}`}
                 product={product}
                 quantity={quantities[product.id] ?? 0}
+                index={index}
                 onUpdateQuantity={updateQuantity}
               />
             ))}
