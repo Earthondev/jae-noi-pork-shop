@@ -57,16 +57,6 @@ export type CartDrawerProps = Readonly<{
 export function CartDrawer({ drawerRef, onClose, cart, checkout, storefront, order }: CartDrawerProps) {
   const [copiedId, setCopiedId] = useState(false);
   const [copiedAmount, setCopiedAmount] = useState(false);
-  const [slipFile, setSlipFile] = useState<File | null>(null);
-  const [slipPreviewUrl, setSlipPreviewUrl] = useState<string | null>(null);
-
-  useEffect(() => {
-    return () => {
-      if (slipPreviewUrl) {
-        URL.revokeObjectURL(slipPreviewUrl);
-      }
-    };
-  }, [slipPreviewUrl]);
 
   const copyToClipboard = async (text: string, type: "id" | "amount") => {
     try {
@@ -80,26 +70,6 @@ export function CartDrawer({ drawerRef, onClose, cart, checkout, storefront, ord
       }
     } catch {
       // fallback
-    }
-  };
-
-  const handleSlipChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0] || null;
-    setSlipFile(file);
-    if (slipPreviewUrl) {
-      URL.revokeObjectURL(slipPreviewUrl);
-      setSlipPreviewUrl(null);
-    }
-    if (file) {
-      setSlipPreviewUrl(URL.createObjectURL(file));
-    }
-  };
-
-  const removeSlip = () => {
-    setSlipFile(null);
-    if (slipPreviewUrl) {
-      URL.revokeObjectURL(slipPreviewUrl);
-      setSlipPreviewUrl(null);
     }
   };
 
@@ -275,32 +245,6 @@ export function CartDrawer({ drawerRef, onClose, cart, checkout, storefront, ord
                     </p>
                     <p className="payment-check">ตรวจสอบชื่อผู้รับและยอดเงินในแอปธนาคารก่อนยืนยันทุกครั้ง</p>
                   </section>
-                  <label className="full file-label">
-                    แนบสลิป (ส่งภายหลังได้)
-                    <input
-                      key={slipFile ? "active" : "empty"}
-                      name="slip"
-                      type="file"
-                      accept="image/jpeg,image/png,image/webp"
-                      onChange={handleSlipChange}
-                    />
-                    <small className="field-help">เพื่อความปลอดภัย ระบบไม่บันทึกไฟล์สลิปไว้ หากรีเฟรชหน้าต้องเลือกสลิปใหม่</small>
-                    {slipPreviewUrl && slipFile && (
-                      <div className="slip-preview-container">
-                        <div className="slip-preview-thumb">
-                          {/* eslint-disable-next-line @next/next/no-img-element */}
-                          <img src={slipPreviewUrl} alt="Slip Preview" />
-                        </div>
-                        <div className="slip-preview-info">
-                          <strong>{slipFile.name}</strong>
-                          <small>{(slipFile.size / 1024).toFixed(1)} KB</small>
-                        </div>
-                        <button type="button" className="slip-preview-remove-btn" onClick={removeSlip}>
-                          ลบรูป
-                        </button>
-                      </div>
-                    )}
-                  </label>
                 </div>
                 {!storefront.secureWriteReady && <p className="preview-mode">โหมดดูตัวอย่าง · ยังไม่รับข้อมูลลูกค้าจนกว่าจะเชื่อมบัญชีระบบที่ปลอดภัย</p>}
                 <button className="submit-order" type="submit" disabled={order.submitting || cart.items.length === 0}>
