@@ -577,8 +577,12 @@ function padRow(row: SheetScalar[], length: number): SheetScalar[] {
 }
 
 function assertSafeProductImage(imageUrl: string): void {
-  if (imageUrl && safeProductImageUrl(imageUrl, googleBindings().PRODUCT_MEDIA_ORIGIN) === PRODUCT_IMAGE_PLACEHOLDER) {
-    throw new Error("รูปสินค้าต้องมาจากพื้นที่รูปของร้านเท่านั้น");
+  if (!imageUrl) return;
+  const urls = imageUrl.split(",");
+  for (const url of urls) {
+    if (safeProductImageUrl(url.trim(), googleBindings().PRODUCT_MEDIA_ORIGIN) === PRODUCT_IMAGE_PLACEHOLDER) {
+      throw new Error("รูปสินค้าต้องมาจากพื้นที่รูปของร้านเท่านั้น");
+    }
   }
 }
 

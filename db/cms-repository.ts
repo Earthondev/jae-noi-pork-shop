@@ -147,5 +147,8 @@ function displayState(row: RoundRow): string {
 }
 function assertProductImage(url: string): void {
   if (!url) return; const { mediaOrigin } = bindings();
-  if (safeProductImageUrl(url, mediaOrigin) === PRODUCT_IMAGE_PLACEHOLDER) throw new Error("รูปสินค้าต้องมาจากพื้นที่รูปของร้านเท่านั้น");
+  const urls = url.split(",");
+  for (const u of urls) {
+    if (safeProductImageUrl(u.trim(), mediaOrigin) === PRODUCT_IMAGE_PLACEHOLDER) throw new Error("รูปสินค้าต้องมาจากพื้นที่รูปของร้านเท่านั้น");
+  }
 }

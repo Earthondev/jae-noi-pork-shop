@@ -243,15 +243,77 @@ function RoundForm({ title, value, disabled, lockDeliveryDate = false, onChange,
 function ProductsPanel({ products, saving, mutate, setNotice }: { products: AdminProduct[]; saving: string | null; mutate: Mutation; setNotice: (value: string) => void }) {
   const blank: ProductInput = { id: "", name: "", unit: "", detail: "", price: null, status: "รอข้อมูล", imageUrl: "", category: "" };
   const [draft, setDraft] = useState<ProductInput>(blank); const [editing, setEditing] = useState<string | null>(null); const [creating, setCreating] = useState(false); const [uploading, setUploading] = useState(false); const [category, setCategory] = useState("ทั้งหมด"); const [view, setView] = useState<"list" | "grid">("list"); const [confirm, setConfirm] = useState<ConfirmState>(null);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [sortMode, setSortMode] = useState(false);
+
   const categories = useMemo(() => ["ทั้งหมด", ...Array.from(new Set(products.map((product) => product.category || "อื่น ๆ")))], [products]);
-  const visible = category === "ทั้งหมด" ? products : products.filter((product) => (product.category || "อื่น ๆ") === category);
+  const visible = useMemo(() => {
+    return products.filter((product) => {
+      const matchesCategory = category === "ทั้งหมด" || (product.category || "อื่น ๆ") === category;
+      const normalizedQuery = searchQuery.trim().toLowerCase();
+      const matchesSearch = !normalizedQuery ||
+        product.name.toLowerCase().includes(normalizedQuery) ||
+        product.id.toLowerCase().includes(normalizedQuery) ||
+        (product.category || "").toLowerCase().includes(normalizedQuery);
+      return matchesCategory && matchesSearch;
+    });
+  }, [products, category, searchQuery]);
+
   async function uploadImage(file: File) {
     setUploading(true); setNotice("");
-    try { const form = new FormData(); form.set("image", file); form.set("productId", draft.id || "PRODUCT"); const response = await fetch("/api/admin/product-image", { method: "POST", body: form }); if (response.status === 401) return redirectToLogin(); const result = await response.json() as { imageUrl?: string; error?: string }; if (!response.ok || !result.imageUrl) throw new CustomerFacingError(safeClientApiMessage(response.status, result, "ADMIN_UNAVAILABLE")); setDraft((current) => ({ ...current, imageUrl: result.imageUrl ?? current.imageUrl })); setNotice("อัปโหลดรูปแล้ว กดบันทึกสินค้าเพื่อใช้งาน"); }
-    catch (error) { setNotice(error instanceof CustomerFacingError ? error.message : PUBLIC_ERROR_MESSAGES.ADMIN_UNAVAILABLE); } finally { setUploading(false); }
+    try {
+      const form = new FormData();
+      form.set("image", file);
+      form.set("productId", draft.id || "PRODUCT");
+      const response = await fetch("/api/admin/product-image", { method: "POST", body: form });
+      if (response.status === 401) return redirectToLogin();
+      const result = await response.json() as { imageUrl?: string; error?: string };
+      if (!response.ok || !result.imageUrl) throw new CustomerFacingError(safeClientApiMessage(response.status, result, "ADMIN_UNAVAILABLE"));
+
+      const currentImages = draft.imageUrl ? draft.imageUrl.split(",").filter(Boolean) : [];
+      if (currentImages.length < 5) {
+        currentImages.push(result.imageUrl);
+        setDraft((current) => ({ ...current, imageUrl: currentImages.join(",") }));
+        setNotice(`อัปโหลดรูปสำเร็จ (${currentImages.length}/5) กดบันทึกสินค้าเพื่อใช้งาน`);
+      } else {
+        setNotice("เพิ่มรูปไม่สำเร็จ: สามารถอัปโหลดได้สูงสุด 5 รูปต่อสินค้าเท่านั้น");
+      }
+    }
+    catch (error) {
+      setNotice(error instanceof CustomerFacingError ? error.message : PUBLIC_ERROR_MESSAGES.ADMIN_UNAVAILABLE);
+    } finally {
+      setUploading(false);
+    }
   }
-  return <section className="admin-panel">
-    <div className="admin-section-heading"><div><p className="eyebrow">แก้ไขแล้วแสดงบนเว็บจริง</p><h2>สินค้า</h2></div><button className="admin-primary-button" type="button" onClick={() => { setDraft(blank); setCreating((value) => !value); setEditing(null); }}><AdminIcon name="plus" />เพิ่มสินค้า</button></div>
+
+  return <section className="admin-panel admin-products-section">
+    <div className="admin-section-heading">
+      <div>
+        <p className="eyebrow">แก้ไขแล้วแสดงบนเว็บจริง</p>
+        <h2>สินค้า</h2>
+      </div>
+      <button className="admin-primary-button add-product-top-btn" type="button" onClick={() => { setDraft(blank); setCreating((value) => !value); setEditing(null); }}>
+        <AdminIcon name="plus" />เพิ่มสินค้า
+      </button>
+    </div>
+
+    <div className="admin-product-search-bar-row">
+      <label className="admin-search">
+        <span className="sr-only">ค้นหาสินค้า</span>
+        <AdminIcon name="search" />
+        <input value={searchQuery} onChange={(event) => setSearchQuery(event.target.value)} placeholder="ค้นหารหัส ชื่อสินค้า หรือหมวดหมู่..." />
+      </label>
+      <button
+        type="button"
+        className={`admin-sort-mode-toggle-btn ${sortMode ? "active" : ""}`}
+        onClick={() => setSortMode(!sortMode)}
+        title="จัดเรียงลำดับสินค้า"
+      >
+        <AdminIcon name="list" />
+        <span>{sortMode ? "ปิดโหมดจัดเรียง" : "จัดเรียงสินค้า"}</span>
+      </button>
+    </div>
+
     <div className="admin-product-toolbar">
       <div className="admin-category-chips-row">
         {categories.map((value) => (
@@ -270,49 +332,132 @@ function ProductsPanel({ products, saving, mutate, setNotice }: { products: Admi
         <button className={view === "grid" ? "active" : ""} type="button" onClick={() => setView("grid")} aria-label="แบบตาราง"><AdminIcon name="grid" /></button>
       </div>
     </div>
+
     {creating && <ProductForm title="เพิ่มสินค้าใหม่" value={draft} disabled={saving !== null || uploading} uploading={uploading} onChange={setDraft} onUpload={uploadImage} onCancel={() => setCreating(false)} onSubmit={async () => { if (await mutate("product.create", { product: draft }, "เพิ่มสินค้าแล้ว")) { setDraft(blank); setCreating(false); } }} />}
-    <div className={`admin-card-list admin-product-list view-${view}`}>{visible.map((product) => {
-      const index = products.findIndex((item) => item.id === product.id);
-      if (editing === product.id) return <ProductForm key={product.id} title={`แก้ไข ${product.name}`} value={draft} disabled={saving !== null || uploading} uploading={uploading} lockId onChange={setDraft} onUpload={uploadImage} onCancel={() => setEditing(null)} onSubmit={async () => { if (await mutate("product.update", { product: draft }, "บันทึกสินค้าแล้ว")) setEditing(null); }} />;
-      return <article className={`admin-product-card ${product.status === "ซ่อนสินค้า" ? "is-archived" : ""}`} key={product.id}>
-        <div className="product-card-body">
-          <div className="product-card-image-wrap">
-            {product.imageUrl ? <Image src={adminImageSrc(product.imageUrl)} alt="" fill sizes="96px" unoptimized /> : <div className="product-card-no-image"><AdminIcon name="image" /></div>}
-          </div>
-          <div className="product-card-info">
-            <div className="product-card-title-row">
-              <span className="product-card-category">{product.category || "อื่น ๆ"}</span>
-              <h3>{product.name}</h3>
-            </div>
-            <p className="product-card-meta">{product.unit} • {product.price === null ? "รอราคา" : `${product.price.toLocaleString("th-TH")} บาท`}</p>
-            {product.detail && <p className="product-card-desc">{product.detail}</p>}
-            
-            <div className="product-card-footer">
-              <span className={`product-card-status status-${product.status === "เปิดขาย" ? "open" : "muted"}`}>
-                {product.status}
-              </span>
-              
-              <div className="product-card-actions">
-                <button type="button" className="action-btn order-move-btn" disabled={index === 0 || saving !== null} aria-label={`เลื่อน ${product.name} ขึ้น`} onClick={() => void mutate("product.move", { id: product.id, direction: "up", fingerprint: product.fingerprint }, "เรียงสินค้าแล้ว")}><AdminIcon name="up" /></button>
-                <button type="button" className="action-btn order-move-btn" disabled={index === products.length - 1 || saving !== null} aria-label={`เลื่อน ${product.name} ลง`} onClick={() => void mutate("product.move", { id: product.id, direction: "down", fingerprint: product.fingerprint }, "เรียงสินค้าแล้ว")}><AdminIcon name="down" /></button>
-                <button type="button" className="action-btn edit-btn" onClick={() => { setDraft(product); setEditing(product.id); setCreating(false); }}><AdminIcon name="edit" /><span>แก้ไข</span></button>
-                {product.status !== "ซ่อนสินค้า" ? (
-                  <button className="action-btn delete-btn" type="button" onClick={() => setConfirm({ title: `ซ่อน ${product.name}?`, description: "สินค้าจะหายจากหน้าร้าน แต่ประวัติออเดอร์เก่าจะยังอยู่ครบและนำกลับมาได้", confirmLabel: "ซ่อนสินค้า", tone: "danger", action: async () => { await mutate("product.update", { product: { ...product, status: "ซ่อนสินค้า" } }, "ซ่อนสินค้าแล้ว"); } })}><AdminIcon name="hide" /><span>ซ่อน</span></button>
-                ) : (
-                  <button className="action-btn restore-btn" type="button" onClick={() => void mutate("product.update", { product: { ...product, status: "ปิดชั่วคราว" } }, "นำสินค้ากลับมาแล้ว")}><AdminIcon name="check" /><span>นำกลับ</span></button>
-                )}
+
+    {sortMode ? (
+      <div className="admin-sort-list">
+        {visible.map((product) => {
+          return (
+            <div key={product.id} className="admin-sort-item">
+              <div className="sort-item-info">
+                <strong>{product.name}</strong>
+                <span>{product.id} · {product.category} · {formatMoney(product.price)}</span>
+              </div>
+              <div className="sort-item-actions">
+                <button type="button" className="sort-arrow-btn" disabled={index === 0 || saving !== null} onClick={() => void mutate("product.move", { id: product.id, direction: "up", fingerprint: product.fingerprint }, "เรียงสินค้าแล้ว")}>▲ ขึ้น</button>
+                <button type="button" className="sort-arrow-btn" disabled={index === products.length - 1 || saving !== null} onClick={() => void mutate("product.move", { id: product.id, direction: "down", fingerprint: product.fingerprint }, "เรียงสินค้าแล้ว")}>▼ ลง</button>
               </div>
             </div>
-          </div>
-        </div>
-      </article>;
-    })}</div>
+          );
+        })}
+      </div>
+    ) : (
+      <div className={`admin-card-list admin-product-list view-${view}`}>
+        {visible.map((product) => {
+          const index = products.findIndex((item) => item.id === product.id);
+          if (editing === product.id) return <ProductForm key={product.id} title={`แก้ไข ${product.name}`} value={draft} disabled={saving !== null || uploading} uploading={uploading} lockId onChange={setDraft} onUpload={uploadImage} onCancel={() => setEditing(null)} onSubmit={async () => { if (await mutate("product.update", { product: draft }, "บันทึกสินค้าแล้ว")) setEditing(null); }} />;
+
+          const firstImage = product.imageUrl ? product.imageUrl.split(",")[0] : "";
+
+          return <article className={`admin-product-card ${product.status === "ซ่อนสินค้า" ? "is-archived" : ""}`} key={product.id}>
+            <div className="product-card-body">
+              <div className="product-card-image-wrap">
+                {firstImage ? <Image src={adminImageSrc(firstImage)} alt="" fill sizes="96px" unoptimized /> : <div className="product-card-no-image"><AdminIcon name="image" /></div>}
+              </div>
+              <div className="product-card-info">
+                <div className="product-card-title-row">
+                  <span className="product-card-category">{product.category || "อื่น ๆ"}</span>
+                  <div className="product-card-header-flex">
+                    <h3>{product.name}</h3>
+                    <span className={`product-card-status status-${product.status === "เปิดขาย" ? "open" : product.status === "ปิดชั่วคราว" ? "closed" : "waiting"}`}>
+                      {product.status === "เปิดขาย" ? "เปิดขาย" : product.status === "ปิดชั่วคราว" ? "ปิดชั่วคราว" : product.status}
+                    </span>
+                  </div>
+                </div>
+                <p className="product-card-meta">{product.unit} • {product.price === null ? "รอราคา" : `${product.price.toLocaleString("th-TH")} บาท`}</p>
+                {product.detail && <p className="product-card-desc">{product.detail}</p>}
+
+                <div className="product-card-actions-row">
+                  <button type="button" className="action-btn edit-btn" onClick={() => { setDraft(product); setEditing(product.id); setCreating(false); }}><AdminIcon name="edit" /><span>แก้ไข</span></button>
+                  {product.status !== "ซ่อนสินค้า" ? (
+                    <button className="action-btn delete-btn" type="button" onClick={() => setConfirm({ title: `ซ่อน ${product.name}?`, description: "สินค้าจะหายจากหน้าร้าน แต่ประวัติออเดอร์เก่าจะยังอยู่ครบและนำกลับมาได้", confirmLabel: "ซ่อนสินค้า", tone: "danger", action: async () => { await mutate("product.update", { product: { ...product, status: "ซ่อนสินค้า" } }, "ซ่อนสินค้าแล้ว"); } })}><AdminIcon name="hide" /><span>ซ่อน</span></button>
+                  ) : (
+                    <button className="action-btn restore-btn" type="button" onClick={() => void mutate("product.update", { product: { ...product, status: "ปิดชั่วคราว" } }, "นำสินค้ากลับมาแล้ว")}><AdminIcon name="check" /><span>นำกลับ</span></button>
+                  )}
+                </div>
+              </div>
+            </div>
+          </article>;
+        })}
+      </div>
+    )}
+
+    <button className="admin-mobile-fab" type="button" onClick={() => { setDraft(blank); setCreating(true); setEditing(null); window.scrollTo({ top: 0, behavior: "smooth" }); }} aria-label="เพิ่มสินค้าใหม่">
+      <AdminIcon name="plus" />
+    </button>
+
     <ConfirmDialog open={Boolean(confirm)} title={confirm?.title ?? ""} description={confirm?.description ?? ""} confirmLabel={confirm?.confirmLabel ?? "ยืนยัน"} tone={confirm?.tone} busy={saving !== null} onCancel={() => setConfirm(null)} onConfirm={() => { const action = confirm?.action; setConfirm(null); if (action) void action(); }} />
   </section>;
 }
 
 function ProductForm({ title, value, disabled, uploading, lockId = false, onChange, onUpload, onCancel, onSubmit }: { title: string; value: ProductInput; disabled: boolean; uploading: boolean; lockId?: boolean; onChange: (value: ProductInput) => void; onUpload: (file: File) => void; onCancel: () => void; onSubmit: () => void }) {
-  return <form className="admin-edit-card" onSubmit={(event) => { event.preventDefault(); onSubmit(); }}><h3>{title}</h3><div className="admin-form-grid"><label><span>รหัสสินค้า (อังกฤษ)</span><input required disabled={disabled || lockId} maxLength={40} value={value.id} onChange={(event) => onChange({ ...value, id: event.target.value.toUpperCase() })} placeholder="เช่น MOO001" /></label><label><span>ชื่อสินค้า</span><input required disabled={disabled} maxLength={100} value={value.name} onChange={(event) => onChange({ ...value, name: event.target.value })} /></label><label><span>หมวดหมู่</span><input disabled={disabled} maxLength={80} value={value.category} onChange={(event) => onChange({ ...value, category: event.target.value })} placeholder="เช่น แหนมหมู" /></label><label><span>หน่วยขาย</span><input disabled={disabled} maxLength={80} value={value.unit} onChange={(event) => onChange({ ...value, unit: event.target.value })} placeholder="เช่น 1 แพ็ค" /></label><label><span>ราคา (บาท)</span><input disabled={disabled} min="1" max="1000000" step="1" type="number" value={value.price ?? ""} onChange={(event) => onChange({ ...value, price: event.target.value ? Number(event.target.value) : null })} /></label><label><span>สถานะ</span><select disabled={disabled} value={value.status} onChange={(event) => onChange({ ...value, status: event.target.value as ProductInput["status"] })}>{PRODUCT_STATUSES.map((status) => <option key={status}>{status}</option>)}</select></label><label className="full"><span>คำอธิบายสินค้า</span><textarea disabled={disabled} maxLength={500} rows={3} value={value.detail} onChange={(event) => onChange({ ...value, detail: event.target.value })} /></label><label className="admin-file-field"><span>รูปสินค้า</span><input disabled={disabled} type="file" accept="image/jpeg,image/png,image/webp" onChange={(event) => { const file = event.target.files?.[0]; if (file) void onUpload(file); }} /><small>{uploading ? "กำลังอัปโหลด…" : "JPG, PNG หรือ WebP ไม่เกิน 5 MB"}</small></label>{value.imageUrl && <div className="admin-image-preview full"><Image src={adminImageSrc(value.imageUrl)} alt="ตัวอย่างรูปสินค้า" fill sizes="320px" unoptimized /></div>}</div><FormActions disabled={disabled} onCancel={onCancel} /></form>;
+  const images = value.imageUrl ? value.imageUrl.split(",").filter(Boolean) : [];
+
+  const removeImage = (indexToRemove: number) => {
+    const updated = images.filter((_, idx) => idx !== indexToRemove);
+    onChange({ ...value, imageUrl: updated.join(",") });
+  };
+
+  const moveImage = (index: number, direction: "left" | "right") => {
+    const nextIndex = direction === "left" ? index - 1 : index + 1;
+    if (nextIndex < 0 || nextIndex >= images.length) return;
+    const nextImages = [...images];
+    const temp = nextImages[index];
+    nextImages[index] = nextImages[nextIndex];
+    nextImages[nextIndex] = temp;
+    onChange({ ...value, imageUrl: nextImages.join(",") });
+  };
+
+  return <form className="admin-edit-card" onSubmit={(event) => { event.preventDefault(); onSubmit(); }}>
+    <h3>{title}</h3>
+    <div className="admin-form-grid">
+      <label><span>รหัสสินค้า (อังกฤษ)</span><input required disabled={disabled || lockId} maxLength={40} value={value.id} onChange={(event) => onChange({ ...value, id: event.target.value.toUpperCase() })} placeholder="เช่น MOO001" /></label>
+      <label><span>ชื่อสินค้า</span><input required disabled={disabled} maxLength={100} value={value.name} onChange={(event) => onChange({ ...value, name: event.target.value })} /></label>
+      <label><span>หมวดหมู่</span><input disabled={disabled} maxLength={80} value={value.category} onChange={(event) => onChange({ ...value, category: event.target.value })} placeholder="เช่น แหนมหมู" /></label>
+      <label><span>หน่วยขาย</span><input disabled={disabled} maxLength={80} value={value.unit} onChange={(event) => onChange({ ...value, unit: event.target.value })} placeholder="เช่น 1 แพ็ค" /></label>
+      <label><span>ราคา (บาท)</span><input disabled={disabled} min="1" max="1000000" step="1" type="number" value={value.price ?? ""} onChange={(event) => onChange({ ...value, price: event.target.value ? Number(event.target.value) : null })} /></label>
+      <label><span>สถานะ</span><select disabled={disabled} value={value.status} onChange={(event) => onChange({ ...value, status: event.target.value as ProductInput["status"] })}>{PRODUCT_STATUSES.map((status) => <option key={status}>{status}</option>)}</select></label>
+      <label className="full"><span>คำอธิบายสินค้า</span><textarea disabled={disabled} maxLength={500} rows={3} value={value.detail} onChange={(event) => onChange({ ...value, detail: event.target.value })} /></label>
+
+      <div className="admin-form-images-section full">
+        <span>รูปภาพสินค้า (อัปโหลดได้สูงสุด 5 รูป, รูปแรกจะเป็นรูปหลัก)</span>
+        <div className="admin-images-grid">
+          {images.map((imgUrl, idx) => (
+            <div key={imgUrl} className="admin-image-slot">
+              <div className="image-slot-preview">
+                <Image src={adminImageSrc(imgUrl)} alt="" fill sizes="120px" unoptimized />
+                <span className="image-slot-badge">{idx === 0 ? "รูปหลัก" : `${idx + 1}`}</span>
+              </div>
+              <div className="image-slot-actions">
+                <button type="button" disabled={idx === 0} onClick={() => moveImage(idx, "left")} aria-label="เลื่อนซ้าย">◀</button>
+                <button type="button" disabled={idx === images.length - 1} onClick={() => moveImage(idx, "right")} aria-label="เลื่อนขวา">▶</button>
+                <button type="button" className="delete-image-btn" onClick={() => removeImage(idx)} aria-label="ลบรูป">ลบ</button>
+              </div>
+            </div>
+          ))}
+          {images.length < 5 && (
+            <label className="admin-image-upload-slot">
+              <span className="upload-icon">+</span>
+              <span className="upload-label">{uploading ? "กำลังอัปโหลด…" : "เพิ่มรูป"}</span>
+              <input disabled={disabled || uploading} type="file" accept="image/jpeg,image/png,image/webp" onChange={(event) => { const file = event.target.files?.[0]; if (file) void onUpload(file); }} />
+            </label>
+          )}
+        </div>
+      </div>
+    </div>
+    <FormActions disabled={disabled} onCancel={onCancel} />
+  </form>;
 }
 
 function StorefrontPanel({ settings, saving, mutate, setNotice }: { settings: AdminStorefrontSettings; saving: string | null; mutate: Mutation; setNotice: (value: string) => void }) {

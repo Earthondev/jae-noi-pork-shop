@@ -59,3 +59,11 @@ test("keeps the Thai mobile shop content and accessibility contract", async () =
   assert.match(css, /\.closed-round-cart/);
   assert.match(css, /\.pickup-map-link/);
 });
+
+test("uses the shop logo for browser and Apple icons", async () => {
+  const layout = await readFile(new URL("../app/layout.tsx", import.meta.url), "utf8");
+  assert.match(layout, /\/favicon\.ico/);
+  assert.match(layout, /\/favicon-32x32\.png/);
+  assert.match(layout, /\/apple-touch-icon\.png/);
+  assert.doesNotMatch(layout, /favicon\.svg/);
+});

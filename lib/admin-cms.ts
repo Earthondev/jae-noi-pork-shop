@@ -103,7 +103,7 @@ export function validateProductInput(input: ProductInput): ProductInput {
   const name = cleanText(input.name, 100);
   const unit = cleanText(input.unit, 80);
   const detail = cleanText(input.detail, 500);
-  const imageUrl = input.imageUrl.trim().slice(0, 500);
+  const imageUrl = input.imageUrl.trim().slice(0, 2500);
   const category = cleanText(input.category, 80) || "อื่น ๆ";
   if (!/^[A-Z0-9_-]{2,40}$/.test(id)) throw new Error("รหัสสินค้าต้องมี 2-40 ตัว ใช้อักษรอังกฤษ ตัวเลข - หรือ _");
   if (!name) throw new Error("กรุณากรอกชื่อสินค้า");

@@ -30,7 +30,8 @@ export function safeProductImageUrl(value: string | undefined, mediaOrigin = DEF
   if (!value || !normalizedOrigin) return PRODUCT_IMAGE_PLACEHOLDER;
 
   try {
-    const imageUrl = new URL(value.trim());
+    const firstUrl = value.split(",")[0].trim();
+    const imageUrl = new URL(firstUrl);
     const allowedOrigin = new URL(normalizedOrigin);
     if (imageUrl.protocol !== "https:" || imageUrl.origin !== allowedOrigin.origin) return PRODUCT_IMAGE_PLACEHOLDER;
     if (!imageUrl.pathname.startsWith("/products/") || imageUrl.username || imageUrl.password) return PRODUCT_IMAGE_PLACEHOLDER;
