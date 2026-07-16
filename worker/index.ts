@@ -33,7 +33,7 @@ const worker = {
     const url = new URL(request.url);
     try {
 
-    if (url.pathname.startsWith("/media/products/")) {
+    if (url.pathname.startsWith("/media/products/") || url.pathname.startsWith("/media/brand/")) {
       const key = url.pathname.slice("/media/".length);
       if (!key || key.includes("..") || key.startsWith("/")) return new Response(null, { status: 400 });
       if (!env.PRODUCT_MEDIA) return new Response(null, { status: 503 });
