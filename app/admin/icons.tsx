@@ -3,9 +3,10 @@ import type { ReactNode, SVGProps } from "react";
 export type AdminIconName =
   | "orders" | "calendar" | "products" | "store" | "external" | "logout"
   | "search" | "plus" | "edit" | "hide" | "up" | "down" | "check"
-  | "chevron" | "image" | "phone" | "clock" | "money" | "close" | "grid" | "list" | "sort";
+  | "chevron" | "image" | "phone" | "clock" | "money" | "close" | "grid" | "list" | "sort" | "menu";
 
 const paths: Record<AdminIconName, ReactNode> = {
+  menu: <path d="M3 12h18M3 6h18M3 18h18"/>,
   sort: <path d="m15 4 5-5 5 5M20 3v18M9 20l-5 5-5-5M4 21V3"/>,
   orders: <><path d="M6 3h12v18H6z"/><path d="M9 7h6M9 11h6M9 15h4"/></>,
   calendar: <><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M8 3v4M16 3v4M3 10h18"/></>,

@@ -3,6 +3,9 @@ const GOOGLE_MAP_HOSTS = new Set([
   "maps.google.com",
   "www.google.com",
   "maps.app.goo.gl",
+  "google.co.th",
+  "maps.google.co.th",
+  "www.google.co.th",
 ]);
 
 export function safePickupMapUrl(value: string | undefined): string | null {
@@ -10,7 +13,11 @@ export function safePickupMapUrl(value: string | undefined): string | null {
   if (!raw) return null;
 
   try {
-    const url = new URL(raw);
+    // Extract URL using regex if there's surrounding text (common when sharing from Google Maps app)
+    const urlMatch = raw.match(/https?:\/\/[^\s]+/);
+    const targetUrl = urlMatch ? urlMatch[0] : raw;
+
+    const url = new URL(targetUrl);
     if (
       url.protocol !== "https:" ||
       url.username ||
@@ -22,7 +29,9 @@ export function safePickupMapUrl(value: string | undefined): string | null {
     }
 
     const hostname = url.hostname.toLowerCase();
-    if (hostname !== "maps.app.goo.gl" && !url.pathname.startsWith("/maps")) {
+    const isShortLink = hostname === "maps.app.goo.gl";
+    const isMapsSubdomain = hostname.startsWith("maps.");
+    if (!isShortLink && !isMapsSubdomain && !url.pathname.startsWith("/maps")) {
       return null;
     }
 

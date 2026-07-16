@@ -38,6 +38,8 @@ const tabs: Array<{ id: AdminTab; icon: AdminIconName; label: string }> = [
   { id: "products", icon: "products", label: "สินค้า" },
   { id: "storefront", icon: "store", label: "หน้าร้าน" },
 ];
+const EMPTY_ROUND_INPUT: RoundInput = { deliveryDate: "", opensAt: "", closesAt: "", status: "เตรียมเปิด", note: "" };
+const EMPTY_PRODUCT_INPUT: ProductInput = { id: "", name: "", unit: "", detail: "", price: null, status: "รอข้อมูล", imageUrl: "", category: "" };
 
 export function AdminDashboard({ initialOrders, initialCms, userName, serverNow, serverClockLabel, initialTab }: { initialOrders: AdminOrder[]; initialCms: AdminCmsData; userName: string; serverNow: string; serverClockLabel: string; initialTab: AdminTab }) {
   const [activeTab, setActiveTab] = useState<AdminTab>(initialTab);
@@ -49,6 +51,7 @@ export function AdminDashboard({ initialOrders, initialCms, userName, serverNow,
   const [formActive, setFormActive] = useState(false);
   const [formDirty, setFormDirty] = useState(false);
   const [confirm, setConfirm] = useState<ConfirmState>(null);
+  const [drawerOpen, setDrawerOpen] = useState(false);
 
   const pendingCount = orders.filter((order) => order.payment_status === "waiting_for_slip_review" || order.payment_status === "invalid_slip").length;
   const storeIsOpen = cms.rounds.some((round) => round.status === "เปิดรับ" && round.displayState === "แสดงใน dropdown");
@@ -131,21 +134,72 @@ export function AdminDashboard({ initialOrders, initialCms, userName, serverNow,
 
   return <main className={`admin-shell ${isNavHidden ? "form-active" : ""}`}>
     {!isNavHidden && (
-      <header className="admin-ops-header">
-        <div className="admin-brand-lockup">
-          <span className="admin-brand-logo"><Image src={adminImageSrc(cms.settings.storeLogoUrl) || "/images/products/jae-noi-shop-logo.jpg"} alt="" fill sizes="48px" unoptimized /></span>
-          <div><p>{cms.settings.storeName}</p><h1>{tabs.find((tab) => tab.id === activeTab)?.label}</h1></div>
-        </div>
-        <div className="admin-header-meta">
-          <time dateTime={clock.iso}>{clock.label}</time>
-          <span className={`admin-store-state ${storeIsOpen ? "open" : "closed"}`}><i aria-hidden="true" />{storeIsOpen ? "หน้าร้านเปิดรับ" : "หน้าร้านปิดรับ"}</span>
-        </div>
-        <div className="admin-account-row">
-          <span title={userName}>{userName}</span>
-          <Link href="/" target="_blank"><AdminIcon name="external" />ดูหน้าร้าน</Link>
-          <form action="/api/admin/logout" method="post"><button type="submit" aria-label="ออกจากระบบ"><AdminIcon name="logout" /><span>ออก</span></button></form>
-        </div>
-      </header>
+      <>
+        <header className="admin-ops-header">
+          <button type="button" className="admin-hamburger-btn" onClick={() => setDrawerOpen(true)} aria-label="เปิดเมนู">
+            <AdminIcon name="menu" />
+          </button>
+          <div className="admin-header-title">
+            <h1>{tabs.find((tab) => tab.id === activeTab)?.label}</h1>
+          </div>
+          <div className="admin-header-meta">
+            <time dateTime={clock.iso}>{clock.label}</time>
+            <span className={`admin-store-state ${storeIsOpen ? "open" : "closed"}`}><i aria-hidden="true" />{storeIsOpen ? "หน้าร้านเปิดรับ" : "หน้าร้านปิดรับ"}</span>
+          </div>
+        </header>
+
+        {drawerOpen && (
+          <div className="admin-drawer-backdrop" onClick={() => setDrawerOpen(false)} />
+        )}
+        <aside className={`admin-drawer ${drawerOpen ? "open" : ""}`}>
+          <div className="admin-drawer-header">
+            <div className="admin-brand-lockup">
+              <span className="admin-brand-logo"><Image src={adminImageSrc(cms.settings.storeLogoUrl) || "/images/products/jae-noi-shop-logo.jpg"} alt="" fill sizes="48px" unoptimized /></span>
+              <div>
+                <p>ระบบจัดการหลังบ้าน</p>
+                <strong>{cms.settings.storeName}</strong>
+              </div>
+            </div>
+            <button type="button" className="admin-drawer-close" onClick={() => setDrawerOpen(false)} aria-label="ปิดเมนู">
+              <AdminIcon name="close" />
+            </button>
+          </div>
+
+          <nav className="admin-drawer-nav" aria-label="เมนูหลังบ้าน">
+            {tabs.map((tab) => (
+              <button
+                key={tab.id}
+                type="button"
+                className={activeTab === tab.id ? "active" : ""}
+                aria-current={activeTab === tab.id ? "page" : undefined}
+                onClick={() => {
+                  changeTab(tab.id);
+                  setDrawerOpen(false);
+                }}
+              >
+                <span className="admin-nav-icon">
+                  <AdminIcon name={tab.icon} />
+                  {tab.id === "orders" && pendingCount > 0 && <b aria-label={`${pendingCount} รายการที่ต้องตรวจ`}>{pendingCount > 99 ? "99+" : pendingCount}</b>}
+                </span>
+                <strong>{tab.label}</strong>
+              </button>
+            ))}
+          </nav>
+
+          <div className="admin-drawer-footer">
+            <div className="admin-drawer-user">
+              <p className="eyebrow">บัญชีผู้ใช้</p>
+              <span title={userName}>{userName}</span>
+            </div>
+            <div className="admin-drawer-actions">
+              <Link href="/" target="_blank" className="admin-drawer-link"><AdminIcon name="external" /><span>ดูหน้าร้าน</span></Link>
+              <form action="/api/admin/logout" method="post" className="admin-drawer-logout-form">
+                <button type="submit" className="admin-drawer-logout-btn"><AdminIcon name="logout" /><span>ออกจากระบบ</span></button>
+              </form>
+            </div>
+          </div>
+        </aside>
+      </>
     )}
 
     <p className={`admin-save-notice${notice ? " has-message" : ""}`} aria-live="polite" role="status">{notice}</p>
@@ -153,14 +207,6 @@ export function AdminDashboard({ initialOrders, initialCms, userName, serverNow,
     {activeTab === "rounds" && <RoundsPanel rounds={cms.rounds} saving={saving} mutate={mutate} onFormActive={setFormActive} onFormDirty={setFormDirty} />}
     {activeTab === "products" && <ProductsPanel products={cms.products} saving={saving} mutate={mutate} setNotice={setNotice} onFormActive={setFormActive} onFormDirty={setFormDirty} />}
     {activeTab === "storefront" && <StorefrontPanel key={cms.settings.fingerprint} settings={cms.settings} saving={saving} mutate={mutate} setNotice={setNotice} onFormActive={setFormActive} onFormDirty={setFormDirty} />}
-
-    {!isNavHidden && (
-      <nav className="admin-bottom-nav" aria-label="เมนูหลังบ้าน">
-        {tabs.map((tab) => <button key={tab.id} type="button" className={activeTab === tab.id ? "active" : ""} aria-current={activeTab === tab.id ? "page" : undefined} onClick={() => changeTab(tab.id)}>
-          <span className="admin-nav-icon"><AdminIcon name={tab.icon} />{tab.id === "orders" && pendingCount > 0 && <b aria-label={`${pendingCount} รายการที่ต้องตรวจ`}>{pendingCount > 99 ? "99+" : pendingCount}</b>}</span><strong>{tab.label}</strong>
-        </button>)}
-      </nav>
-    )}
 
     <ConfirmDialog open={Boolean(confirm)} title={confirm?.title ?? ""} description={confirm?.description ?? ""} confirmLabel={confirm?.confirmLabel ?? "ยืนยัน"} tone={confirm?.tone} busy={saving !== null} onCancel={() => setConfirm(null)} onConfirm={() => { const action = confirm?.action; setConfirm(null); if (action) void action(); }} />
   </main>;
@@ -257,8 +303,7 @@ function OrdersPanel({ orders, setOrders, saving, setSaving, setNotice }: { orde
 }
 
 function RoundsPanel({ rounds, saving, mutate, onFormActive, onFormDirty }: { rounds: AdminRound[]; saving: string | null; mutate: Mutation; onFormActive: (active: boolean) => void; onFormDirty: (dirty: boolean) => void }) {
-  const blank: RoundInput = { deliveryDate: "", opensAt: "", closesAt: "", status: "เตรียมเปิด", note: "" };
-  const [creating, setCreating] = useState(false); const [draft, setDraft] = useState<RoundInput>(blank); const [editing, setEditing] = useState<string | null>(null); const [confirm, setConfirm] = useState<ConfirmState>(null);
+  const [creating, setCreating] = useState(false); const [draft, setDraft] = useState<RoundInput>(EMPTY_ROUND_INPUT); const [editing, setEditing] = useState<string | null>(null); const [confirm, setConfirm] = useState<ConfirmState>(null);
   const sorted = useMemo(() => [...rounds].sort((a, b) => roundPriority(a) - roundPriority(b) || a.deliveryDate.localeCompare(b.deliveryDate)), [rounds]);
 
   const activeRound = useMemo(() => {
@@ -268,7 +313,7 @@ function RoundsPanel({ rounds, saving, mutate, onFormActive, onFormDirty }: { ro
 
   const isDirty = useMemo(() => {
     if (creating) {
-      return JSON.stringify(draft) !== JSON.stringify(blank);
+      return JSON.stringify(draft) !== JSON.stringify(EMPTY_ROUND_INPUT);
     }
     if (editing && activeRound) {
       const activeInput: RoundInput = {
@@ -294,12 +339,12 @@ function RoundsPanel({ rounds, saving, mutate, onFormActive, onFormDirty }: { ro
 
   return <section className="admin-panel">
     {creating ? (
-      <RoundForm title="เพิ่มรอบใหม่" value={draft} disabled={saving !== null} onChange={setDraft} onCancel={() => setCreating(false)} onSubmit={async () => { if (await mutate("round.create", { round: draft }, "เพิ่มรอบขายแล้ว")) { setDraft(blank); setCreating(false); } }} />
+      <RoundForm title="เพิ่มรอบใหม่" value={draft} disabled={saving !== null} onChange={setDraft} onCancel={() => setCreating(false)} onSubmit={async () => { if (await mutate("round.create", { round: draft }, "เพิ่มรอบขายแล้ว")) { setDraft(EMPTY_ROUND_INPUT); setCreating(false); } }} />
     ) : editing ? (
       <RoundForm key={editing} title={`แก้ไข ${editing}`} value={draft} disabled={saving !== null} lockDeliveryDate onChange={setDraft} onCancel={() => setEditing(null)} onSubmit={async () => { if (await mutate("round.update", { id: editing, round: draft }, "บันทึกรอบขายแล้ว")) setEditing(null); }} />
     ) : (
       <>
-        <div className="admin-section-heading"><div><p className="eyebrow">กำหนดวันเปิดและปิดตะกร้า</p><h2>รอบขาย</h2></div><button className="admin-primary-button" type="button" onClick={() => { setCreating(true); setEditing(null); setDraft(blank); }}><AdminIcon name="plus" />เพิ่มรอบ</button></div>
+        <div className="admin-section-heading"><div><p className="eyebrow">กำหนดวันเปิดและปิดตะกร้า</p><h2>รอบขาย</h2></div><button className="admin-primary-button" type="button" onClick={() => { setCreating(true); setEditing(null); setDraft(EMPTY_ROUND_INPUT); }}><AdminIcon name="plus" />เพิ่มรอบ</button></div>
         <div className="admin-card-list admin-round-list">{sorted.map((round) => (
           <article className={`admin-cms-card admin-round-card priority-${roundPriority(round)}`} key={round.id}>
             <div className="admin-card-top"><div><span className={`cms-status status-${round.status === "เปิดรับ" ? "open" : "muted"}`}>{round.status}</span><h3>{round.label || round.id}</h3><small>{round.displayState}</small></div><button type="button" onClick={() => { setDraft({ deliveryDate: round.deliveryDate, opensAt: round.opensAt, closesAt: round.closesAt, status: round.status, note: round.note || "" }); setEditing(round.id); setCreating(false); }}><AdminIcon name="edit" />แก้ไข</button></div>
@@ -321,8 +366,7 @@ function RoundForm({ title, value, disabled, lockDeliveryDate = false, onChange,
 }
 
 function ProductsPanel({ products, saving, mutate, setNotice, onFormActive, onFormDirty }: { products: AdminProduct[]; saving: string | null; mutate: Mutation; setNotice: (value: string) => void; onFormActive: (active: boolean) => void; onFormDirty: (dirty: boolean) => void }) {
-  const blank: ProductInput = { id: "", name: "", unit: "", detail: "", price: null, status: "รอข้อมูล", imageUrl: "", category: "" };
-  const [draft, setDraft] = useState<ProductInput>(blank); const [editing, setEditing] = useState<string | null>(null); const [creating, setCreating] = useState(false); const [uploading, setUploading] = useState(false); const [category, setCategory] = useState("ทั้งหมด"); const [view, setView] = useState<"list" | "grid">("list"); const [confirm, setConfirm] = useState<ConfirmState>(null);
+  const [draft, setDraft] = useState<ProductInput>(EMPTY_PRODUCT_INPUT); const [editing, setEditing] = useState<string | null>(null); const [creating, setCreating] = useState(false); const [uploading, setUploading] = useState(false); const [category, setCategory] = useState("ทั้งหมด"); const [view, setView] = useState<"list" | "grid">("list"); const [confirm, setConfirm] = useState<ConfirmState>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [sortMode, setSortMode] = useState(false);
 
@@ -346,7 +390,7 @@ function ProductsPanel({ products, saving, mutate, setNotice, onFormActive, onFo
 
   const isDirty = useMemo(() => {
     if (creating) {
-      return JSON.stringify(draft) !== JSON.stringify(blank);
+      return JSON.stringify(draft) !== JSON.stringify(EMPTY_PRODUCT_INPUT);
     }
     if (editing && activeProduct) {
       const activeInput: ProductInput = {
@@ -402,7 +446,7 @@ function ProductsPanel({ products, saving, mutate, setNotice, onFormActive, onFo
 
   return <section className="admin-panel admin-products-section">
     {creating ? (
-      <ProductForm title="เพิ่มสินค้าใหม่" value={draft} disabled={saving !== null || uploading} uploading={uploading} onChange={setDraft} onUpload={uploadImage} onCancel={() => setCreating(false)} onSubmit={async () => { if (await mutate("product.create", { product: draft }, "เพิ่มสินค้าแล้ว")) { setDraft(blank); setCreating(false); } }} />
+      <ProductForm title="เพิ่มสินค้าใหม่" value={draft} disabled={saving !== null || uploading} uploading={uploading} onChange={setDraft} onUpload={uploadImage} onCancel={() => setCreating(false)} onSubmit={async () => { if (await mutate("product.create", { product: draft }, "เพิ่มสินค้าแล้ว")) { setDraft(EMPTY_PRODUCT_INPUT); setCreating(false); } }} />
     ) : editing ? (
       <ProductForm key={editing} title={`แก้ไข ${draft.name}`} value={draft} disabled={saving !== null || uploading} uploading={uploading} lockId onChange={setDraft} onUpload={uploadImage} onCancel={() => setEditing(null)} onSubmit={async () => { if (await mutate("product.update", { product: draft }, "บันทึกสินค้าแล้ว")) setEditing(null); }} />
     ) : (
@@ -412,7 +456,7 @@ function ProductsPanel({ products, saving, mutate, setNotice, onFormActive, onFo
             <p className="eyebrow">แก้ไขแล้วแสดงบนเว็บจริง</p>
             <h2>สินค้า</h2>
           </div>
-          <button className="admin-primary-button add-product-top-btn" type="button" onClick={() => { setDraft(blank); setCreating(true); setEditing(null); }}>
+          <button className="admin-primary-button add-product-top-btn" type="button" onClick={() => { setDraft(EMPTY_PRODUCT_INPUT); setCreating(true); setEditing(null); }}>
             <AdminIcon name="plus" />เพิ่มสินค้า
           </button>
         </div>
@@ -445,7 +489,7 @@ function ProductsPanel({ products, saving, mutate, setNotice, onFormActive, onFo
           </div>
         </div>
 
-        <button className="admin-primary-button add-product-mobile-btn" type="button" onClick={() => { setDraft(blank); setCreating(true); setEditing(null); }}>
+        <button className="admin-primary-button add-product-mobile-btn" type="button" onClick={() => { setDraft(EMPTY_PRODUCT_INPUT); setCreating(true); setEditing(null); }}>
           <AdminIcon name="plus" />เพิ่มสินค้าใหม่
         </button>
 
