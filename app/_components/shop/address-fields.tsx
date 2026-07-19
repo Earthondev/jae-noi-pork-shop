@@ -19,6 +19,7 @@ export function AddressFields({ values, onChange }: AddressFieldsProps) {
   const [data, setData] = useState<CompactProvince[]>(cachedAddressData ?? []);
   const [loading, setLoading] = useState(cachedAddressData === null);
   const [loadError, setLoadError] = useState(false);
+  const [loadAttempt, setLoadAttempt] = useState(0);
 
   useEffect(() => {
     if (cachedAddressData) return;
@@ -38,7 +39,13 @@ export function AddressFields({ values, onChange }: AddressFieldsProps) {
       })
       .finally(() => setLoading(false));
     return () => controller.abort();
-  }, []);
+  }, [loadAttempt]);
+
+  function retryLoad() {
+    setLoadError(false);
+    setLoading(true);
+    setLoadAttempt((attempt) => attempt + 1);
+  }
 
   const province = useMemo(() => data.find((candidate) => candidate.n === values.province), [data, values.province]);
   const district = useMemo(() => province?.d.find((candidate) => candidate.n === values.district), [province, values.district]);
@@ -84,7 +91,12 @@ export function AddressFields({ values, onChange }: AddressFieldsProps) {
       <label>รหัสไปรษณีย์
         <input name="postalCode" required inputMode="numeric" autoComplete="postal-code" pattern="[0-9]{5}" maxLength={5} placeholder="รหัส 5 หลัก" value={values.postalCode} onChange={(event) => onChange("postalCode", event.target.value.replace(/\D/g, "").slice(0, 5))} />
       </label>
-      {loadError && <p className="address-load-error full" role="alert">โหลดรายชื่อที่อยู่ไม่สำเร็จ กรุณาปิดตะกร้าแล้วลองใหม่อีกครั้ง</p>}
+      {loadError && (
+        <p className="address-load-error full" role="alert">
+          โหลดรายชื่อที่อยู่ไม่สำเร็จ กรุณาตรวจสอบอินเทอร์เน็ตแล้วลองอีกครั้ง
+          <button type="button" className="address-load-retry" onClick={retryLoad}>ลองโหลดใหม่</button>
+        </p>
+      )}
     </fieldset>
   );
 }

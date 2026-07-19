@@ -71,6 +71,7 @@ export function CartDrawer({ drawerRef, onClose, cart, checkout, storefront, ord
   const [qrSaveStatus, setQrSaveStatus] = useState<"idle" | "saving" | "saved" | "error">("idle");
   const qrCanvasRef = useRef<HTMLCanvasElement | null>(null);
   const slipInputRef = useRef<HTMLInputElement | null>(null);
+  const noticeRef = useRef<HTMLParagraphElement | null>(null);
   const [slipFile, setSlipFile] = useState<File | null>(null);
   const [slipPreviewUrl, setSlipPreviewUrl] = useState<string | null>(null);
   const [slipError, setSlipError] = useState<string | null>(null);
@@ -96,6 +97,12 @@ export function CartDrawer({ drawerRef, onClose, cart, checkout, storefront, ord
   useEffect(() => {
     if (!slipFile && slipInputRef.current) slipInputRef.current.value = "";
   }, [slipFile]);
+
+  // Submission errors surface in the notice near the top of the drawer while
+  // the submit button sits at the bottom, so bring the message into view.
+  useEffect(() => {
+    if (storefront.notice) noticeRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+  }, [storefront.notice]);
 
   const SLIP_MAX_BYTES = 5 * 1024 * 1024;
   const SLIP_ACCEPTED_TYPES = ["image/jpeg", "image/png", "image/webp"];
@@ -302,7 +309,7 @@ export function CartDrawer({ drawerRef, onClose, cart, checkout, storefront, ord
               )}
             </div>
             <div className="summary-row"><span>รวมค่าสินค้า</span><strong>{cart.subtotal} บาท</strong></div>
-            {storefront.notice && <p className="form-notice cart-notice" role="alert">{storefront.notice}</p>}
+            {storefront.notice && <p ref={noticeRef} className="form-notice cart-notice" role="alert">{storefront.notice}</p>}
             {checkout.hasContent && (
               <div className="saved-draft-control" aria-label="ข้อมูลที่บันทึกชั่วคราว">
                 <span><strong>จำข้อมูลไว้บนเครื่องนี้</strong><small>ตะกร้าและข้อมูลที่กรอกจะอยู่ต่อ 24 ชั่วโมง</small></span>

@@ -71,7 +71,10 @@ export function AdminDashboard({ initialOrders, initialCms, userName, serverNow,
 
   const pendingCount = orders.filter((order) => order.payment_status === "waiting_for_slip_review" || order.payment_status === "invalid_slip").length;
   const storeIsOpen = cms.rounds.some((round) => round.status === "เปิดรับ" && round.displayState === "แสดงใน dropdown");
-  const isNavHidden = formActive || (activeTab === "storefront" && formDirty);
+  // Keep navigation visible even while the storefront form is dirty —
+  // changeTab already guards unsaved edits with a confirm dialog, so hiding
+  // the nav only traps the admin on the page with no way out.
+  const isNavHidden = formActive;
 
   useEffect(() => {
     const updateClock = () => {
@@ -170,7 +173,7 @@ export function AdminDashboard({ initialOrders, initialCms, userName, serverNow,
         <aside className={`admin-drawer ${drawerOpen ? "open" : ""}`}>
           <div className="admin-drawer-header">
             <div className="admin-brand-lockup">
-              <span className="admin-brand-logo"><Image src={adminImageSrc(cms.settings.storeLogoUrl) || "/images/products/jae-noi-shop-logo.jpg"} alt="" fill sizes="48px" unoptimized /></span>
+              <span className="admin-brand-logo"><Image src={adminImageSrc(cms.settings.storeLogoUrl) || "/images/products/jae-noi-shop-logo.jpg"} alt={`โลโก้ ${cms.settings.storeName}`} fill sizes="48px" unoptimized /></span>
               <div>
                 <p>ระบบจัดการหลังบ้าน</p>
                 <strong>{cms.settings.storeName}</strong>
@@ -275,8 +278,17 @@ function OrdersPanel({ orders, setOrders, saving, setSaving, setNotice }: { orde
     finally { setSaving(null); }
   }
 
-  function requestPaid(order: AdminOrder) {
-    setConfirm({ title: "ยืนยันว่าเงินเข้าแล้ว", description: `ตรวจยอด ${formatMoney(order.total)} ของออเดอร์ ${order.id} ในแอปธนาคารแล้วใช่ไหม?`, confirmLabel: "ยืนยันชำระแล้ว", action: async () => { await updateOrder(order.id, { paymentStatus: "paid" }, `ยืนยันการชำระเงิน ${order.id} แล้ว`); } });
+  // Payment-status changes the customer can see (and that are hard to walk
+  // back) all require an explicit confirmation, not just "paid".
+  function requestPaymentChange(order: AdminOrder, status: PaymentStatus) {
+    const prompts: Partial<Record<PaymentStatus, { title: string; description: string; confirmLabel: string; tone?: "danger" | "primary" }>> = {
+      paid: { title: "ยืนยันว่าเงินเข้าแล้ว", description: `ตรวจยอด ${formatMoney(order.total)} ของออเดอร์ ${order.id} ในแอปธนาคารแล้วใช่ไหม?`, confirmLabel: "ยืนยันชำระแล้ว" },
+      refunded: { title: "ยืนยันว่าคืนเงินแล้ว", description: `ออเดอร์ ${order.id} จะแสดงสถานะ "คืนเงินแล้ว" ให้ลูกค้าเห็นทันที ยืนยันว่าโอนเงิน ${formatMoney(order.total)} คืนเรียบร้อยแล้วใช่ไหม?`, confirmLabel: "ยืนยันคืนเงินแล้ว", tone: "danger" },
+      invalid_slip: { title: "แจ้งว่าสลิปไม่ถูกต้อง?", description: `ออเดอร์ ${order.id} จะแสดงสถานะ "สลิปไม่ถูกต้อง" ให้ลูกค้าเห็น และถูกนับเป็นรายการที่ต้องตรวจ`, confirmLabel: "ยืนยันสลิปไม่ถูกต้อง", tone: "danger" },
+    };
+    const prompt = prompts[status];
+    if (!prompt) { void updateOrder(order.id, { paymentStatus: status }, `อัปเดตการชำระเงิน ${order.id} แล้ว`); return; }
+    setConfirm({ ...prompt, action: async () => { await updateOrder(order.id, { paymentStatus: status }, status === "paid" ? `ยืนยันการชำระเงิน ${order.id} แล้ว` : `อัปเดตการชำระเงิน ${order.id} แล้ว`); } });
   }
 
   return <section className="admin-panel admin-orders-panel">
@@ -306,7 +318,7 @@ function OrdersPanel({ orders, setOrders, saving, setSaving, setNotice }: { orde
             <div className="admin-order-grid"><div><span>ลูกค้า</span><p>{order.customer_name}</p><a href={`tel:${phoneHref(order.phone)}`}><AdminIcon name="phone" />{order.phone}</a></div><div><span>รายการ</span><p>{order.items || "—"}</p><strong>{formatMoney(order.total)}</strong></div><div className="full"><span>{order.fulfilment === "pickup" ? "รับเองหน้าร้าน" : "ที่อยู่จัดส่ง"}</span><p>{order.address}</p>{order.note && <small>หมายเหตุ: {order.note}</small>}{order.admin_note && <small className="verification-note">ผลตรวจสลิป: {order.admin_note}</small>}</div></div>
             <div className="admin-controls">
               <div className="admin-slip-control">{order.slip_key ? <div className="admin-slip-actions"><a className="slip-link" href={`/api/admin/slips/${encodeURIComponent(order.id)}`} target="_blank" rel="noreferrer"><AdminIcon name="image" />เปิดดูสลิป</a><a className="slip-link slip-download-link" href={`/api/admin/slips/${encodeURIComponent(order.id)}?download=1`}><AdminIcon name="download" />ดาวน์โหลดสลิป</a></div> : <span className="no-slip">ยังไม่มีสลิป</span>}<small>ตรวจเงินเข้าในแอปธนาคารก่อนกดยืนยัน</small></div>
-              <label><span>สถานะชำระเงิน</span><select disabled={saving === `order:${order.id}`} value={order.payment_status} onChange={(event) => { const value = event.target.value as PaymentStatus; if (value === "paid") requestPaid(order); else void updateOrder(order.id, { paymentStatus: value }, `อัปเดตการชำระเงิน ${order.id} แล้ว`); }}>{Object.entries(paymentStatusLabels).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label>
+              <label><span>สถานะชำระเงิน</span><select disabled={saving === `order:${order.id}`} value={order.payment_status} onChange={(event) => requestPaymentChange(order, event.target.value as PaymentStatus)}>{Object.entries(paymentStatusLabels).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label>
               <label><span>สถานะออเดอร์</span><select disabled={saving === `order:${order.id}`} value={order.order_status} onChange={(event) => void updateOrder(order.id, { orderStatus: event.target.value as OrderStatus }, `อัปเดตออเดอร์ ${order.id} แล้ว`)}>{Object.entries(statusLabels).map(([value, label]) => <option key={value} value={value} disabled={(order.payment_status !== "paid" && !["received", "cancelled"].includes(value)) || (order.fulfilment === "pickup" && value === "shipped") || (order.fulfilment === "postal" && value === "ready_for_pickup")}>{label}</option>)}</select></label>
               {order.fulfilment === "postal" && <label className="admin-tracking-control"><span>เลขพัสดุ</span><span><input maxLength={100} value={trackingDrafts[order.id] ?? ""} onChange={(event) => setTrackingDrafts((current) => ({ ...current, [order.id]: event.target.value }))} placeholder="กรอกหลังส่งสินค้า" /><button type="button" disabled={saving === `order:${order.id}` || order.payment_status !== "paid"} onClick={() => void updateOrder(order.id, { trackingNumber: trackingDrafts[order.id] ?? "" }, `บันทึกเลขพัสดุ ${order.id} แล้ว`)}>บันทึก</button></span></label>}
             </div>
@@ -472,7 +484,7 @@ function ProductsPanel({ products, saving, mutate, setNotice, onFormActive, onFo
     return <article className={`admin-product-card ${product.status === "ซ่อนสินค้า" ? "is-archived" : ""}`} key={product.id}>
       <div className="product-card-body">
         <div className="product-card-image-wrap">
-          {firstImage ? <Image src={adminImageSrc(firstImage)} alt="" fill sizes="96px" unoptimized /> : <div className="product-card-no-image"><AdminIcon name="image" /></div>}
+          {firstImage ? <Image src={adminImageSrc(firstImage)} alt={`รูปสินค้า ${product.name}`} fill sizes="96px" unoptimized /> : <div className="product-card-no-image"><AdminIcon name="image" /></div>}
         </div>
         <div className="product-card-info">
           <div className="product-card-title-row">
@@ -628,7 +640,7 @@ function ProductForm({ title, value, disabled, uploading, lockId = false, onChan
           {images.map((imgUrl, idx) => (
             <div key={imgUrl} className="admin-image-slot">
               <div className="image-slot-preview">
-                <Image src={adminImageSrc(imgUrl)} alt="" fill sizes="120px" unoptimized />
+                <Image src={adminImageSrc(imgUrl)} alt={idx === 0 ? `รูปหลักของ ${value.name || "สินค้า"}` : `รูปที่ ${idx + 1} ของ ${value.name || "สินค้า"}`} fill sizes="120px" unoptimized />
                 <span className="image-slot-badge">{idx === 0 ? "รูปหลัก" : `${idx + 1}`}</span>
               </div>
               <div className="image-slot-actions">
@@ -753,7 +765,7 @@ function StorefrontPanel({ settings, saving, mutate, setNotice, onFormActive, on
           </div>
         </div>
       )}
-      <div className={`admin-sticky-save${dirty ? " dirty" : ""}`}><span>{dirty ? "มีการแก้ไขที่ยังไม่ได้บันทึก" : "ข้อมูลเป็นปัจจุบันแล้ว"}</span><button className="admin-save-button" type="submit" disabled={saving !== null || uploading !== null || !dirty}>{saving ? "กำลังบันทึก…" : "บันทึกหน้าร้าน"}</button></div>
+      <div className={`admin-sticky-save${dirty ? " dirty" : ""}`}><span>{dirty ? "มีการแก้ไขที่ยังไม่ได้บันทึก" : "ข้อมูลเป็นปัจจุบันแล้ว"}</span>{dirty && <button className="admin-discard-button" type="button" disabled={saving !== null || uploading !== null} onClick={() => { setDraft(settings); setNotice("ยกเลิกการแก้ไขแล้ว กลับไปใช้ข้อมูลล่าสุดที่บันทึกไว้"); }}>ยกเลิกการแก้ไข</button>}<button className="admin-save-button" type="submit" disabled={saving !== null || uploading !== null || !dirty}>{saving ? "กำลังบันทึก…" : "บันทึกหน้าร้าน"}</button></div>
     </form>
   </section>;
 }
