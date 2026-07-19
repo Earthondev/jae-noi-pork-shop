@@ -1,4 +1,5 @@
 import Image from "next/image";
+import { useState } from "react";
 import type { PreorderRound, StorefrontContent } from "../../_hooks/use-storefront";
 
 export type HeroProps = Readonly<{
@@ -9,6 +10,9 @@ export type HeroProps = Readonly<{
 }>;
 
 export function Hero({ storeLoading, rounds, nextRound, content }: HeroProps) {
+  // Hover already pauses the marquee; touch devices have no hover, so a tap
+  // toggles the pause instead.
+  const [marqueePaused, setMarqueePaused] = useState(false);
   return (
     <>
       <section className="hero" id="top">
@@ -23,7 +27,11 @@ export function Hero({ storeLoading, rounds, nextRound, content }: HeroProps) {
             <a className="primary-action" href="#products">เลือกสินค้า</a>
           </div>
           <div className="hero-features-container">
-            <div className="hero-features">
+            <div
+              className={`hero-features${marqueePaused ? " paused" : ""}`}
+              onClick={() => setMarqueePaused((paused) => !paused)}
+              title={marqueePaused ? "แตะเพื่อเลื่อนต่อ" : "แตะเพื่อหยุดเลื่อน"}
+            >
               {/* Set 1 */}
               <span>
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ width: 14, height: 14, marginRight: 4 }}>

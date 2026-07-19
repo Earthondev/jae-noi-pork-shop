@@ -54,10 +54,10 @@ export function AddressFields({ values, onChange }: AddressFieldsProps) {
   return (
     <fieldset className="structured-address full">
       <legend>ที่อยู่จัดส่ง</legend>
-      <label className="full">บ้านเลขที่ หมู่บ้าน อาคาร ถนน
+      <label className="full">บ้านเลขที่ หมู่บ้าน อาคาร ถนน<span className="req" aria-hidden="true">*</span>
         <textarea name="addressLine" required autoComplete="address-line1" rows={2} placeholder="เช่น 99 หมู่ 1 ถนนมิตรภาพ" value={values.addressLine} onChange={(event) => onChange("addressLine", event.target.value)} />
       </label>
-      <label>จังหวัด
+      <label>จังหวัด<span className="req" aria-hidden="true">*</span>
         <select name="province" required autoComplete="address-level1" value={values.province} disabled={loading || loadError} onChange={(event) => {
           onChange("province", event.target.value);
           onChange("district", "");
@@ -68,7 +68,7 @@ export function AddressFields({ values, onChange }: AddressFieldsProps) {
           {data.map((candidate) => <option value={candidate.n} key={candidate.n}>{candidate.n}</option>)}
         </select>
       </label>
-      <label>{bangkok ? "เขต" : "อำเภอ"}
+      <label>{bangkok ? "เขต" : "อำเภอ"}<span className="req" aria-hidden="true">*</span>
         <select name="district" required autoComplete="address-level2" value={values.district} disabled={!province} onChange={(event) => {
           onChange("district", event.target.value);
           onChange("subdistrict", "");
@@ -78,7 +78,7 @@ export function AddressFields({ values, onChange }: AddressFieldsProps) {
           {province?.d.map((candidate) => <option value={candidate.n} key={candidate.n}>{candidate.n}</option>)}
         </select>
       </label>
-      <label>{bangkok ? "แขวง" : "ตำบล"}
+      <label>{bangkok ? "แขวง" : "ตำบล"}<span className="req" aria-hidden="true">*</span>
         <select name="subdistrict" required autoComplete="address-level3" value={values.subdistrict} disabled={!district} onChange={(event) => {
           const subdistrict = district?.s.find(([name]) => name === event.target.value);
           onChange("subdistrict", event.target.value);
@@ -88,7 +88,7 @@ export function AddressFields({ values, onChange }: AddressFieldsProps) {
           {district?.s.map(([name, postalCode]) => <option value={name} key={`${name}-${postalCode}`}>{name}</option>)}
         </select>
       </label>
-      <label>รหัสไปรษณีย์
+      <label>รหัสไปรษณีย์<span className="req" aria-hidden="true">*</span>
         <input name="postalCode" required inputMode="numeric" autoComplete="postal-code" pattern="[0-9]{5}" maxLength={5} placeholder="รหัส 5 หลัก" value={values.postalCode} onChange={(event) => onChange("postalCode", event.target.value.replace(/\D/g, "").slice(0, 5))} />
       </label>
       {loadError && (
