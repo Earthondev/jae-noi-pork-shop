@@ -67,6 +67,7 @@ type RoundRow = {
 type SettingRow = { key: string; value: string; status: string };
 
 export async function getStorefrontData(options: { signal?: AbortSignal } = {}): Promise<StorefrontData> {
+  void options;
   return getD1StorefrontData();
 }
 

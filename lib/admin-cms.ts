@@ -1,5 +1,5 @@
 import type { ProductStatus } from "./product-catalog";
-import { safeStorefrontAssetUrl } from "./product-catalog";
+import { DEFAULT_STORE_COVER, DEFAULT_STORE_LOGO, safeStorefrontAssetUrl } from "./product-catalog";
 import { safePickupMapUrl } from "./storefront-settings";
 
 export const PRODUCT_STATUSES: readonly ProductStatus[] = ["เปิดขาย", "ปิดชั่วคราว", "รอข้อมูล", "ซ่อนสินค้า"];
@@ -81,6 +81,8 @@ export type RoundInput = {
   fingerprint?: string;
 };
 
+export class AdminCmsValidationError extends Error {}
+
 export const DEFAULT_STOREFRONT_CONTENT = {
   heroTitle: "อร่อยถึงเครื่อง",
   heroHighlight: "สั่งง่ายถึงบ้าน",
@@ -95,7 +97,7 @@ export function normalizeProductId(value: string): string {
 }
 
 export function roundIdFromDeliveryDate(deliveryDate: string): string {
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(deliveryDate)) throw new Error("วันจัดส่งไม่ถูกต้อง");
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(deliveryDate)) throw new AdminCmsValidationError("วันจัดส่งไม่ถูกต้อง");
   return `RD-${deliveryDate.replaceAll("-", "")}`;
 }
 
@@ -106,38 +108,42 @@ export function validateProductInput(input: ProductInput): ProductInput {
   const detail = cleanText(input.detail, 500);
   const imageUrl = input.imageUrl.trim().slice(0, 2500);
   const category = cleanText(input.category, 80) || "อื่น ๆ";
-  if (!/^[A-Z0-9_-]{2,40}$/.test(id)) throw new Error("รหัสสินค้าต้องมี 2-40 ตัว ใช้อักษรอังกฤษ ตัวเลข - หรือ _");
-  if (!name) throw new Error("กรุณากรอกชื่อสินค้า");
-  if (!PRODUCT_STATUSES.includes(input.status)) throw new Error("สถานะสินค้าไม่ถูกต้อง");
+  if (!/^[A-Z0-9_-]{2,40}$/.test(id)) throw new AdminCmsValidationError("รหัสสินค้าต้องมี 2-40 ตัว ใช้อักษรอังกฤษ ตัวเลข - หรือ _");
+  if (!name) throw new AdminCmsValidationError("กรุณากรอกชื่อสินค้า");
+  if (!PRODUCT_STATUSES.includes(input.status)) throw new AdminCmsValidationError("สถานะสินค้าไม่ถูกต้อง");
   const price = input.price === null ? null : Number(input.price);
-  if (price !== null && (!Number.isFinite(price) || price <= 0 || price > 1_000_000)) throw new Error("ราคาสินค้าไม่ถูกต้อง");
-  if (input.status === "เปิดขาย" && (!unit || !detail || price === null)) throw new Error("สินค้าที่เปิดขายต้องมีหน่วย รายละเอียด และราคาให้ครบ");
+  if (price !== null && (!Number.isFinite(price) || price <= 0 || price > 1_000_000)) throw new AdminCmsValidationError("ราคาสินค้าไม่ถูกต้อง");
+  if (input.status === "เปิดขาย" && (!unit || !detail || price === null)) throw new AdminCmsValidationError("สินค้าที่เปิดขายต้องมีหน่วย รายละเอียด และราคาให้ครบ");
   return { ...input, id, name, unit, detail, price, imageUrl, category };
 }
 
 export function validateRoundInput(input: RoundInput): RoundInput {
-  if (!isDateInput(input.deliveryDate)) throw new Error("วันจัดส่งไม่ถูกต้อง");
-  if (!isDateTimeInput(input.opensAt) || !isDateTimeInput(input.closesAt)) throw new Error("วันเวลาเปิดหรือปิดรับไม่ถูกต้อง");
-  if (!ROUND_STATUSES.includes(input.status)) throw new Error("สถานะรอบไม่ถูกต้อง");
+  if (!isDateInput(input.deliveryDate)) throw new AdminCmsValidationError("วันจัดส่งไม่ถูกต้อง");
+  if (!isDateTimeInput(input.opensAt) || !isDateTimeInput(input.closesAt)) throw new AdminCmsValidationError("วันเวลาเปิดหรือปิดรับไม่ถูกต้อง");
+  if (!ROUND_STATUSES.includes(input.status)) throw new AdminCmsValidationError("สถานะรอบไม่ถูกต้อง");
   const opensAt = localInputMs(input.opensAt);
   const closesAt = localInputMs(input.closesAt);
   const deliveryAt = localInputMs(`${input.deliveryDate}T23:59`);
-  if (opensAt >= closesAt) throw new Error("เวลาเปิดรับต้องมาก่อนเวลาปิดรับ");
-  if (closesAt > deliveryAt) throw new Error("เวลาปิดรับต้องไม่เกินวันจัดส่ง");
+  if (opensAt >= closesAt) throw new AdminCmsValidationError("เวลาเปิดรับต้องมาก่อนเวลาปิดรับ");
+  if (closesAt > deliveryAt) throw new AdminCmsValidationError("เวลาปิดรับต้องไม่เกินวันจัดส่ง");
   return { ...input, note: cleanText(input.note, 500) };
 }
 
 export function cleanStorefrontSettings(input: Omit<AdminStorefrontSettings, "fingerprint">): Omit<AdminStorefrontSettings, "fingerprint"> {
   const shippingFee = input.shippingFee === null ? null : Number(input.shippingFee);
   if (shippingFee !== null && (!Number.isFinite(shippingFee) || shippingFee < 0 || shippingFee > 100_000)) {
-    throw new Error("ค่าส่งไม่ถูกต้อง");
+    throw new AdminCmsValidationError("ค่าส่งไม่ถูกต้อง");
   }
   const pickupMapUrl = input.pickupMapUrl.trim().slice(0, 500);
-  if (pickupMapUrl && !safePickupMapUrl(pickupMapUrl)) throw new Error("ลิงก์แผนที่ต้องเป็น Google Maps แบบ HTTPS");
+  if (pickupMapUrl && !safePickupMapUrl(pickupMapUrl)) throw new AdminCmsValidationError("ลิงก์แผนที่ต้องเป็น Google Maps แบบ HTTPS");
   const storeLogoUrl = input.storeLogoUrl.trim().slice(0, 500);
   const storeCoverUrl = input.storeCoverUrl.trim().slice(0, 500);
-  if (storeLogoUrl && safeStorefrontAssetUrl(storeLogoUrl, "") === "") throw new Error("โลโก้ต้องมาจากพื้นที่รูปของร้านเท่านั้น");
-  if (storeCoverUrl && safeStorefrontAssetUrl(storeCoverUrl, "") === "") throw new Error("ภาพปกต้องมาจากพื้นที่รูปของร้านเท่านั้น");
+  if (storeLogoUrl && storeLogoUrl !== DEFAULT_STORE_LOGO && safeStorefrontAssetUrl(storeLogoUrl, "") === "") {
+    throw new AdminCmsValidationError("โลโก้ต้องมาจากพื้นที่รูปของร้านเท่านั้น");
+  }
+  if (storeCoverUrl && storeCoverUrl !== DEFAULT_STORE_COVER && safeStorefrontAssetUrl(storeCoverUrl, "") === "") {
+    throw new AdminCmsValidationError("ภาพปกต้องมาจากพื้นที่รูปของร้านเท่านั้น");
+  }
   return {
     storeName: requiredText(input.storeName, 100, "ชื่อร้าน"),
     heroTitle: requiredText(input.heroTitle, 100, "หัวข้อหน้าร้าน"),
@@ -190,13 +196,13 @@ function cleanText(value: string, maxLength: number): string {
 
 function requiredText(value: string, maxLength: number, label: string): string {
   const cleaned = cleanText(value, maxLength);
-  if (!cleaned) throw new Error(`กรุณากรอก${label}`);
+  if (!cleaned) throw new AdminCmsValidationError(`กรุณากรอก${label}`);
   return cleaned;
 }
 
 function normalizePhone(value: string): string {
   const phone = value.trim().replace(/[^0-9+ -]/g, "").slice(0, 30);
-  if (phone.replace(/\D/g, "").length < 9) throw new Error("เบอร์โทรไม่ถูกต้อง");
+  if (phone.replace(/\D/g, "").length < 9) throw new AdminCmsValidationError("เบอร์โทรไม่ถูกต้อง");
   return phone;
 }
 

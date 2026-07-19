@@ -1,6 +1,7 @@
 import { env } from "cloudflare:workers";
 import {
   cleanStorefrontSettings,
+  AdminCmsValidationError,
   DEFAULT_STOREFRONT_CONTENT,
   roundIdFromDeliveryDate,
   validateProductInput,
@@ -120,7 +121,7 @@ export async function createAdminRound(input: RoundInput): Promise<CmsMutationRe
 }
 
 export async function updateAdminRound(id: string, input: RoundInput): Promise<CmsMutationResult> {
-  const round = validateRoundInput(input); if (roundIdFromDeliveryDate(round.deliveryDate) !== id) throw new Error("ไม่สามารถเปลี่ยนวันจัดส่งของรอบเดิมได้ กรุณาสร้างรอบใหม่");
+  const round = validateRoundInput(input); if (roundIdFromDeliveryDate(round.deliveryDate) !== id) throw new AdminCmsValidationError("ไม่สามารถเปลี่ยนวันจัดส่งของรอบเดิมได้ กรุณาสร้างรอบใหม่");
   const { db } = bindings(); const current = await db.prepare("SELECT version FROM delivery_rounds WHERE id=?").bind(id).first<{ version: number }>();
   if (!current) return "not_found"; if (input.fingerprint && input.fingerprint !== String(current.version)) return "conflict";
   await db.prepare("UPDATE delivery_rounds SET opens_at=?,closes_at=?,status=?,note=?,version=version+1,updated_at=? WHERE id=? AND version=?")
@@ -154,6 +155,6 @@ function assertProductImage(url: string): void {
   if (!url) return; const { mediaOrigin } = bindings();
   const urls = url.split(",");
   for (const u of urls) {
-    if (safeProductImageUrl(u.trim(), mediaOrigin) === PRODUCT_IMAGE_PLACEHOLDER) throw new Error("รูปสินค้าต้องมาจากพื้นที่รูปของร้านเท่านั้น");
+    if (safeProductImageUrl(u.trim(), mediaOrigin) === PRODUCT_IMAGE_PLACEHOLDER) throw new AdminCmsValidationError("รูปสินค้าต้องมาจากพื้นที่รูปของร้านเท่านั้น");
   }
 }

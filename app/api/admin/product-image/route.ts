@@ -5,6 +5,7 @@ import { isSameOriginMutation } from "../../../../lib/admin-auth";
 import { normalizeProductId } from "../../../../lib/admin-cms";
 import { publicErrorBody } from "../../../../lib/public-errors";
 import { reportServerError } from "../../../../lib/server-monitoring";
+import { detectSupportedImageType } from "../../../../lib/order-request-validation";
 
 const MAX_IMAGE_BYTES = 5 * 1024 * 1024;
 
@@ -29,7 +30,7 @@ export async function POST(request: Request) {
   if (file.size <= 0 || file.size > MAX_IMAGE_BYTES) return response({ error: "รูปต้องมีขนาดไม่เกิน 5 MB" }, 400);
 
   const bytes = new Uint8Array(await file.arrayBuffer());
-  const imageType = detectImageType(bytes);
+  const imageType = detectSupportedImageType(bytes);
   if (!imageType) return response({ error: "รองรับเฉพาะรูป JPG, PNG หรือ WebP ที่ถูกต้อง" }, 400);
 
   try {
@@ -46,19 +47,6 @@ export async function POST(request: Request) {
     reportServerError({ event: "admin_product_image_failed", operation: "admin.product_image.upload", error, path: "/api/admin/product-image", method: "POST" });
     return response(publicErrorBody("ADMIN_UNAVAILABLE"), 502);
   }
-}
-
-function detectImageType(bytes: Uint8Array): { extension: "jpg" | "png" | "webp"; contentType: string } | null {
-  if (bytes.length >= 3 && bytes[0] === 0xff && bytes[1] === 0xd8 && bytes[2] === 0xff) {
-    return { extension: "jpg", contentType: "image/jpeg" };
-  }
-  if (bytes.length >= 8 && [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a].every((value, index) => bytes[index] === value)) {
-    return { extension: "png", contentType: "image/png" };
-  }
-  if (bytes.length >= 12 && String.fromCharCode(...bytes.slice(0, 4)) === "RIFF" && String.fromCharCode(...bytes.slice(8, 12)) === "WEBP") {
-    return { extension: "webp", contentType: "image/webp" };
-  }
-  return null;
 }
 
 function response(body: unknown, status = 200) {

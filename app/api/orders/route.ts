@@ -15,8 +15,13 @@ import { publicErrorBody } from "../../../lib/public-errors";
 import { reportServerError } from "../../../lib/server-monitoring";
 import { formatThaiAddress, type StructuredThaiAddress } from "../../../lib/thai-address";
 import { isValidStructuredThaiAddress } from "../../../lib/thai-address-validation";
+import {
+  detectSupportedImageType,
+  OrderPayloadValidationError,
+  validateOrderItemInputs,
+  validateOrderRequestFields,
+} from "../../../lib/order-request-validation";
 
-type OrderItemInput = { productId?: string; quantity?: number };
 type UploadBindings = { UPLOADS?: R2Bucket };
 type IdempotencyReceipt = {
   state: "processing" | "completed";
@@ -71,6 +76,8 @@ export async function POST(request: Request) {
     const idempotencyKey = String(form.get("idempotencyKey") ?? "").trim();
     const rawItems = JSON.parse(String(form.get("items") ?? "[]")) as unknown;
     const slip = form.get("slip");
+    validateOrderRequestFields({ customerName, note });
+    const itemInputs = validateOrderItemInputs(rawItems);
 
     if (!customerName || !phone) return NextResponse.json({ error: "กรุณากรอกชื่อและเบอร์โทรให้ครบ" }, { status: 400 });
     if (!/^0[0-9\s-]{8,12}$/.test(phone)) return NextResponse.json({ error: "กรุณาตรวจสอบเบอร์โทรศัพท์" }, { status: 400 });
@@ -79,9 +86,13 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "กรุณาตรวจสอบจังหวัด อำเภอ ตำบล และรหัสไปรษณีย์" }, { status: 400 });
     }
     if (!/^[A-Za-z0-9_-]{20,100}$/.test(idempotencyKey)) return NextResponse.json({ error: "ไม่พบรหัสป้องกันการสั่งซ้ำ กรุณาโหลดหน้าใหม่" }, { status: 400 });
-    if (!Array.isArray(rawItems) || rawItems.length === 0) return NextResponse.json({ error: "ไม่พบสินค้าในตะกร้า" }, { status: 400 });
-    if (slip instanceof File && slip.size > 0 && (slip.size > 5 * 1024 * 1024 || !["image/jpeg", "image/png", "image/webp"].includes(slip.type))) {
+    if (slip instanceof File && slip.size > 5 * 1024 * 1024) {
       return NextResponse.json({ error: "สลิปต้องเป็นรูป JPG, PNG หรือ WebP ขนาดไม่เกิน 5 MB" }, { status: 400 });
+    }
+    const slipBytes = slip instanceof File && slip.size > 0 ? new Uint8Array(await slip.arrayBuffer()) : null;
+    const slipImageType = slipBytes ? detectSupportedImageType(slipBytes) : null;
+    if (slipBytes && !slipImageType) {
+      return NextResponse.json({ error: "สลิปต้องเป็นไฟล์รูป JPG, PNG หรือ WebP ที่ถูกต้อง" }, { status: 400 });
     }
 
     operation = "order.load_storefront";
@@ -94,9 +105,7 @@ export async function POST(request: Request) {
     }
 
     const productsById = new Map(storefront.products.map((product) => [product.id, product]));
-    const items = rawItems.map((raw) => {
-      if (typeof raw !== "object" || raw === null) throw new OrderRequestError("ข้อมูลสินค้าไม่ถูกต้อง", 400);
-      const candidate = raw as OrderItemInput;
+    const items = itemInputs.map((candidate) => {
       const product = candidate.productId ? productsById.get(candidate.productId) : undefined;
       const quantity = Number(candidate.quantity);
       if (!product) throw new OrderRequestError("ไม่พบสินค้านี้หรือสินค้าถูกซ่อนแล้ว กรุณาโหลดหน้าใหม่", 409);
@@ -128,7 +137,7 @@ export async function POST(request: Request) {
       roundId,
       fulfilment,
       items: [...items].sort((left, right) => left.id.localeCompare(right.id)),
-      slip: slip instanceof File && slip.size > 0 ? { name: slip.name, size: slip.size, type: slip.type } : null,
+      slip: slip instanceof File && slipBytes && slipImageType ? { name: slip.name, size: slipBytes.byteLength, type: slipImageType.contentType } : null,
     }));
     let orderId = await createSecureOrderId(selectedRound.id, idempotencyKey);
     const createdAt = new Date().toISOString();
@@ -176,12 +185,13 @@ export async function POST(request: Request) {
     let paymentStatus: SheetPaymentStatus = "รอชำระเงิน";
     let adminNote = "";
 
-    if (slip instanceof File && slip.size > 0) {
+    if (slip instanceof File && slipBytes && slipImageType) {
       operation = "order.store_slip";
       slipKey = `slips/${orderId}/original`;
-      await uploads.put(slipKey, slip.stream(), { httpMetadata: { contentType: slip.type }, customMetadata: { orderId } });
+      await uploads.put(slipKey, slipBytes, { httpMetadata: { contentType: slipImageType.contentType }, customMetadata: { orderId } });
       const clientKey = request.headers.get("cf-connecting-ip") ?? request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ?? "local";
-      const verification = await verifySlipWithSlipOk(slip, subtotal + shippingFee, clientKey);
+      const verifiedSlip = new File([slipBytes], slip.name, { type: slipImageType.contentType });
+      const verification = await verifySlipWithSlipOk(verifiedSlip, subtotal + shippingFee, clientKey);
       const decision = paymentDecisionFromVerification(verification);
       paymentStatus = decision.paymentStatus;
       adminNote = decision.adminNote;
@@ -226,6 +236,9 @@ export async function POST(request: Request) {
     if (uploads && slipKey && !orderWritten) await uploads.delete(slipKey).catch(() => undefined);
     if (error instanceof OrderRequestError) {
       return NextResponse.json({ error: error.message }, { status: error.status });
+    }
+    if (error instanceof OrderPayloadValidationError) {
+      return NextResponse.json({ error: error.message }, { status: 400 });
     }
     reportServerError({
       event: "order_write_failed",

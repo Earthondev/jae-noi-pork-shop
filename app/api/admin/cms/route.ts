@@ -6,6 +6,7 @@ import { reportServerError } from "../../../../lib/server-monitoring";
 import {
   PRODUCT_STATUSES,
   ROUND_STATUSES,
+  AdminCmsValidationError,
   type AdminStorefrontSettings,
   type ProductInput,
   type RoundInput,
@@ -78,7 +79,7 @@ export async function POST(request: Request) {
     await invalidateStorefrontCache(request);
     return json({ ok: true });
   } catch (error) {
-    if (error instanceof AdminInputError) return json({ error: error.message }, 400);
+    if (error instanceof AdminInputError || error instanceof AdminCmsValidationError) return json({ error: error.message }, 400);
     reportServerError({ event: "admin_cms_write_failed", operation: "admin.cms.write", error, path: "/api/admin/cms", method: "POST" });
     return json(publicErrorBody("ADMIN_UNAVAILABLE"), 502);
   }

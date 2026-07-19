@@ -106,7 +106,10 @@ export async function getAdminOrders(): Promise<AdminOrder[]> {
     db.prepare(`SELECT id, round_id, customer_name, phone, address, note, admin_note, subtotal,
       shipping_fee, total, slip_key, payment_status, order_status, created_at, fulfilment, tracking_number
       FROM orders ORDER BY created_at DESC LIMIT 500`),
-    db.prepare("SELECT order_id, name, quantity, unit_price FROM order_items ORDER BY id"),
+    db.prepare(`SELECT oi.order_id, oi.name, oi.quantity, oi.unit_price
+      FROM order_items oi
+      INNER JOIN (SELECT id FROM orders ORDER BY created_at DESC LIMIT 500) recent ON recent.id = oi.order_id
+      ORDER BY oi.id`),
   ]);
   const itemsByOrder = groupItems(itemsResult.results as unknown as ItemRow[]);
   return (ordersResult.results as unknown as OrderRow[]).map((row) => ({

@@ -1926,6 +1926,9 @@ footer .footer-phone-links a:active { background: rgba(255, 255, 255, 0.1); }
 .admin-controls label > span:first-child, .admin-slip-control > small { color: var(--muted); font-size: .7rem; font-weight: 700; }
 .admin-controls select, .admin-tracking-control input { width: 100%; min-height: 46px; padding: 0 10px; border: 1px solid var(--line); border-radius: 10px; background: white; color: var(--ink); }
 .admin-slip-control { display: grid; justify-items: start; gap: 7px; }
+.admin-slip-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.slip-download-link { background: var(--cream-100); border: 1px solid var(--red-700); color: var(--red-700); }
+.slip-download-link:hover { background: var(--cream-200); }
 .admin-slip-control > small { line-height: 1.5; }
 .admin-tracking-control > span:last-child { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 7px; }
 .admin-tracking-control button { min-width: 82px; min-height: 46px; padding: 0 10px; border: 0; border-radius: 10px; background: var(--red-700); color: white; font-size: .78rem; font-weight: 800; }

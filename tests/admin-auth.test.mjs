@@ -216,6 +216,13 @@ test("admin routes prefer Cloudflare Access and keep the password path as an exp
   assert.match(slipRoute, /getAdminUser/);
 });
 
+test("admin slip route supports downloading an authenticated copy", async () => {
+  const slipRoute = await readFile(new URL("../app/api/admin/slips/[id]/route.ts", import.meta.url), "utf8");
+
+  assert.match(slipRoute, /new URL\(request\.url\)\.searchParams\.get\("download"\) === "1"/);
+  assert.match(slipRoute, /Content-Disposition", wantsDownload \? "attachment" : "inline"/);
+});
+
 test("production build omits password hashes and authentication secrets", async () => {
   const viteConfig = await readFile(new URL("../vite.config.ts", import.meta.url), "utf8");
   assert.match(viteConfig, /isLocalDevelopment/);
