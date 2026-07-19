@@ -168,94 +168,60 @@ export function CartDrawer({ drawerRef, onClose, cart, checkout, storefront, ord
 
     context.fillStyle = "#FAF9F6";
     context.fillRect(0, 0, canvas.width, canvas.height);
+
     context.fillStyle = "#7A1F1F";
-    context.fillRect(0, 0, canvas.width, 230);
+    context.fillRect(0, 0, canvas.width, 200);
     context.fillStyle = "#D4A017";
-    context.fillRect(0, 218, canvas.width, 12);
+    context.fillRect(0, 200, canvas.width, 12);
 
     context.textAlign = "center";
     context.fillStyle = "#FFFFFF";
-    context.font = '800 54px "Noto Sans Thai", sans-serif';
-    context.fillText(storefront.storeName, canvas.width / 2, 92);
+    context.font = '800 58px "Noto Sans Thai", sans-serif';
+    context.fillText(storefront.storeName, canvas.width / 2, 96);
     context.font = '700 32px "Noto Sans Thai", sans-serif';
     context.fillStyle = "#F5E8C7";
-    context.fillText("พร้อมเพย์ · สแกนเพื่อชำระเงิน", canvas.width / 2, 154);
+    context.fillText("พร้อมเพย์ · สแกนเพื่อชำระเงิน", canvas.width / 2, 160);
 
     context.fillStyle = "#FFFFFF";
-    fillRoundedRect(context, 60, 178, 960, 1092, 42);
+    fillRoundedRect(context, 64, 252, 952, 940, 44);
     context.strokeStyle = "#EBD6C8";
     context.lineWidth = 4;
-    strokeRoundedRect(context, 60, 178, 960, 1092, 42);
-
-    context.fillStyle = "#F5E8C7";
-    fillRoundedRect(context, 90, 286, 190, 500, 36);
-    context.fillStyle = "#D4A017";
-    context.beginPath();
-    context.arc(185, 398, 52, 0, Math.PI * 2);
-    context.fill();
-    context.fillStyle = "#FFFFFF";
-    context.font = '800 25px "Noto Sans Thai", sans-serif';
-    context.fillText("ขอบคุณ", 185, 407);
-    context.fillStyle = "#7A1F1F";
-    context.font = '800 32px "Noto Sans Thai", sans-serif';
-    context.fillText("อร่อย", 185, 522);
-    context.fillText("จากใจ", 185, 568);
-    context.fillText("เจ๊น้อย", 185, 614);
-    context.fillStyle = "#6E5855";
-    context.font = '600 22px "Noto Sans Thai", sans-serif';
-    context.fillText("ร้านท้องถิ่น", 185, 698);
-    context.fillText("ส่งตรงถึงคุณ", 185, 732);
+    strokeRoundedRect(context, 64, 252, 952, 940, 44);
 
     context.fillStyle = "#FFFFFF";
-    context.fillRect(310, 220, 670, 670);
-    context.drawImage(qrCanvas, 335, 245, 620, 620);
-
-    context.save();
-    context.setLineDash([16, 12]);
+    fillRoundedRect(context, 250, 292, 580, 580, 28);
     context.strokeStyle = "#D4A017";
-    context.lineWidth = 4;
-    context.fillStyle = "#FAF9F6";
-    fillRoundedRect(context, 86, 852, 300, 360, 36);
-    strokeRoundedRect(context, 86, 852, 300, 360, 36);
-    context.restore();
-    context.fillStyle = "#EBD6C8";
-    context.beginPath();
-    context.arc(236, 984, 62, 0, Math.PI * 2);
-    context.fill();
-    context.fillStyle = "#7A1F1F";
-    context.font = '800 30px "Noto Sans Thai", sans-serif';
-    context.fillText("รอรูป", 236, 993);
-    context.fillStyle = "#6E5855";
-    context.font = '700 25px "Noto Sans Thai", sans-serif';
-    context.fillText("รูปเจ๊น้อยยืนไหว้", 236, 1090);
-    context.font = '600 21px "Noto Sans Thai", sans-serif';
-    context.fillText("จะวางในพื้นที่นี้", 236, 1128);
+    context.lineWidth = 5;
+    strokeRoundedRect(context, 250, 292, 580, 580, 28);
+    context.drawImage(qrCanvas, 280, 322, 520, 520);
 
-    const detailsCenter = 700;
     context.fillStyle = "#6E5855";
-    context.font = '600 24px "Noto Sans Thai", sans-serif';
-    context.fillText("ชื่อผู้รับ", detailsCenter, 924);
+    context.font = '600 26px "Noto Sans Thai", sans-serif';
+    context.fillText("สแกนด้วยแอปธนาคารใดก็ได้", canvas.width / 2, 918);
+
+    context.fillStyle = "#7A1F1F";
+    fillRoundedRect(context, 260, 946, 560, 92, 46);
+    context.fillStyle = "#FFFFFF";
+    context.font = '800 44px "Noto Sans Thai", sans-serif';
+    context.fillText(`ยอดชำระ ${order.orderTotal.toLocaleString("th-TH")} บาท`, canvas.width / 2, 1006);
+
+    context.fillStyle = "#6E5855";
+    context.font = '600 26px "Noto Sans Thai", sans-serif';
+    context.fillText("ชื่อบัญชีพร้อมเพย์", canvas.width / 2, 1082);
     context.fillStyle = "#2A1816";
-    context.font = '800 36px "Noto Sans Thai", sans-serif';
-    context.fillText(storefront.promptPayName ?? "ร้านเจ๊น้อย", detailsCenter, 970);
+    context.font = '800 40px "Noto Sans Thai", sans-serif';
+    context.fillText(storefront.promptPayName ?? "ร้านเจ๊น้อย", canvas.width / 2, 1130);
     context.fillStyle = "#6E5855";
-    context.font = '600 28px "Noto Sans Thai", sans-serif';
-    context.fillText(formatPromptPayId(storefront.promptPayId), detailsCenter, 1012);
-
-    context.fillStyle = "#F5E8C7";
-    fillRoundedRect(context, 430, 1042, 540, 88, 28);
-    context.fillStyle = "#7A1F1F";
-    context.font = '800 36px "Noto Sans Thai", sans-serif';
-    context.fillText(`ยอดชำระ ${order.orderTotal.toLocaleString("th-TH")} บาท`, detailsCenter, 1100);
+    context.font = '700 30px "Noto Sans Thai", sans-serif';
+    context.fillText(formatPromptPayId(storefront.promptPayId), canvas.width / 2, 1172);
 
     context.fillStyle = "#7A1F1F";
-    context.font = '800 31px "Noto Sans Thai", sans-serif';
-    context.fillText("เจ๊น้อย ขอขอบคุณลูกค้า", detailsCenter, 1172);
-    context.fillText("ที่อุดหนุนค่ะ", detailsCenter, 1215);
+    context.font = '800 34px "Noto Sans Thai", sans-serif';
+    context.fillText("อร่อยจากใจเจ๊น้อย · ขอบคุณที่อุดหนุนค่ะ", canvas.width / 2, 1248);
 
     context.fillStyle = "#6E5855";
     context.font = '600 24px "Noto Sans Thai", sans-serif';
-    context.fillText("กรุณาตรวจสอบชื่อผู้รับและยอดเงินก่อนยืนยันการโอน", canvas.width / 2, 1320);
+    context.fillText("กรุณาตรวจสอบชื่อผู้รับและยอดเงินก่อนยืนยันการโอน", canvas.width / 2, 1312);
 
     const filename = `promptpay-jae-noi-${order.orderTotal}.png`;
     const blob = dataUrlToBlob(canvas.toDataURL("image/png"));
