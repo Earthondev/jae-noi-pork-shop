@@ -5,7 +5,7 @@ import Link from "next/link";
 import generatePromptPayPayload from "promptpay-qr";
 import { FormEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { BottomNav } from "./_components/shop/bottom-nav";
-import { CartDrawer } from "./_components/shop/cart-drawer";
+import { CartDrawer, type OrderRecap } from "./_components/shop/cart-drawer";
 import { Hero } from "./_components/shop/hero";
 import { PhoneStrip } from "./_components/shop/phone-strip";
 import { ProductCard } from "./_components/shop/product-card";
@@ -41,6 +41,7 @@ export function Shop() {
   const [submitting, setSubmitting] = useState(false);
   const [orderId, setOrderId] = useState<string | null>(null);
   const [orderPaymentStatus, setOrderPaymentStatus] = useState<ClientPaymentStatus>("waiting");
+  const [orderRecap, setOrderRecap] = useState<OrderRecap | null>(null);
   const [selectedCategory, setSelectedCategory] = useState<string>("ทั้งหมด");
   const [activeTab, setActiveTab] = useState<"home" | "products">("home");
   const [rememberDetails, setRememberDetails] = useState(true);
@@ -321,6 +322,17 @@ export function Shop() {
       }
       setOrderId(result.orderId);
       setOrderPaymentStatus(result.paymentStatus ?? "waiting");
+      // Snapshot what was ordered before the cart is cleared, so the success
+      // screen can show the customer a recap of their order.
+      setOrderRecap({
+        items: cartItems.map((product) => ({
+          name: product.name,
+          quantity: quantities[product.id] ?? 0,
+          lineTotal: (product.price ?? 0) * (quantities[product.id] ?? 0),
+        })),
+        shippingCost: shippingCost ?? 0,
+        total: orderTotal,
+      });
       if (rememberDetails) {
         const remembered = saveRememberedCustomer(browserCustomerStorage(), {
           customerName: String(form.get("customerName") ?? ""),
@@ -351,6 +363,7 @@ export function Shop() {
   function resetOrder() {
     setOrderId(null);
     setOrderPaymentStatus("waiting");
+    setOrderRecap(null);
     setCartOpen(false);
   }
 
@@ -504,6 +517,7 @@ export function Shop() {
             promptPayPayload,
             orderTotal,
             shippingCost,
+            recap: orderRecap,
             onSubmit: submitOrder,
             onReset: resetOrder,
           }}

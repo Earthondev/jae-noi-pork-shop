@@ -8,6 +8,12 @@ import { AddressFields, type AddressFieldName } from "./address-fields";
 
 type ClientPaymentStatus = "waiting" | "verified" | "review" | "invalid";
 
+export type OrderRecap = Readonly<{
+  items: ReadonlyArray<{ name: string; quantity: number; lineTotal: number }>;
+  shippingCost: number;
+  total: number;
+}>;
+
 export type CartDrawerProps = Readonly<{
   drawerRef: RefObject<HTMLElement | null>;
   onClose: () => void;
@@ -60,6 +66,7 @@ export type CartDrawerProps = Readonly<{
     promptPayPayload: string | null;
     orderTotal: number;
     shippingCost: number | null;
+    recap: OrderRecap | null;
     onSubmit: (event: FormEvent<HTMLFormElement>) => void;
     onReset: () => void;
   }>;
@@ -75,7 +82,9 @@ export function CartDrawer({ drawerRef, onClose, cart, checkout, storefront, ord
   const [slipFile, setSlipFile] = useState<File | null>(null);
   const [slipPreviewUrl, setSlipPreviewUrl] = useState<string | null>(null);
   const [slipError, setSlipError] = useState<string | null>(null);
+  const [confirmingClear, setConfirmingClear] = useState(false);
   const [prevOrderId, setPrevOrderId] = useState(order.id);
+  const successCardRef = useRef<HTMLDivElement | null>(null);
 
   // Reset the attached slip once an order has just been placed successfully,
   // following React's documented pattern for adjusting state when a prop
@@ -103,6 +112,12 @@ export function CartDrawer({ drawerRef, onClose, cart, checkout, storefront, ord
   useEffect(() => {
     if (storefront.notice) noticeRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
   }, [storefront.notice]);
+
+  // After a successful submission the drawer content is replaced by the
+  // success card; move focus there so it's announced and visible.
+  useEffect(() => {
+    if (order.id) successCardRef.current?.focus();
+  }, [order.id]);
 
   const SLIP_MAX_BYTES = 5 * 1024 * 1024;
   const SLIP_ACCEPTED_TYPES = ["image/jpeg", "image/png", "image/webp"];
@@ -270,7 +285,7 @@ export function CartDrawer({ drawerRef, onClose, cart, checkout, storefront, ord
         </div>
 
         {order.id ? (
-          <div className={`success-card${order.paymentStatus === "invalid" ? " invalid" : ""}`} role={order.paymentStatus === "invalid" ? "alert" : "status"}>
+          <div ref={successCardRef} tabIndex={-1} className={`success-card${order.paymentStatus === "invalid" ? " invalid" : ""}`} role={order.paymentStatus === "invalid" ? "alert" : "status"}>
             <span>{order.paymentStatus === "invalid" ? "!" : "✓"}</span>
             <h3>{order.paymentStatus === "invalid" ? "บันทึกคำสั่งซื้อแล้ว" : "รับคำสั่งซื้อแล้ว"}</h3>
             <p>เลขที่ออเดอร์</p>
@@ -284,6 +299,27 @@ export function CartDrawer({ drawerRef, onClose, cart, checkout, storefront, ord
                     ? "ยังยืนยันสลิปไม่ได้ ร้านเก็บออเดอร์ไว้แล้วและจะตรวจสอบหรือติดต่อกลับ กรุณาอย่าโอนซ้ำจนกว่าร้านจะแจ้ง"
                     : "ยังไม่ได้แนบสลิป ออเดอร์อยู่ในสถานะรอชำระเงิน"}
             </p>
+            {order.recap && order.recap.items.length > 0 && (
+              <div className="success-recap" aria-label="สรุปรายการที่สั่ง">
+                <h4>รายการที่สั่ง</h4>
+                {order.recap.items.map((item, index) => (
+                  <div className="success-recap-line" key={`${item.name}-${index}`}>
+                    <span>{item.name} × {item.quantity}</span>
+                    <strong>{item.lineTotal.toLocaleString("th-TH")} บาท</strong>
+                  </div>
+                ))}
+                {order.recap.shippingCost > 0 && (
+                  <div className="success-recap-line">
+                    <span>ค่าจัดส่งไปรษณีย์</span>
+                    <strong>{order.recap.shippingCost.toLocaleString("th-TH")} บาท</strong>
+                  </div>
+                )}
+                <div className="success-recap-line total">
+                  <span>ยอดชำระทั้งหมด</span>
+                  <strong>{order.recap.total.toLocaleString("th-TH")} บาท</strong>
+                </div>
+              </div>
+            )}
             <Link className="track-order-link" href={`/track?order=${encodeURIComponent(order.id)}`}>ติดตามออเดอร์นี้</Link>
             <button type="button" onClick={order.onReset}>กลับหน้าร้าน</button>
           </div>
@@ -297,7 +333,7 @@ export function CartDrawer({ drawerRef, onClose, cart, checkout, storefront, ord
                   <div className="cart-line" key={product.id}>
                     <div>
                       <strong>{product.name}</strong>
-                      <small>{product.price === null ? "รอข้อมูลราคา" : `${product.price} บาท/รายการ`}</small>
+                      <small>{product.price === null ? "รอข้อมูลราคา" : `${product.price.toLocaleString("th-TH")} บาท/รายการ`}</small>
                     </div>
                     <div className="stepper compact">
                       <button className="decrease-button" type="button" onClick={() => cart.onUpdateQuantity(product.id, -1)} aria-label={`ลด ${product.name}`}>−</button>
@@ -308,16 +344,28 @@ export function CartDrawer({ drawerRef, onClose, cart, checkout, storefront, ord
                 ))
               )}
             </div>
-            <div className="summary-row"><span>รวมค่าสินค้า</span><strong>{cart.subtotal} บาท</strong></div>
+            <div className="summary-row"><span>รวมค่าสินค้า</span><strong>{cart.subtotal.toLocaleString("th-TH")} บาท</strong></div>
             {storefront.notice && <p ref={noticeRef} className="form-notice cart-notice" role="alert">{storefront.notice}</p>}
             {checkout.hasContent && (
               <div className="saved-draft-control" aria-label="ข้อมูลที่บันทึกชั่วคราว">
-                <span><strong>จำข้อมูลไว้บนเครื่องนี้</strong><small>ตะกร้าและข้อมูลที่กรอกจะอยู่ต่อ 24 ชั่วโมง</small></span>
-                <button type="button" onClick={() => {
-                  if (!window.confirm("ล้างสินค้าและข้อมูลที่กรอกไว้ทั้งหมดจากเครื่องนี้?")) return;
-                  checkout.onClear();
-                  if (storefront.rounds.length === 1) storefront.onSelectRound(storefront.rounds[0].id);
-                }}>ล้างข้อมูล</button>
+                {confirmingClear ? (
+                  <>
+                    <span role="alert"><strong>ล้างสินค้าและข้อมูลที่กรอกทั้งหมด?</strong><small>ข้อมูลบนเครื่องนี้จะหายทันที ย้อนกลับไม่ได้</small></span>
+                    <span className="saved-draft-confirm-actions">
+                      <button type="button" className="saved-draft-clear-btn" onClick={() => {
+                        checkout.onClear();
+                        if (storefront.rounds.length === 1) storefront.onSelectRound(storefront.rounds[0].id);
+                        setConfirmingClear(false);
+                      }}>ล้างเลย</button>
+                      <button type="button" onClick={() => setConfirmingClear(false)}>เก็บไว้</button>
+                    </span>
+                  </>
+                ) : (
+                  <>
+                    <span><strong>จำข้อมูลไว้บนเครื่องนี้</strong><small>ตะกร้าและข้อมูลที่กรอกจะอยู่ต่อ 24 ชั่วโมง</small></span>
+                    <button type="button" onClick={() => setConfirmingClear(true)}>ล้างข้อมูล</button>
+                  </>
+                )}
               </div>
             )}
 
@@ -344,13 +392,14 @@ export function CartDrawer({ drawerRef, onClose, cart, checkout, storefront, ord
               <form onSubmit={handleSubmit}>
                 <div className="summary-row pending-row">
                   <span>{storefront.fulfilment === "pickup" ? "รับเองหน้าร้าน" : "ค่าจัดส่งไปรษณีย์"}</span>
-                  <strong>{storefront.fulfilment === "pickup" ? "0 บาท (ฟรี)" : storefront.shippingFee === null ? "รอข้อมูล" : `${storefront.shippingFee} บาท`}</strong>
+                  <strong>{storefront.fulfilment === "pickup" ? "0 บาท (ฟรี)" : storefront.shippingFee === null ? "รอข้อมูล" : `${storefront.shippingFee.toLocaleString("th-TH")} บาท`}</strong>
                 </div>
                 <div className="summary-row total-row">
                   <span>ยอดชำระทั้งหมด</span>
                   <strong>{order.shippingCost === null ? "รอข้อมูล" : `${order.orderTotal.toLocaleString("th-TH")} บาท`}</strong>
                 </div>
                 <div className="form-grid">
+                  <p className="required-note full">ช่องที่มี <span className="req" aria-hidden="true">*</span> จำเป็นต้องกรอก</p>
                   <div className="round-selection full">
                     <span className="field-label">รอบจัดส่ง</span>
                     {storefront.rounds.length === 1 ? (
@@ -376,7 +425,7 @@ export function CartDrawer({ drawerRef, onClose, cart, checkout, storefront, ord
                     </label>
                     <label className={storefront.fulfilment === "postal" ? "selected" : ""}>
                       <input type="radio" name="fulfilment" value="postal" checked={storefront.fulfilment === "postal"} onChange={() => storefront.onSelectFulfilment("postal")} />
-                      <span><strong>จัดส่งไปรษณีย์</strong><small>{storefront.shippingFee === null ? "ค่าส่งรอข้อมูล" : `ค่าส่ง ${storefront.shippingFee} บาท`}</small></span>
+                      <span><strong>จัดส่งไปรษณีย์</strong><small>{storefront.shippingFee === null ? "ค่าส่งรอข้อมูล" : `ค่าส่ง ${storefront.shippingFee.toLocaleString("th-TH")} บาท`}</small></span>
                     </label>
                   </fieldset>
                   {storefront.fulfilment === "pickup" && storefront.pickupMapUrl && (
@@ -384,9 +433,9 @@ export function CartDrawer({ drawerRef, onClose, cart, checkout, storefront, ord
                       <span aria-hidden="true">⌖</span> เปิดแผนที่ / นำทาง <span aria-hidden="true">↗</span>
                     </a>
                   )}
-                  <label>ชื่อผู้รับ<input name="customerName" required autoComplete="name" placeholder="ชื่อ–นามสกุล" value={checkout.customerName} onChange={(event) => checkout.onChange("customerName", event.target.value)} /></label>
+                  <label>ชื่อผู้รับ<span className="req" aria-hidden="true">*</span><input name="customerName" required autoComplete="name" placeholder="ชื่อ–นามสกุล" value={checkout.customerName} onChange={(event) => checkout.onChange("customerName", event.target.value)} /></label>
                   <label>
-                    เบอร์โทร<input name="phone" required inputMode="tel" autoComplete="tel" placeholder="08x-xxx-xxxx" aria-describedby="phone-help" value={checkout.phone} onChange={(event) => checkout.onChange("phone", event.target.value)} />
+                    เบอร์โทร<span className="req" aria-hidden="true">*</span><input name="phone" required inputMode="tel" autoComplete="tel" pattern="0[0-9]{8,9}" maxLength={10} title="กรอกเบอร์โทร 9-10 หลัก เริ่มต้นด้วย 0" placeholder="08x-xxx-xxxx" aria-describedby="phone-help" value={checkout.phone} onChange={(event) => checkout.onChange("phone", event.target.value.replace(/\D/g, "").slice(0, 10))} />
                     <small className="field-help" id="phone-help">ใช้เบอร์นี้ติดตามสถานะออเดอร์ภายหลัง</small>
                   </label>
                   {storefront.fulfilment === "postal" && (
@@ -475,7 +524,7 @@ export function CartDrawer({ drawerRef, onClose, cart, checkout, storefront, ord
                     <p className="payment-check">ตรวจสอบชื่อผู้รับและยอดเงินในแอปธนาคารก่อนยืนยันทุกครั้ง</p>
 
                     <div className="slip-upload-field">
-                      <span className="field-label">แนบสลิปโอนเงิน</span>
+                      <span className="field-label">แนบสลิปโอนเงิน<span className="req" aria-hidden="true">*</span></span>
                       <input
                         ref={slipInputRef}
                         className="sr-only"

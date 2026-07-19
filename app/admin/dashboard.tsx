@@ -296,7 +296,15 @@ function OrdersPanel({ orders, setOrders, saving, setSaving, setNotice }: { orde
     <div className="admin-filter-stack">
       <div className="admin-segmented" aria-label="ช่วงเวลา">{(["today", "7days", "all"] as OrderRange[]).map((value) => <button key={value} type="button" className={range === value ? "active" : ""} onClick={() => setRange(value)}>{value === "today" ? "วันนี้" : value === "7days" ? "7 วัน" : "ทั้งหมด"}</button>)}</div>
       <label className="admin-search"><span className="sr-only">ค้นหาออเดอร์</span><AdminIcon name="search" /><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="ค้นหาเลขออเดอร์ ชื่อ หรือเบอร์โทร" /></label>
-      <div className="admin-filter-chips" aria-label="กรองสถานะ">{(["all", "attention", "pending_slip", "paid", "shipped"] as OrderFilter[]).map((value) => <button key={value} type="button" className={filter === value ? "active" : ""} onClick={() => setFilter(value)}>{({ all: "ทุกสถานะ", attention: "ต้องตรวจ", pending_slip: "รอตรวจสลิป", paid: "ชำระแล้ว", shipped: "ส่งแล้ว" } as const)[value]}</button>)}</div>
+      <div className="admin-filter-chips" aria-label="กรองสถานะ">{(["all", "attention", "pending_slip", "paid", "shipped"] as OrderFilter[]).map((value) => <button key={value} type="button" className={filter === value ? "active" : ""} onClick={() => {
+        setFilter(value);
+        // When the admin narrows down to slips that need review, open those
+        // cards right away so the verify controls are one tap closer.
+        if (value === "attention" || value === "pending_slip") {
+          const statuses = value === "attention" ? ["waiting_for_slip_review", "invalid_slip"] : ["waiting_for_slip_review"];
+          setExpanded(new Set(orders.filter((order) => statuses.includes(order.payment_status)).map((order) => order.id)));
+        }
+      }}>{({ all: "ทุกสถานะ", attention: "ต้องตรวจ", pending_slip: "รอตรวจสลิป", paid: "ชำระแล้ว", shipped: "ส่งแล้ว" } as const)[value]}</button>)}</div>
     </div>
     <div className="admin-kpi-grid">
       <Kpi icon="orders" label="ออเดอร์" value={String(summary.total)} />
@@ -309,7 +317,8 @@ function OrdersPanel({ orders, setOrders, saving, setSaving, setNotice }: { orde
       {filtered.length === 0 && <div className="admin-empty"><AdminIcon name="orders" /><h3>ยังไม่พบออเดอร์</h3><p>ลองเปลี่ยนช่วงเวลา ตัวกรอง หรือคำค้นหา</p></div>}
       {filtered.map((order) => {
         const isExpanded = expanded.has(order.id);
-        return <article className={`admin-order admin-order-compact${isExpanded ? " expanded" : ""}`} key={order.id}>
+        const isSaving = saving === `order:${order.id}`;
+        return <article className={`admin-order admin-order-compact${isExpanded ? " expanded" : ""}${isSaving ? " is-saving" : ""}`} aria-busy={isSaving} key={order.id}>
           <button className="admin-order-summary" type="button" aria-expanded={isExpanded} onClick={() => setExpanded((current) => toggleSet(current, order.id))}>
             <span><small>{safeThaiDateTime(order.created_at)} · {order.round_id || "ไม่ระบุรอบ"}</small><strong>{order.id}</strong><em>{order.customer_name} · {formatMoney(order.total)}</em></span>
             <span className="status-stack"><i className={`status-pill payment-${order.payment_status}`}>{paymentStatusLabels[order.payment_status]}</i><i className={`status-pill status-${order.order_status}`}>{statusLabels[order.order_status]}</i><AdminIcon name="chevron" /></span>
@@ -319,7 +328,7 @@ function OrdersPanel({ orders, setOrders, saving, setSaving, setNotice }: { orde
             <div className="admin-controls">
               <div className="admin-slip-control">{order.slip_key ? <div className="admin-slip-actions"><a className="slip-link" href={`/api/admin/slips/${encodeURIComponent(order.id)}`} target="_blank" rel="noreferrer"><AdminIcon name="image" />เปิดดูสลิป</a><a className="slip-link slip-download-link" href={`/api/admin/slips/${encodeURIComponent(order.id)}?download=1`}><AdminIcon name="download" />ดาวน์โหลดสลิป</a></div> : <span className="no-slip">ยังไม่มีสลิป</span>}<small>ตรวจเงินเข้าในแอปธนาคารก่อนกดยืนยัน</small></div>
               <label><span>สถานะชำระเงิน</span><select disabled={saving === `order:${order.id}`} value={order.payment_status} onChange={(event) => requestPaymentChange(order, event.target.value as PaymentStatus)}>{Object.entries(paymentStatusLabels).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label>
-              <label><span>สถานะออเดอร์</span><select disabled={saving === `order:${order.id}`} value={order.order_status} onChange={(event) => void updateOrder(order.id, { orderStatus: event.target.value as OrderStatus }, `อัปเดตออเดอร์ ${order.id} แล้ว`)}>{Object.entries(statusLabels).map(([value, label]) => <option key={value} value={value} disabled={(order.payment_status !== "paid" && !["received", "cancelled"].includes(value)) || (order.fulfilment === "pickup" && value === "shipped") || (order.fulfilment === "postal" && value === "ready_for_pickup")}>{label}</option>)}</select></label>
+              <label><span>สถานะออเดอร์</span><select disabled={saving === `order:${order.id}`} value={order.order_status} onChange={(event) => void updateOrder(order.id, { orderStatus: event.target.value as OrderStatus }, `อัปเดตออเดอร์ ${order.id} แล้ว`)}>{Object.entries(statusLabels).map(([value, label]) => <option key={value} value={value} disabled={(order.payment_status !== "paid" && !["received", "cancelled"].includes(value)) || (order.fulfilment === "pickup" && value === "shipped") || (order.fulfilment === "postal" && value === "ready_for_pickup")}>{label}</option>)}</select>{order.payment_status !== "paid" && <small className="status-select-hint">ต้องยืนยัน &quot;ชำระแล้ว&quot; ก่อน จึงจะเลือกสถานะเตรียม/จัดส่งได้</small>}</label>
               {order.fulfilment === "postal" && <label className="admin-tracking-control"><span>เลขพัสดุ</span><span><input maxLength={100} value={trackingDrafts[order.id] ?? ""} onChange={(event) => setTrackingDrafts((current) => ({ ...current, [order.id]: event.target.value }))} placeholder="กรอกหลังส่งสินค้า" /><button type="button" disabled={saving === `order:${order.id}` || order.payment_status !== "paid"} onClick={() => void updateOrder(order.id, { trackingNumber: trackingDrafts[order.id] ?? "" }, `บันทึกเลขพัสดุ ${order.id} แล้ว`)}>บันทึก</button></span></label>}
             </div>
           </div>}
