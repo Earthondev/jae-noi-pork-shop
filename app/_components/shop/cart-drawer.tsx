@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { QRCodeCanvas } from "qrcode.react";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { FormEvent, RefObject } from "react";
 import type { Quantities } from "../../_hooks/use-checkout-draft";
 import type { Fulfilment, PreorderRound, Product } from "../../_hooks/use-storefront";
@@ -70,6 +70,69 @@ export function CartDrawer({ drawerRef, onClose, cart, checkout, storefront, ord
   const [copiedAmount, setCopiedAmount] = useState(false);
   const [qrSaveStatus, setQrSaveStatus] = useState<"idle" | "saving" | "saved" | "error">("idle");
   const qrCanvasRef = useRef<HTMLCanvasElement | null>(null);
+  const slipInputRef = useRef<HTMLInputElement | null>(null);
+  const [slipFile, setSlipFile] = useState<File | null>(null);
+  const [slipPreviewUrl, setSlipPreviewUrl] = useState<string | null>(null);
+  const [slipError, setSlipError] = useState<string | null>(null);
+  const [prevOrderId, setPrevOrderId] = useState(order.id);
+
+  // Reset the attached slip once an order has just been placed successfully,
+  // following React's documented pattern for adjusting state when a prop
+  // changes (done during render, not in an effect, to avoid an extra render).
+  if (order.id !== prevOrderId) {
+    setPrevOrderId(order.id);
+    if (order.id) {
+      setSlipFile(null);
+      setSlipPreviewUrl(null);
+    }
+  }
+
+  useEffect(() => {
+    return () => {
+      if (slipPreviewUrl) URL.revokeObjectURL(slipPreviewUrl);
+    };
+  }, [slipPreviewUrl]);
+
+  useEffect(() => {
+    if (!slipFile && slipInputRef.current) slipInputRef.current.value = "";
+  }, [slipFile]);
+
+  const SLIP_MAX_BYTES = 5 * 1024 * 1024;
+  const SLIP_ACCEPTED_TYPES = ["image/jpeg", "image/png", "image/webp"];
+
+  function clearSlip() {
+    setSlipFile(null);
+    setSlipPreviewUrl(null);
+  }
+
+  function handleSlipChange(file: File | null) {
+    setSlipError(null);
+    if (!file) return;
+    if (!SLIP_ACCEPTED_TYPES.includes(file.type)) {
+      setSlipError("สลิปต้องเป็นไฟล์รูป JPG, PNG หรือ WebP เท่านั้น");
+      setSlipFile(null);
+      setSlipPreviewUrl(null);
+      return;
+    }
+    if (file.size > SLIP_MAX_BYTES) {
+      setSlipError("ไฟล์รูปสลิปต้องมีขนาดไม่เกิน 5 MB");
+      setSlipFile(null);
+      setSlipPreviewUrl(null);
+      return;
+    }
+    setSlipFile(file);
+    setSlipPreviewUrl(URL.createObjectURL(file));
+  }
+
+  function handleSubmit(event: FormEvent<HTMLFormElement>) {
+    if (!slipFile) {
+      event.preventDefault();
+      setSlipError("กรุณาแนบรูปสลิปโอนเงินก่อนยืนยันคำสั่งซื้อ");
+      slipInputRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+      return;
+    }
+    order.onSubmit(event);
+  }
 
   const copyToClipboard = async (text: string, type: "id" | "amount") => {
     try {
@@ -305,7 +368,7 @@ export function CartDrawer({ drawerRef, onClose, cart, checkout, storefront, ord
                 </button>
               </div>
             ) : (
-              <form onSubmit={order.onSubmit}>
+              <form onSubmit={handleSubmit}>
                 <div className="summary-row pending-row">
                   <span>{storefront.fulfilment === "pickup" ? "รับเองหน้าร้าน" : "ค่าจัดส่งไปรษณีย์"}</span>
                   <strong>{storefront.fulfilment === "pickup" ? "0 บาท (ฟรี)" : storefront.shippingFee === null ? "รอข้อมูล" : `${storefront.shippingFee} บาท`}</strong>
@@ -437,6 +500,43 @@ export function CartDrawer({ drawerRef, onClose, cart, checkout, storefront, ord
                       )}
                     </p>
                     <p className="payment-check">ตรวจสอบชื่อผู้รับและยอดเงินในแอปธนาคารก่อนยืนยันทุกครั้ง</p>
+
+                    <div className="slip-upload-field">
+                      <span className="field-label">แนบสลิปโอนเงิน</span>
+                      <input
+                        ref={slipInputRef}
+                        className="sr-only"
+                        type="file"
+                        name="slip"
+                        accept="image/jpeg,image/png,image/webp"
+                        aria-describedby="slip-help"
+                        onChange={(event) => handleSlipChange(event.target.files?.[0] ?? null)}
+                      />
+                      {slipPreviewUrl && slipFile ? (
+                        <div className="slip-preview-container">
+                          <span className="slip-preview-thumb">
+                            {/* eslint-disable-next-line @next/next/no-img-element */}
+                            <img src={slipPreviewUrl} alt="ตัวอย่างสลิปที่แนบ" />
+                          </span>
+                          <span className="slip-preview-info">
+                            <strong>{slipFile.name}</strong>
+                            <small>{formatFileSize(slipFile.size)}</small>
+                          </span>
+                          <button type="button" className="slip-preview-remove-btn" onClick={clearSlip}>ลบ</button>
+                        </div>
+                      ) : (
+                        <button type="button" className="slip-upload-empty" onClick={() => slipInputRef.current?.click()}>
+                          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                            <rect x="3" y="3" width="18" height="18" rx="3" />
+                            <circle cx="9" cy="9" r="2" />
+                            <path d="m21 15-5-5-9 9" />
+                          </svg>
+                          <span>แตะเพื่อแนบรูปสลิปโอนเงิน</span>
+                        </button>
+                      )}
+                      <small id="slip-help" className="field-help">รองรับไฟล์ JPG, PNG หรือ WebP ขนาดไม่เกิน 5 MB</small>
+                      {slipError && <p className="form-notice" role="alert">{slipError}</p>}
+                    </div>
                   </section>
                 </div>
                 {!storefront.secureWriteReady && <p className="preview-mode">โหมดดูตัวอย่าง · ยังไม่รับข้อมูลลูกค้าจนกว่าจะเชื่อมบัญชีระบบที่ปลอดภัย</p>}
@@ -512,6 +612,11 @@ function strokeRoundedRect(
 ) {
   roundedRectPath(context, x, y, width, height, radius);
   context.stroke();
+}
+
+function formatFileSize(bytes: number): string {
+  if (bytes < 1024 * 1024) return `${Math.max(1, Math.round(bytes / 1024))} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
 
 function formatPromptPayId(value: string): string {

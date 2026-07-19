@@ -135,6 +135,8 @@ function settingsInput(value: unknown): Omit<AdminStorefrontSettings, "fingerpri
     shippingFee,
     pickupAddress: optionalString(settings.pickupAddress) ?? "",
     pickupMapUrl: optionalString(settings.pickupMapUrl) ?? "",
+    promptPayId: optionalString(settings.promptPayId) ?? "",
+    promptPayName: optionalString(settings.promptPayName) ?? "",
     storeLogoUrl: optionalString(settings.storeLogoUrl) ?? "",
     storeCoverUrl: optionalString(settings.storeCoverUrl) ?? "",
     fingerprint: optionalString(settings.fingerprint),

@@ -68,7 +68,9 @@ export async function getAdminCmsData(): Promise<AdminCmsData> {
     storyDescription: value("story_description", DEFAULT_STOREFRONT_CONTENT.storyDescription),
     phonePrimary: value("phone_primary", "087-2416773"), phoneSecondary: value("phone_secondary", "087-8755479"),
     shippingFee: fee === undefined || fee === "" ? null : Number(fee), pickupAddress: value("pickup_address"),
-    pickupMapUrl: value("pickup_map_url"), storeLogoUrl: value("store_logo_url"), storeCoverUrl: value("store_cover_url"),
+    pickupMapUrl: value("pickup_map_url"),
+    promptPayId: value("promptpay_id"), promptPayName: value("promptpay_name"),
+    storeLogoUrl: value("store_logo_url"), storeCoverUrl: value("store_cover_url"),
     fingerprint: settingsFingerprint(settingRows),
   };
   return { products, rounds, settings, refreshedAt: new Date().toISOString() };
@@ -139,7 +141,9 @@ export async function updateAdminStorefrontSettings(input: Omit<AdminStorefrontS
     hero_description: settings.heroDescription, announcement_text: settings.announcementText, story_title: settings.storyTitle,
     story_description: settings.storyDescription, phone_primary: settings.phonePrimary, phone_secondary: settings.phoneSecondary,
     postal_shipping_fee: settings.shippingFee === null ? "" : String(settings.shippingFee), pickup_address: settings.pickupAddress,
-    pickup_map_url: settings.pickupMapUrl, store_logo_url: settings.storeLogoUrl, store_cover_url: settings.storeCoverUrl,
+    pickup_map_url: settings.pickupMapUrl,
+    promptpay_id: settings.promptPayId, promptpay_name: settings.promptPayName,
+    store_logo_url: settings.storeLogoUrl, store_cover_url: settings.storeCoverUrl,
   };
   await db.batch(Object.entries(values).map(([key, value]) => db.prepare(`INSERT INTO storefront_settings (key,value,purpose,status,version,updated_at)
     VALUES (?,?,'','พร้อมใช้',1,?) ON CONFLICT(key) DO UPDATE SET value=excluded.value,version=version+1,updated_at=excluded.updated_at`).bind(key, value, now)));

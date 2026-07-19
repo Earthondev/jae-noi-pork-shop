@@ -739,6 +739,18 @@ function StorefrontPanel({ settings, saving, mutate, setNotice, onFormActive, on
             <label className="full"><span>ที่อยู่รับเองหน้าร้าน</span><textarea maxLength={500} rows={4} value={draft.pickupAddress} onChange={(event) => field("pickupAddress", event.target.value)} /></label>
             <label className="full"><span>ลิงก์ Google Maps</span><input type="url" maxLength={500} value={draft.pickupMapUrl} onChange={(event) => field("pickupMapUrl", event.target.value)} /></label>
           </div>
+          <h3>บัญชีรับเงินพร้อมเพย์</h3>
+          <div className="admin-form-grid">
+            <label>
+              <span>เลขพร้อมเพย์</span>
+              <input inputMode="numeric" maxLength={20} placeholder="เบอร์โทร 10 หลัก หรือเลขบัตรประชาชน 13 หลัก" value={draft.promptPayId} onChange={(event) => field("promptPayId", event.target.value)} />
+            </label>
+            <label>
+              <span>ชื่อบัญชีพร้อมเพย์</span>
+              <input maxLength={100} placeholder="ชื่อที่จะโชว์ให้ลูกค้าเห็นตอนจ่ายเงิน" value={draft.promptPayName} onChange={(event) => field("promptPayName", event.target.value)} />
+            </label>
+            <small className="field-help full">ใช้สร้าง QR รับเงินหน้าเว็บ ตรวจให้ถูกต้องก่อนบันทึกทุกครั้ง พิมพ์ผิดจะทำให้เงินลูกค้าโอนไปผิดบัญชี</small>
+          </div>
         </div>
       )}
       <div className={`admin-sticky-save${dirty ? " dirty" : ""}`}><span>{dirty ? "มีการแก้ไขที่ยังไม่ได้บันทึก" : "ข้อมูลเป็นปัจจุบันแล้ว"}</span><button className="admin-save-button" type="submit" disabled={saving !== null || uploading !== null || !dirty}>{saving ? "กำลังบันทึก…" : "บันทึกหน้าร้าน"}</button></div>

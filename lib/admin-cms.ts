@@ -48,6 +48,8 @@ export type AdminStorefrontSettings = {
   shippingFee: number | null;
   pickupAddress: string;
   pickupMapUrl: string;
+  promptPayId: string;
+  promptPayName: string;
   storeLogoUrl: string;
   storeCoverUrl: string;
   fingerprint: string;
@@ -151,8 +153,10 @@ export function cleanStorefrontSettings(input: Omit<AdminStorefrontSettings, "fi
   }
   const pickupMapUrl = input.pickupMapUrl.trim().slice(0, 500);
   if (pickupMapUrl && !safePickupMapUrl(pickupMapUrl)) throw new AdminCmsValidationError("ลิงก์แผนที่ต้องเป็น Google Maps แบบ HTTPS");
-  const storeLogoUrl = input.storeLogoUrl.trim().slice(0, 500);
-  const storeCoverUrl = input.storeCoverUrl.trim().slice(0, 500);
+  const promptPayId = normalizePromptPayId(input.promptPayId ?? "");
+  const promptPayName = cleanText(input.promptPayName ?? "", 100);
+  const storeLogoUrl = input.storeLogoUrl ? input.storeLogoUrl.trim().slice(0, 500) : "";
+  const storeCoverUrl = input.storeCoverUrl ? input.storeCoverUrl.trim().slice(0, 500) : "";
   if (storeLogoUrl && storeLogoUrl !== DEFAULT_STORE_LOGO && safeStorefrontAssetUrl(storeLogoUrl, "") === "") {
     throw new AdminCmsValidationError("โลโก้ต้องมาจากพื้นที่รูปของร้านเท่านั้น");
   }
@@ -172,6 +176,8 @@ export function cleanStorefrontSettings(input: Omit<AdminStorefrontSettings, "fi
     shippingFee,
     pickupAddress: cleanText(input.pickupAddress, 500),
     pickupMapUrl,
+    promptPayId,
+    promptPayName,
     storeLogoUrl,
     storeCoverUrl,
   };
@@ -219,6 +225,17 @@ function normalizePhone(value: string): string {
   const phone = value.trim().replace(/[^0-9+ -]/g, "").slice(0, 30);
   if (phone.replace(/\D/g, "").length < 9) throw new AdminCmsValidationError("เบอร์โทรไม่ถูกต้อง");
   return phone;
+}
+
+// PromptPay ID is a mobile number (10 digits), national ID / tax ID (13 digits),
+// or e-wallet ID (15 digits) — left blank means the shop hasn't set one up yet.
+function normalizePromptPayId(value: string): string {
+  const digits = value.replace(/\D/g, "");
+  if (!digits) return "";
+  if (![10, 13, 15].includes(digits.length)) {
+    throw new AdminCmsValidationError("เลขพร้อมเพย์ต้องเป็นเบอร์โทร 10 หลัก หรือเลขบัตรประชาชน 13 หลัก");
+  }
+  return digits;
 }
 
 function isDateInput(value: string): boolean {

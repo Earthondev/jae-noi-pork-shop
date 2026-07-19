@@ -25,6 +25,8 @@ test("storefront settings accept only the bundled brand defaults or approved upl
     shippingFee: 50,
     pickupAddress: "หน้าร้าน",
     pickupMapUrl: "https://maps.app.goo.gl/uVChd79bzjbXYwtXA",
+    promptPayId: "",
+    promptPayName: "",
     storeLogoUrl: DEFAULT_STORE_LOGO,
     storeCoverUrl: DEFAULT_STORE_COVER,
   };
