@@ -1,4 +1,4 @@
-import { integer, sqliteTable, text, uniqueIndex } from "drizzle-orm/sqlite-core";
+import { index, integer, sqliteTable, text, uniqueIndex } from "drizzle-orm/sqlite-core";
 
 export const products = sqliteTable("products", {
   id: text("id").primaryKey(),
@@ -12,7 +12,10 @@ export const products = sqliteTable("products", {
   sortOrder: integer("sort_order").notNull(),
   version: integer("version").notNull().default(1),
   updatedAt: text("updated_at").notNull(),
-}, (table) => [uniqueIndex("products_sort_order_idx").on(table.sortOrder)]);
+}, (table) => [
+  uniqueIndex("products_sort_order_idx").on(table.sortOrder),
+  index("products_status_sort_idx").on(table.status, table.sortOrder),
+]);
 
 export const deliveryRounds = sqliteTable("delivery_rounds", {
   id: text("id").primaryKey(),
@@ -24,7 +27,9 @@ export const deliveryRounds = sqliteTable("delivery_rounds", {
   note: text("note").notNull().default(""),
   version: integer("version").notNull().default(1),
   updatedAt: text("updated_at").notNull(),
-});
+}, (table) => [
+  index("delivery_rounds_window_idx").on(table.status, table.opensAt, table.closesAt),
+]);
 
 export const storefrontSettings = sqliteTable("storefront_settings", {
   key: text("key").primaryKey(),
@@ -61,7 +66,10 @@ export const orders = sqliteTable("orders", {
   idempotencyKey: text("idempotency_key").notNull().unique(),
   createdAt: text("created_at").notNull(),
   updatedAt: text("updated_at").notNull(),
-});
+}, (table) => [
+  index("orders_phone_created_at_idx").on(table.phoneNormalized, table.createdAt),
+  index("orders_created_at_idx").on(table.createdAt),
+]);
 
 export const orderItems = sqliteTable("order_items", {
   id: integer("id").primaryKey({ autoIncrement: true }),
@@ -70,4 +78,6 @@ export const orderItems = sqliteTable("order_items", {
   name: text("name").notNull(),
   quantity: integer("quantity").notNull(),
   unitPrice: integer("unit_price").notNull(),
-});
+}, (table) => [
+  index("order_items_order_id_idx").on(table.orderId),
+]);
