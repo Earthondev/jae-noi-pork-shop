@@ -607,19 +607,19 @@ img { display: block; }
 
 /* Stepper widget styling */
 .stepper {
-  min-height: 42px;
+  min-height: 50px;
   padding: 3px;
   display: grid;
-  grid-template-columns: 36px 1fr 36px;
+  grid-template-columns: 44px 1fr 44px;
   align-items: center;
   background: var(--cream-100);
   border: 1px solid var(--line);
   border-radius: 999px;
-  width: 110px;
+  width: 130px;
 }
 .stepper button {
-  width: 34px;
-  height: 34px;
+  width: 44px;
+  height: 44px;
   border-radius: 50%;
   font-weight: 800;
   display: grid;
@@ -937,8 +937,8 @@ footer .footer-phone-links a:active { background: rgba(255, 255, 255, 0.1); }
 }
 .cart-line strong { font-size: 0.95rem; font-weight: 800; color: var(--ink); }
 .cart-line small { color: var(--muted); display: block; margin-top: 2px; font-size: 0.78rem; }
-.stepper.compact { min-height: 38px; grid-template-columns: 32px 1fr 32px; width: 96px; }
-.stepper.compact button { width: 30px; height: 30px; }
+.stepper.compact { min-height: 50px; grid-template-columns: 44px 1fr 44px; width: 126px; }
+.stepper.compact button { width: 44px; height: 44px; }
 .stepper.compact output { font-size: 0.88rem; }
 .empty-cart {
   padding: 40px 20px;
@@ -1076,7 +1076,9 @@ footer .footer-phone-links a:active { background: rgba(255, 255, 255, 0.1); }
 .structured-address legend { padding: 0 7px; color: var(--red-800); font-size: 0.85rem; font-weight: 900; }
 .structured-address label { min-width: 0; }
 .structured-address select:disabled { background: #eee8df; color: var(--muted); cursor: not-allowed; }
-.address-load-error { margin: 0; color: var(--red-700); font-size: 0.85rem; font-weight: 700; }
+.address-load-error { margin: 0; color: var(--red-700); font-size: 0.85rem; font-weight: 700; display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.address-load-retry { min-height: 44px; padding: 8px 16px; border-radius: 999px; border: 1px solid var(--red-700); background: var(--white); color: var(--red-700); font-weight: 800; font-size: 0.85rem; }
+.address-load-retry:active { background: var(--cream-100); }
 .remember-customer-control { padding: 14px; display: grid; gap: 10px; border: 1px solid var(--line); border-radius: var(--radius-sm); background: var(--cream-50); }
 .form-grid .remember-customer-control > label { display: flex; align-items: flex-start; gap: 10px; cursor: pointer; }
 .remember-customer-control input { width: 20px; min-width: 20px; min-height: 20px; margin-top: 1px; accent-color: var(--red-700); }
@@ -2201,6 +2203,8 @@ footer .footer-phone-links a:active { background: rgba(255, 255, 255, 0.1); }
 .admin-sticky-save > span { color: var(--admin-muted); font-size: .68rem; font-weight: 800; text-align: center; }
 .admin-sticky-save.dirty { position: fixed; right: 16px; bottom: calc(88px + env(safe-area-inset-bottom)); left: 16px; z-index: 70; }
 .admin-sticky-save.dirty > span { color: #7a5600; }
+.admin-discard-button { min-height: 50px; border: 1px solid var(--admin-line); border-radius: 12px; background: white; color: var(--admin-muted); font-weight: 800; }
+.admin-discard-button:disabled { opacity: .55; cursor: wait; }
 .storefront-editor > .admin-save-button { position: static; }
 .admin-dialog-backdrop { position: fixed; inset: 0; z-index: 120; padding: 20px; display: grid; place-items: center; background: rgb(35 20 17 / 58%); backdrop-filter: blur(5px); animation: admin-fade .16s ease-out both; }
 .admin-dialog { width: min(100%, 420px); padding: 24px 18px 18px; position: relative; border: 1px solid var(--admin-line); border-radius: 22px; background: var(--admin-surface); box-shadow: 0 24px 70px rgb(25 12 10 / 30%); text-align: center; animation: admin-dialog-in .2s ease-out both; }
@@ -2230,7 +2234,7 @@ footer .footer-phone-links a:active { background: rgba(255, 255, 255, 0.1); }
   .admin-kpi-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); }
   .admin-round-summary > div { grid-template-columns: repeat(3, minmax(0, 1fr)); }
   .admin-brand-assets { grid-template-columns: minmax(180px, .45fr) minmax(280px, 1fr); }
-  .admin-sticky-save { grid-template-columns: 1fr auto; align-items: center; }
+  .admin-sticky-save { grid-template-columns: 1fr auto auto; align-items: center; }
   .admin-sticky-save.dirty { right: auto; left: 50%; width: min(900px, calc(100% - 40px)); transform: translateX(-50%); }
   .admin-sticky-save > span { text-align: left; }
   .admin-sticky-save .admin-save-button { min-width: 220px; }
