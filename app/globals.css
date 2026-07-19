@@ -2209,7 +2209,7 @@ footer .footer-phone-links a:active { background: rgba(255, 255, 255, 0.1); }
 .admin-round-sales strong { font-size: 1.8rem; }
 .admin-close-round { width: 100%; min-height: 46px; margin-top: 14px; border: 1px solid #d6a19e; border-radius: 11px; background: #fff2ef; color: var(--admin-red); font-weight: 900; }
 .admin-open-round { width: 100%; min-height: 46px; margin-top: 14px; border: 1px solid var(--admin-green); border-radius: 11px; background: #edf9f1; color: #176b3a; font-weight: 900; }
-.admin-product-toolbar { margin-bottom: 13px; display: flex; justify-content: space-between; gap: 8px; }
+.admin-product-toolbar { margin-bottom: 13px; display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px; }
 .admin-product-toolbar select { min-height: 44px; padding: 0 34px 0 12px; border: 1px solid var(--admin-line); border-radius: 11px; background: var(--admin-surface); color: var(--admin-ink); font-weight: 800; }
 .admin-view-toggle { padding: 3px; display: flex; gap: 2px; border: 1px solid var(--admin-line); border-radius: 11px; background: #ede2d4; }
 .admin-view-toggle button { width: 38px; min-height: 38px; border: 0; border-radius: 8px; display: grid; place-items: center; background: transparent; color: var(--admin-muted); }
@@ -2275,7 +2275,9 @@ footer .footer-phone-links a:active { background: rgba(255, 255, 255, 0.1); }
   .admin-dialog-actions { grid-template-columns: 1fr 1.25fr; }
 }
 
-/* Category chips row */
+/* Category chips row: shrinks and scrolls in its own space beside the view
+   toggle instead of sliding underneath it (flex-wrap on the toolbar drops it
+   to its own line when even the scrollable area gets too tight). */
 .admin-category-chips-row {
   display: flex;
   gap: 8px;
@@ -2283,8 +2285,10 @@ footer .footer-phone-links a:active { background: rgba(255, 255, 255, 0.1); }
   scrollbar-width: none;
   -ms-overflow-style: none;
   padding: 2px 0;
-  max-width: 100%;
+  flex: 1 1 200px;
+  min-width: 0;
 }
+.admin-product-toolbar .admin-view-toggle { flex: 0 0 auto; margin-left: auto; }
 .admin-category-chips-row::-webkit-scrollbar {
   display: none;
 }
