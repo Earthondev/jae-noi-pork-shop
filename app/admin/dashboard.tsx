@@ -385,6 +385,7 @@ function ProductsPanel({ products, saving, mutate, setNotice, onFormActive, onFo
   const [draft, setDraft] = useState<ProductInput>(EMPTY_PRODUCT_INPUT); const [editing, setEditing] = useState<string | null>(null); const [creating, setCreating] = useState(false); const [uploading, setUploading] = useState(false); const [category, setCategory] = useState("ทั้งหมด"); const [view, setView] = useState<"list" | "grid">("list"); const [confirm, setConfirm] = useState<ConfirmState>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [sortMode, setSortMode] = useState(false);
+  const [showArchived, setShowArchived] = useState(false);
 
   const categories = useMemo(() => ["ทั้งหมด", ...Array.from(new Set(products.map((product) => product.category || "อื่น ๆ")))], [products]);
   const visible = useMemo(() => {
@@ -398,6 +399,11 @@ function ProductsPanel({ products, saving, mutate, setNotice, onFormActive, onFo
       return matchesCategory && matchesSearch;
     });
   }, [products, category, searchQuery]);
+  // Products still in rotation (on sale, paused, or waiting for info) show up
+  // front. Ones the admin closed on purpose move to a separate collapsed
+  // section below, so the main list only ever shows what's actively managed.
+  const activeVisible = useMemo(() => visible.filter((product) => product.status !== "ซ่อนสินค้า"), [visible]);
+  const archivedVisible = useMemo(() => visible.filter((product) => product.status === "ซ่อนสินค้า"), [visible]);
 
   const activeProduct = useMemo(() => {
     if (editing) return products.find((p) => p.id === editing) ?? null;
@@ -461,6 +467,39 @@ function ProductsPanel({ products, saving, mutate, setNotice, onFormActive, onFo
     }
   }
 
+  function productCard(product: AdminProduct) {
+    const firstImage = product.imageUrl ? product.imageUrl.split(",")[0] : "";
+    return <article className={`admin-product-card ${product.status === "ซ่อนสินค้า" ? "is-archived" : ""}`} key={product.id}>
+      <div className="product-card-body">
+        <div className="product-card-image-wrap">
+          {firstImage ? <Image src={adminImageSrc(firstImage)} alt="" fill sizes="96px" unoptimized /> : <div className="product-card-no-image"><AdminIcon name="image" /></div>}
+        </div>
+        <div className="product-card-info">
+          <div className="product-card-title-row">
+            <span className="product-card-category">{product.category || "อื่น ๆ"}</span>
+            <div className="product-card-header-flex">
+              <h3>{product.name}</h3>
+              <span className={`product-card-status status-${product.status === "เปิดขาย" ? "open" : product.status === "ปิดชั่วคราว" ? "closed" : "waiting"}`}>
+                {productStatusLabels[product.status]}
+              </span>
+            </div>
+          </div>
+          <p className="product-card-meta">{product.unit} • {product.price === null ? "รอราคา" : `${product.price.toLocaleString("th-TH")} บาท`}</p>
+          {product.detail && <p className="product-card-desc">{product.detail}</p>}
+
+          <div className="product-card-actions-row">
+            <button type="button" className="action-btn edit-btn" onClick={() => { setDraft({ id: product.id, name: product.name, unit: product.unit || "", detail: product.detail || "", price: product.price, status: product.status, imageUrl: product.imageUrl || "", category: product.category || "" }); setEditing(product.id); setCreating(false); }}><AdminIcon name="edit" /><span>แก้ไข</span></button>
+            {product.status !== "ซ่อนสินค้า" ? (
+              <button className="action-btn delete-btn" type="button" onClick={() => setConfirm({ title: `ปิดขาย ${product.name}?`, description: "สินค้าจะหายจากหน้าร้าน แต่ประวัติออเดอร์เก่าจะยังอยู่ครบและนำกลับมาได้", confirmLabel: "ปิดขายสินค้า", tone: "danger", action: async () => { await mutate("product.update", { product: { ...product, status: "ซ่อนสินค้า" } }, "ปิดขายสินค้าแล้ว"); } })}><AdminIcon name="hide" /><span>ปิดขาย</span></button>
+            ) : (
+              <button className="action-btn restore-btn" type="button" onClick={() => void mutate("product.update", { product: { ...product, status: "ปิดชั่วคราว" } }, "เปิดขายสินค้าอีกครั้ง")}><AdminIcon name="check" /><span>เปิดขาย</span></button>
+            )}
+          </div>
+        </div>
+      </div>
+    </article>;
+  }
+
   return <section className="admin-panel admin-products-section">
     {creating ? (
       <ProductForm title="เพิ่มสินค้าใหม่" value={draft} disabled={saving !== null || uploading} uploading={uploading} onChange={setDraft} onUpload={uploadImage} onCancel={() => setCreating(false)} onSubmit={async () => { if (await mutate("product.create", { product: draft }, "เพิ่มสินค้าแล้ว")) { setDraft(EMPTY_PRODUCT_INPUT); setCreating(false); } }} />
@@ -512,7 +551,7 @@ function ProductsPanel({ products, saving, mutate, setNotice, onFormActive, onFo
 
         {sortMode ? (
           <div className="admin-sort-list">
-            {visible.map((product, index) => {
+            {activeVisible.map((product, index) => {
               return (
                 <div key={product.id} className="admin-sort-item">
                   <div className="sort-item-info">
@@ -521,48 +560,31 @@ function ProductsPanel({ products, saving, mutate, setNotice, onFormActive, onFo
                   </div>
                   <div className="sort-item-actions">
                     <button type="button" className="sort-arrow-btn" disabled={index === 0 || saving !== null} onClick={() => void mutate("product.move", { id: product.id, direction: "up", fingerprint: product.fingerprint }, "เรียงสินค้าแล้ว")}>▲ ขึ้น</button>
-                    <button type="button" className="sort-arrow-btn" disabled={index === products.length - 1 || saving !== null} onClick={() => void mutate("product.move", { id: product.id, direction: "down", fingerprint: product.fingerprint }, "เรียงสินค้าแล้ว")}>▼ ลง</button>
+                    <button type="button" className="sort-arrow-btn" disabled={index === activeVisible.length - 1 || saving !== null} onClick={() => void mutate("product.move", { id: product.id, direction: "down", fingerprint: product.fingerprint }, "เรียงสินค้าแล้ว")}>▼ ลง</button>
                   </div>
                 </div>
               );
             })}
           </div>
         ) : (
-          <div className={`admin-card-list admin-product-list view-${view}`}>
-            {visible.map((product) => {
-              const firstImage = product.imageUrl ? product.imageUrl.split(",")[0] : "";
+          <>
+            <div className={`admin-card-list admin-product-list view-${view}`}>
+              {activeVisible.map((product) => productCard(product))}
+            </div>
+            {activeVisible.length === 0 && <p className="admin-empty-note">ไม่พบสินค้าที่ตรงกับตัวกรอง</p>}
 
-              return <article className={`admin-product-card ${product.status === "ซ่อนสินค้า" ? "is-archived" : ""}`} key={product.id}>
-                <div className="product-card-body">
-                  <div className="product-card-image-wrap">
-                    {firstImage ? <Image src={adminImageSrc(firstImage)} alt="" fill sizes="96px" unoptimized /> : <div className="product-card-no-image"><AdminIcon name="image" /></div>}
-                  </div>
-                  <div className="product-card-info">
-                    <div className="product-card-title-row">
-                      <span className="product-card-category">{product.category || "อื่น ๆ"}</span>
-                      <div className="product-card-header-flex">
-                        <h3>{product.name}</h3>
-                        <span className={`product-card-status status-${product.status === "เปิดขาย" ? "open" : product.status === "ปิดชั่วคราว" ? "closed" : "waiting"}`}>
-                          {productStatusLabels[product.status]}
-                        </span>
-                      </div>
-                    </div>
-                    <p className="product-card-meta">{product.unit} • {product.price === null ? "รอราคา" : `${product.price.toLocaleString("th-TH")} บาท`}</p>
-                    {product.detail && <p className="product-card-desc">{product.detail}</p>}
-
-                    <div className="product-card-actions-row">
-                      <button type="button" className="action-btn edit-btn" onClick={() => { setDraft({ id: product.id, name: product.name, unit: product.unit || "", detail: product.detail || "", price: product.price, status: product.status, imageUrl: product.imageUrl || "", category: product.category || "" }); setEditing(product.id); setCreating(false); }}><AdminIcon name="edit" /><span>แก้ไข</span></button>
-                      {product.status !== "ซ่อนสินค้า" ? (
-                        <button className="action-btn delete-btn" type="button" onClick={() => setConfirm({ title: `ปิดขาย ${product.name}?`, description: "สินค้าจะหายจากหน้าร้าน แต่ประวัติออเดอร์เก่าจะยังอยู่ครบและนำกลับมาได้", confirmLabel: "ปิดขายสินค้า", tone: "danger", action: async () => { await mutate("product.update", { product: { ...product, status: "ซ่อนสินค้า" } }, "ปิดขายสินค้าแล้ว"); } })}><AdminIcon name="hide" /><span>ปิดขาย</span></button>
-                      ) : (
-                        <button className="action-btn restore-btn" type="button" onClick={() => void mutate("product.update", { product: { ...product, status: "ปิดชั่วคราว" } }, "เปิดขายสินค้าอีกครั้ง")}><AdminIcon name="check" /><span>เปิดขาย</span></button>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              </article>;
-            })}
-          </div>
+            <button type="button" className="admin-archived-toggle" onClick={() => setShowArchived((current) => !current)}>
+              <AdminIcon name={showArchived ? "up" : "down"} />
+              สินค้าที่ปิดขายแล้ว ({archivedVisible.length})
+            </button>
+            {showArchived && (
+              <div className={`admin-card-list admin-product-list view-${view} admin-archived-list`}>
+                {archivedVisible.length === 0
+                  ? <p className="admin-empty-note">ยังไม่มีสินค้าที่ปิดขาย</p>
+                  : archivedVisible.map((product) => productCard(product))}
+              </div>
+            )}
+          </>
         )}
       </>
     )}

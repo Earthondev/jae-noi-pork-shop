@@ -354,8 +354,9 @@ img { display: block; }
   margin-bottom: 2px;
 }
 .round-callout span:not(.round-status-icon) {
-  color: var(--muted);
-  font-size: 0.8rem;
+  color: var(--ink);
+  font-size: 0.95rem;
+  font-weight: 600;
 }
 .round-callout .round-skeleton {
   height: 12px;
@@ -507,8 +508,8 @@ img { display: block; }
   background: var(--gold-500);
   color: var(--red-950);
   border-radius: 999px;
-  padding: 6px 12px;
-  font-size: 0.72rem;
+  padding: 7px 14px;
+  font-size: 0.92rem;
   font-weight: 800;
   box-shadow: 0 4px 8px rgba(0, 0, 0, 0.08);
 }
@@ -2322,6 +2323,31 @@ footer .footer-phone-links a:active { background: rgba(255, 255, 255, 0.1); }
 .sort-arrow-btn:disabled {
   opacity: 0.4;
   cursor: not-allowed;
+}
+
+.admin-archived-toggle {
+  width: 100%;
+  margin-top: 18px;
+  padding: 14px 16px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  justify-content: center;
+  border: 1px dashed var(--admin-line);
+  border-radius: 14px;
+  background: var(--admin-surface);
+  color: var(--admin-muted);
+  font-weight: 800;
+  cursor: pointer;
+}
+.admin-archived-toggle:hover { background: #f5eae0; color: var(--admin-red-dark); }
+.admin-archived-toggle svg { width: 16px; height: 16px; }
+.admin-archived-list { margin-top: 13px; }
+.admin-empty-note {
+  padding: 24px 16px;
+  text-align: center;
+  color: var(--admin-muted);
+  font-weight: 600;
 }
 
 /* Premium Dark Product Cards (#1F1F1F) */

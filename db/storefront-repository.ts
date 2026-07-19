@@ -7,7 +7,7 @@ import {
   safeStorefrontAssetUrl,
   type CatalogProduct,
 } from "../lib/product-catalog";
-import { DEFAULT_STOREFRONT_CONTENT } from "../lib/admin-cms";
+import { DEFAULT_STOREFRONT_CONTENT, formatRoundLabel } from "../lib/admin-cms";
 import { safePickupMapUrl } from "../lib/storefront-settings";
 
 export type StorefrontRound = {
@@ -112,7 +112,7 @@ export async function getD1StorefrontData(now = new Date()): Promise<StorefrontD
     deliveryDate: row.delivery_date,
     opensAt: row.opens_at,
     closesAt: row.closes_at,
-    label: row.label,
+    label: formatRoundLabel(row.delivery_date),
     note: row.note,
   });
   const value = (key: string) => settings.get(key)?.value ?? "";

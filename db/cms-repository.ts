@@ -4,6 +4,7 @@ import {
   AdminCmsValidationError,
   DEFAULT_STOREFRONT_CONTENT,
   roundIdFromDeliveryDate,
+  formatRoundLabel,
   validateProductInput,
   validateRoundInput,
   type AdminCmsData,
@@ -48,7 +49,7 @@ export async function getAdminCmsData(): Promise<AdminCmsData> {
     const total = totals.get(row.id);
     return {
       id: row.id, deliveryDate: row.delivery_date, opensAt: row.opens_at, closesAt: row.closes_at,
-      status: row.status, label: row.label, note: row.note, orderCount: total?.order_count ?? 0,
+      status: row.status, label: formatRoundLabel(row.delivery_date), note: row.note, orderCount: total?.order_count ?? 0,
       paidOrderCount: total?.paid_order_count ?? 0,
       sales: total?.sales ?? 0, displayState: displayState(row), fingerprint: String(row.version),
     };
@@ -116,7 +117,7 @@ export async function createAdminRound(input: RoundInput): Promise<CmsMutationRe
   const round = validateRoundInput(input); const id = roundIdFromDeliveryDate(round.deliveryDate); const { db } = bindings();
   if (await db.prepare("SELECT 1 FROM delivery_rounds WHERE id=? OR delivery_date=?").bind(id, round.deliveryDate).first()) return "duplicate";
   await db.prepare(`INSERT INTO delivery_rounds (id,delivery_date,opens_at,closes_at,status,label,note,version,updated_at) VALUES (?,?,?,?,?,?,?,1,?)`)
-    .bind(id, round.deliveryDate, round.opensAt, round.closesAt, round.status, `รอบจัดส่ง ${round.deliveryDate}`, round.note, new Date().toISOString()).run();
+    .bind(id, round.deliveryDate, round.opensAt, round.closesAt, round.status, formatRoundLabel(round.deliveryDate), round.note, new Date().toISOString()).run();
   return "updated";
 }
 

@@ -96,10 +96,25 @@ export function normalizeProductId(value: string): string {
   return value.trim().toUpperCase().replace(/[^A-Z0-9_-]/g, "").slice(0, 40);
 }
 
+export const THAI_MONTHS = ["ม.ค.", "ก.พ.", "มี.ค.", "เม.ย.", "พ.ค.", "มิ.ย.", "ก.ค.", "ส.ค.", "ก.ย.", "ต.ค.", "พ.ย.", "ธ.ค."];
+
+export function formatRoundLabel(deliveryDate: string): string {
+  if (!deliveryDate) return "รอบจัดส่ง";
+  try {
+    const [year, month, day] = deliveryDate.split("-");
+    const mIdx = parseInt(month, 10) - 1;
+    const mStr = THAI_MONTHS[mIdx] ?? month;
+    return `รอบจัดส่ง ${parseInt(day, 10)} ${mStr} ${year}`;
+  } catch {
+    return `รอบจัดส่ง ${deliveryDate}`;
+  }
+}
+
 export function roundIdFromDeliveryDate(deliveryDate: string): string {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(deliveryDate)) throw new AdminCmsValidationError("วันจัดส่งไม่ถูกต้อง");
   return `RD-${deliveryDate.replaceAll("-", "")}`;
 }
+
 
 export function validateProductInput(input: ProductInput): ProductInput {
   const id = normalizeProductId(input.id);
