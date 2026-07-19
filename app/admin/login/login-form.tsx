@@ -5,7 +5,7 @@ import { useState, type FormEvent } from "react";
 
 export function AdminLoginForm({ returnTo }: { returnTo: string }) {
   const router = useRouter();
-  const [username, setUsername] = useState("admin");
+  const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [submitting, setSubmitting] = useState(false);

@@ -32,6 +32,22 @@ const paymentStatusLabels: Record<PaymentStatus, string> = {
   waiting_for_payment: "รอชำระเงิน", waiting_for_slip_review: "รอตรวจสลิป", paid: "ชำระแล้ว",
   invalid_slip: "สลิปไม่ถูกต้อง", refunded: "คืนเงินแล้ว",
 };
+// Shown to the admin instead of the raw status value stored in the sheet/DB,
+// worded to match the action button next to it so it's clear what pressing
+// the button will do (e.g. "ยังไม่เปิดขาย" pairs with the "เปิดรอบขาย" button).
+const roundStatusLabels: Record<(typeof ROUND_STATUSES)[number], string> = {
+  "เตรียมเปิด": "ยังไม่เปิดขาย",
+  "เปิดรับ": "เปิดขายอยู่ตอนนี้",
+  "ปิดรับ": "ปิดรับออเดอร์แล้ว",
+  "จัดส่งแล้ว": "จัดส่งเรียบร้อยแล้ว",
+  "ยกเลิก": "ยกเลิกรอบนี้แล้ว",
+};
+const productStatusLabels: Record<(typeof PRODUCT_STATUSES)[number], string> = {
+  "เปิดขาย": "เปิดขาย",
+  "ปิดชั่วคราว": "ปิดชั่วคราว",
+  "รอข้อมูล": "รอข้อมูล (ยังขายไม่ได้)",
+  "ซ่อนสินค้า": "ปิดขาย",
+};
 const tabs: Array<{ id: AdminTab; icon: AdminIconName; label: string }> = [
   { id: "orders", icon: "orders", label: "ออเดอร์" },
   { id: "rounds", icon: "calendar", label: "รอบขาย" },
@@ -347,7 +363,7 @@ function RoundsPanel({ rounds, saving, mutate, onFormActive, onFormDirty }: { ro
         <div className="admin-section-heading"><div><p className="eyebrow">กำหนดวันเปิดและปิดตะกร้า</p><h2>รอบขาย</h2></div><button className="admin-primary-button" type="button" onClick={() => { setCreating(true); setEditing(null); setDraft(EMPTY_ROUND_INPUT); }}><AdminIcon name="plus" />เพิ่มรอบ</button></div>
         <div className="admin-card-list admin-round-list">{sorted.map((round) => (
           <article className={`admin-cms-card admin-round-card priority-${roundPriority(round)}`} key={round.id}>
-            <div className="admin-card-top"><div><span className={`cms-status status-${round.status === "เปิดรับ" ? "open" : "muted"}`}>{round.status}</span><h3>{round.label || round.id}</h3><small>{round.displayState}</small></div><button type="button" onClick={() => { setDraft({ deliveryDate: round.deliveryDate, opensAt: round.opensAt, closesAt: round.closesAt, status: round.status, note: round.note || "" }); setEditing(round.id); setCreating(false); }}><AdminIcon name="edit" />แก้ไข</button></div>
+            <div className="admin-card-top"><div><span className={`cms-status status-${round.status === "เปิดรับ" ? "open" : "muted"}`}>{roundStatusLabels[round.status]}</span><h3>{round.label || round.id}</h3><small>{round.displayState}</small></div><button type="button" onClick={() => { setDraft({ deliveryDate: round.deliveryDate, opensAt: round.opensAt, closesAt: round.closesAt, status: round.status, note: round.note || "" }); setEditing(round.id); setCreating(false); }}><AdminIcon name="edit" />แก้ไข</button></div>
             <div className="admin-round-sales"><span>ยอดชำระแล้วรอบนี้</span><strong>{formatMoney(round.sales)}</strong></div>
             <dl className="admin-mini-stats"><div><dt>เปิดรับ</dt><dd>{formatInputDateTime(round.opensAt)}</dd></div><div><dt>ปิดรับ</dt><dd>{formatInputDateTime(round.closesAt)}</dd></div><div><dt>ออเดอร์</dt><dd>{round.orderCount}</dd></div><div><dt>เฉลี่ยชำระแล้ว</dt><dd>{formatMoney(round.paidOrderCount ? round.sales / round.paidOrderCount : 0)}</dd></div></dl>
             {round.note && <p>{round.note}</p>}
@@ -362,7 +378,7 @@ function RoundsPanel({ rounds, saving, mutate, onFormActive, onFormDirty }: { ro
 }
 
 function RoundForm({ title, value, disabled, lockDeliveryDate = false, onChange, onCancel, onSubmit }: { title: string; value: RoundInput; disabled: boolean; lockDeliveryDate?: boolean; onChange: (value: RoundInput) => void; onCancel: () => void; onSubmit: () => void }) {
-  return <form className="admin-edit-card" onSubmit={(event) => { event.preventDefault(); onSubmit(); }}><h3>{title}</h3><div className="admin-form-grid"><label><span>วันจัดส่ง</span><input required type="date" disabled={disabled || lockDeliveryDate} value={value.deliveryDate} onChange={(event) => onChange({ ...value, deliveryDate: event.target.value })} /></label><label><span>เปิดรับตั้งแต่</span><input required type="datetime-local" disabled={disabled} value={value.opensAt} onChange={(event) => onChange({ ...value, opensAt: event.target.value })} /></label><label><span>ปิดรับวันที่</span><input required type="datetime-local" disabled={disabled} value={value.closesAt} onChange={(event) => onChange({ ...value, closesAt: event.target.value })} /></label><label><span>สถานะ</span><select disabled={disabled} value={value.status} onChange={(event) => onChange({ ...value, status: event.target.value as RoundInput["status"] })}>{ROUND_STATUSES.map((status) => <option key={status}>{status}</option>)}</select></label><label className="full"><span>หมายเหตุ</span><textarea rows={3} maxLength={500} value={value.note} onChange={(event) => onChange({ ...value, note: event.target.value })} /></label></div><FormActions disabled={disabled} onCancel={onCancel} /></form>;
+  return <form className="admin-edit-card" onSubmit={(event) => { event.preventDefault(); onSubmit(); }}><h3>{title}</h3><div className="admin-form-grid"><label><span>วันจัดส่ง</span><input required type="date" disabled={disabled || lockDeliveryDate} value={value.deliveryDate} onChange={(event) => onChange({ ...value, deliveryDate: event.target.value })} /></label><label><span>เปิดรับตั้งแต่</span><input required type="datetime-local" disabled={disabled} value={value.opensAt} onChange={(event) => onChange({ ...value, opensAt: event.target.value })} /></label><label><span>ปิดรับวันที่</span><input required type="datetime-local" disabled={disabled} value={value.closesAt} onChange={(event) => onChange({ ...value, closesAt: event.target.value })} /></label><label><span>สถานะ</span><select disabled={disabled} value={value.status} onChange={(event) => onChange({ ...value, status: event.target.value as RoundInput["status"] })}>{ROUND_STATUSES.map((status) => <option key={status} value={status}>{roundStatusLabels[status]}</option>)}</select></label><label className="full"><span>หมายเหตุ</span><textarea rows={3} maxLength={500} value={value.note} onChange={(event) => onChange({ ...value, note: event.target.value })} /></label></div><FormActions disabled={disabled} onCancel={onCancel} /></form>;
 }
 
 function ProductsPanel({ products, saving, mutate, setNotice, onFormActive, onFormDirty }: { products: AdminProduct[]; saving: string | null; mutate: Mutation; setNotice: (value: string) => void; onFormActive: (active: boolean) => void; onFormDirty: (dirty: boolean) => void }) {
@@ -420,8 +436,9 @@ function ProductsPanel({ products, saving, mutate, setNotice, onFormActive, onFo
   async function uploadImage(file: File) {
     setUploading(true); setNotice("");
     try {
+      const compressedFile = await compressImage(file);
       const form = new FormData();
-      form.set("image", file);
+      form.set("image", compressedFile, file.name);
       form.set("productId", draft.id || "PRODUCT");
       const response = await fetch("/api/admin/product-image", { method: "POST", body: form });
       if (response.status === 401) return redirectToLogin();
@@ -456,7 +473,7 @@ function ProductsPanel({ products, saving, mutate, setNotice, onFormActive, onFo
             <p className="eyebrow">แก้ไขแล้วแสดงบนเว็บจริง</p>
             <h2>สินค้า</h2>
           </div>
-          <button className="admin-primary-button add-product-top-btn" type="button" onClick={() => { setDraft(EMPTY_PRODUCT_INPUT); setCreating(true); setEditing(null); }}>
+          <button className="admin-primary-button add-product-top-btn" type="button" onClick={() => { setDraft({ ...EMPTY_PRODUCT_INPUT, id: nextProductId(products) }); setCreating(true); setEditing(null); }}>
             <AdminIcon name="plus" />เพิ่มสินค้า
           </button>
         </div>
@@ -489,7 +506,7 @@ function ProductsPanel({ products, saving, mutate, setNotice, onFormActive, onFo
           </div>
         </div>
 
-        <button className="admin-primary-button add-product-mobile-btn" type="button" onClick={() => { setDraft(EMPTY_PRODUCT_INPUT); setCreating(true); setEditing(null); }}>
+        <button className="admin-primary-button add-product-mobile-btn" type="button" onClick={() => { setDraft({ ...EMPTY_PRODUCT_INPUT, id: nextProductId(products) }); setCreating(true); setEditing(null); }}>
           <AdminIcon name="plus" />เพิ่มสินค้าใหม่
         </button>
 
@@ -526,7 +543,7 @@ function ProductsPanel({ products, saving, mutate, setNotice, onFormActive, onFo
                       <div className="product-card-header-flex">
                         <h3>{product.name}</h3>
                         <span className={`product-card-status status-${product.status === "เปิดขาย" ? "open" : product.status === "ปิดชั่วคราว" ? "closed" : "waiting"}`}>
-                          {product.status === "ซ่อนสินค้า" ? "ปิดขาย" : product.status}
+                          {productStatusLabels[product.status]}
                         </span>
                       </div>
                     </div>
@@ -575,12 +592,12 @@ function ProductForm({ title, value, disabled, uploading, lockId = false, onChan
   return <form className="admin-edit-card" onSubmit={(event) => { event.preventDefault(); onSubmit(); }}>
     <h3>{title}</h3>
     <div className="admin-form-grid">
-      <label><span>รหัสสินค้า (อังกฤษ)</span><input required disabled={disabled || lockId} maxLength={40} value={value.id} onChange={(event) => onChange({ ...value, id: event.target.value.toUpperCase() })} placeholder="เช่น MOO001" /></label>
-      <label><span>ชื่อสินค้า</span><input required disabled={disabled} maxLength={100} value={value.name} onChange={(event) => onChange({ ...value, name: event.target.value })} /></label>
+      {lockId && <label><span>รหัสสินค้า (ระบบตั้งให้อัตโนมัติ แก้ไขไม่ได้)</span><input disabled value={value.id} /></label>}
+      <label><span>ชื่อสินค้า</span><input required disabled={disabled} maxLength={100} value={value.name} onChange={(event) => onChange({ ...value, name: event.target.value })} placeholder="เช่น แหนมหมู" /></label>
       <label><span>หมวดหมู่</span><input disabled={disabled} maxLength={80} value={value.category} onChange={(event) => onChange({ ...value, category: event.target.value })} placeholder="เช่น แหนมหมู" /></label>
       <label><span>หน่วยขาย</span><input disabled={disabled} maxLength={80} value={value.unit} onChange={(event) => onChange({ ...value, unit: event.target.value })} placeholder="เช่น 1 แพ็ค" /></label>
       <label><span>ราคา (บาท)</span><input disabled={disabled} min="1" max="1000000" step="1" type="number" value={value.price ?? ""} onChange={(event) => onChange({ ...value, price: event.target.value ? Number(event.target.value) : null })} /></label>
-      <label><span>สถานะ</span><select disabled={disabled} value={value.status} onChange={(event) => onChange({ ...value, status: event.target.value as ProductInput["status"] })}>{PRODUCT_STATUSES.map((status) => <option key={status}>{status}</option>)}</select></label>
+      <label><span>สถานะ</span><select disabled={disabled} value={value.status} onChange={(event) => onChange({ ...value, status: event.target.value as ProductInput["status"] })}>{PRODUCT_STATUSES.map((status) => <option key={status} value={status}>{productStatusLabels[status]}</option>)}</select></label>
       <label className="full"><span>คำอธิบายสินค้า</span><textarea disabled={disabled} maxLength={500} rows={3} value={value.detail} onChange={(event) => onChange({ ...value, detail: event.target.value })} /></label>
 
       <div className="admin-form-images-section full">
@@ -603,7 +620,7 @@ function ProductForm({ title, value, disabled, uploading, lockId = false, onChan
             <label className="admin-image-upload-slot">
               <span className="upload-icon">+</span>
               <span className="upload-label">{uploading ? "กำลังอัปโหลด…" : "เพิ่มรูป"}</span>
-              <input disabled={disabled || uploading} type="file" accept="image/jpeg,image/png,image/webp" onChange={(event) => { const file = event.target.files?.[0]; if (file) void onUpload(file); }} />
+              <input disabled={disabled || uploading} type="file" accept="image/*" onChange={(event) => { const file = event.target.files?.[0]; if (file) void onUpload(file); }} />
             </label>
           )}
         </div>
@@ -630,8 +647,24 @@ function StorefrontPanel({ settings, saving, mutate, setNotice, onFormActive, on
 
   async function uploadBrand(file: File, slot: "logo" | "cover") {
     setUploading(slot); setNotice("");
-    try { const form = new FormData(); form.set("image", file); form.set("assetType", "brand"); form.set("assetSlot", slot); const response = await fetch("/api/admin/product-image", { method: "POST", body: form }); if (response.status === 401) return redirectToLogin(); const result = await response.json() as { imageUrl?: string; error?: string }; if (!response.ok || !result.imageUrl) throw new CustomerFacingError(safeClientApiMessage(response.status, result, "ADMIN_UNAVAILABLE")); field(slot === "logo" ? "storeLogoUrl" : "storeCoverUrl", result.imageUrl); setNotice("อัปโหลดรูปแล้ว กดบันทึกหน้าร้านเพื่อใช้งาน"); }
-    catch (error) { setNotice(error instanceof CustomerFacingError ? error.message : PUBLIC_ERROR_MESSAGES.ADMIN_UNAVAILABLE); } finally { setUploading(null); }
+    try {
+      const compressedFile = await compressImage(file);
+      const form = new FormData();
+      form.set("image", compressedFile, file.name);
+      form.set("assetType", "brand");
+      form.set("assetSlot", slot);
+      const response = await fetch("/api/admin/product-image", { method: "POST", body: form });
+      if (response.status === 401) return redirectToLogin();
+      const result = await response.json() as { imageUrl?: string; error?: string };
+      if (!response.ok || !result.imageUrl) throw new CustomerFacingError(safeClientApiMessage(response.status, result, "ADMIN_UNAVAILABLE"));
+      field(slot === "logo" ? "storeLogoUrl" : "storeCoverUrl", result.imageUrl);
+      setNotice("อัปโหลดรูปแล้ว กดบันทึกหน้าร้านเพื่อใช้งาน");
+    }
+    catch (error) {
+      setNotice(error instanceof CustomerFacingError ? error.message : PUBLIC_ERROR_MESSAGES.ADMIN_UNAVAILABLE);
+    } finally {
+      setUploading(null);
+    }
   }
   return <section className="admin-panel"><div className="admin-section-heading"><div><p className="eyebrow">ข้อความและภาพบนเว็บจริง</p><h2>หน้าร้าน</h2></div><button className="admin-preview-link" type="button" onClick={() => setPreview((value) => !value)}><AdminIcon name={preview ? "close" : "external"} />{preview ? "ปิดตัวอย่าง" : "ดูตัวอย่าง"}</button></div>
     {preview && <div className="admin-live-preview"><div><span>ตัวอย่างหน้าร้าน</span><Link href="/" target="_blank">เปิดเต็มหน้า<AdminIcon name="external" /></Link></div><iframe src="/" title="ตัวอย่างหน้าร้านเจ๊น้อย" loading="lazy" /></div>}
@@ -692,7 +725,7 @@ function StorefrontPanel({ settings, saving, mutate, setNotice, onFormActive, on
 }
 
 function BrandAsset({ label, value, ratio, uploading, onUpload }: { label: string; value: string; ratio: "square" | "cover"; uploading: boolean; onUpload: (file: File) => void }) {
-  return <label className={`admin-brand-asset ${ratio}`}><span>{label}</span><span className="admin-brand-asset-preview">{value ? <Image src={adminImageSrc(value)} alt={`ตัวอย่าง${label}`} fill sizes="320px" unoptimized /> : <AdminIcon name="image" />}</span><span className="admin-brand-upload"><AdminIcon name="image" />{uploading ? "กำลังอัปโหลด…" : "เลือกรูป"}</span><input disabled={uploading} type="file" accept="image/jpeg,image/png,image/webp" onChange={(event) => { const file = event.target.files?.[0]; if (file) onUpload(file); }} /></label>;
+  return <label className={`admin-brand-asset ${ratio}`}><span>{label}</span><span className="admin-brand-asset-preview">{value ? <Image src={adminImageSrc(value)} alt={`ตัวอย่าง${label}`} fill sizes="320px" unoptimized /> : <AdminIcon name="image" />}</span><span className="admin-brand-upload"><AdminIcon name="image" />{uploading ? "กำลังอัปโหลด…" : "เลือกรูป"}</span><input disabled={uploading} type="file" accept="image/*" onChange={(event) => { const file = event.target.files?.[0]; if (file) onUpload(file); }} /></label>;
 }
 
 function Kpi({ icon, label, value, accent = false }: { icon: AdminIconName; label: string; value: string; accent?: boolean }) { return <div className={accent ? "accent" : ""}><span><AdminIcon name={icon} />{label}</span><strong>{value}</strong></div>; }
@@ -722,9 +755,62 @@ function adminImageSrc(value: string) { if (!value) return ""; try { const url =
 function inOrderRange(value: string, range: OrderRange) { if (range === "all") return true; const timestamp = new Date(value).getTime(); if (!Number.isFinite(timestamp)) return false; const now = Date.now(); if (range === "7days") return timestamp >= now - 7 * 86_400_000; return bangkokDateKey(new Date(timestamp)) === bangkokDateKey(new Date(now)); }
 function bangkokDateKey(date: Date) { return new Intl.DateTimeFormat("en-CA", { year: "numeric", month: "2-digit", day: "2-digit", timeZone: "Asia/Bangkok" }).format(date); }
 function toggleSet(current: Set<string>, value: string) { const next = new Set(current); if (next.has(value)) next.delete(value); else next.add(value); return next; }
+function nextProductId(products: AdminProduct[]) {
+  const existingIds = new Set(products.map((product) => product.id));
+  let counter = 1;
+  while (existingIds.has(`P${String(counter).padStart(4, "0")}`)) counter += 1;
+  return `P${String(counter).padStart(4, "0")}`;
+}
 function roundPriority(round: AdminRound) {
   if (round.displayState === "แสดงใน dropdown") return 0;
   if (round.status === "เตรียมเปิด") return 1;
   if (round.status === "เปิดรับ") return 2;
   return 3;
+}
+
+async function compressImage(file: File): Promise<Blob> {
+  return new Promise((resolve) => {
+    if (!file.type.startsWith("image/")) {
+      resolve(file);
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const img = document.createElement("img");
+      img.onload = () => {
+        const canvas = document.createElement("canvas");
+        const ctx = canvas.getContext("2d");
+        if (!ctx) {
+          resolve(file);
+          return;
+        }
+        const maxDim = 1200;
+        let width = img.width;
+        let height = img.height;
+        if (width > maxDim || height > maxDim) {
+          if (width > height) {
+            height = Math.round((height * maxDim) / width);
+            width = maxDim;
+          } else {
+            width = Math.round((width * maxDim) / height);
+            height = maxDim;
+          }
+        }
+        canvas.width = width;
+        canvas.height = height;
+        ctx.drawImage(img, 0, 0, width, height);
+        canvas.toBlob((blob) => {
+          if (blob) {
+            resolve(blob);
+          } else {
+            resolve(file);
+          }
+        }, "image/jpeg", 0.85);
+      };
+      img.onerror = () => resolve(file);
+      img.src = e.target?.result as string;
+    };
+    reader.onerror = () => resolve(file);
+    reader.readAsDataURL(file);
+  });
 }

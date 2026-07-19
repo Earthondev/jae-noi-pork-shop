@@ -48,6 +48,7 @@ export function Shop() {
   const drawerRef = useRef<HTMLElement>(null);
   const idempotencyKeyRef = useRef<string | null>(null);
   const appliedRememberedPhoneRef = useRef<string | null>(null);
+  const [nearProducts, setNearProducts] = useState(true);
 
   const checkout = useCheckoutDraft();
   const {
@@ -157,6 +158,13 @@ export function Shop() {
             } else if (entry.target.id === "top") {
               setActiveTab("home");
             }
+          }
+          if (entry.target.id === "products") {
+            // Once the product grid has scrolled above the viewport, the
+            // floating cart pill would otherwise sit on top of unrelated
+            // content (e.g. the order-steps section) with no clear space
+            // reserved for it, so hide it once we're past the shopping area.
+            setNearProducts(entry.isIntersecting || entry.boundingClientRect.top > 0);
           }
         });
       },
@@ -507,7 +515,7 @@ export function Shop() {
           <button type="button" onClick={() => storefront.setNotice(null)} aria-label="ปิดข้อความแจ้งเตือน">×</button>
         </div>
       )}
-      {cartCount > 0 && !cartOpen && (
+      {cartCount > 0 && !cartOpen && nearProducts && (
         <button className="floating-cart" type="button" onClick={() => setCartOpen(true)} aria-label={`เปิดตะกร้า มีสินค้า ${cartCount} ชิ้น รวมค่าสินค้า ${subtotal} บาท`}>
           <span className="floating-cart-copy">
             <strong key={cartCount}>ตะกร้า · {cartCount} ชิ้น</strong>
