@@ -15,6 +15,9 @@
 /.playwright-cli/
 /.playwright-mcp/
 /output/
+/test-results/
+/playwright-report/
+/blob-report/
 /order-history-phone-only.png
 /qr-template-sample-150.png
 

@@ -10,6 +10,7 @@ This project is a storefront and admin panel for "Jae Noi Pork Shop" built using
 - **Build for Cloudflare:** `npm run build:cloudflare`
 - **Deploy to Cloudflare:** `npm run deploy:cloudflare` (deploys to the production-connected worker `jae-noi-pork-shop-test`)
 - **Run tests:** `npm run test` (compiles and runs node unit tests in `tests/`)
+- **Run E2E tests:** `npm run test:e2e` (Playwright, `tests-e2e/`) — covers the checkout + payment-QR flow in a real browser (mobile/WebKit + desktop/Chromium). Auto-starts `npm run dev` if not already running. This flow has broken twice in ways unit tests couldn't catch (a fixed-position bar losing its CSS containing block, a canvas-drawn payment amount rendering invisible white-on-white), so treat it as the regression gate for anything touching checkout, the cart drawer, or admin storefront settings.
 - **Lint code:** `npm run lint`
 - **Database migration generation:** `npm run db:generate`
 - **Export sheet orders to D1:** `npm run db:export-sheet-orders`

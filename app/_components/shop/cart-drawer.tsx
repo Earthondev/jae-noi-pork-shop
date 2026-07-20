@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import type { FormEvent, RefObject } from "react";
 import type { Quantities } from "../../_hooks/use-checkout-draft";
 import type { Fulfilment, PreorderRound, Product } from "../../_hooks/use-storefront";
+import { computePillWidth, fitFontSize } from "../../../lib/qr-image";
 import { AddressFields, type AddressFieldName } from "./address-fields";
 
 type ClientPaymentStatus = "waiting" | "verified" | "review" | "invalid";
@@ -234,7 +235,7 @@ export function CartDrawer({ drawerRef, onClose, cart, checkout, storefront, ord
     const amountMaxWidth = 880;
     fitFontSize(context, amountText, amountMaxWidth - amountPaddingX * 2, 800, 44, 28);
     const amountTextWidth = context.measureText(amountText).width;
-    const pillWidth = Math.min(amountMaxWidth, Math.max(320, amountTextWidth + amountPaddingX * 2));
+    const pillWidth = computePillWidth(amountTextWidth, { paddingX: amountPaddingX, minWidth: 320, maxWidth: amountMaxWidth });
     context.fillStyle = "#7A1F1F";
     fillRoundedRect(context, (canvas.width - pillWidth) / 2, 946, pillWidth, 92, 46);
     context.fillStyle = "#FFFFFF";
@@ -602,24 +603,6 @@ export function CartDrawer({ drawerRef, onClose, cart, checkout, storefront, ord
       </aside>
     </div>
   );
-}
-
-/** Sets context.font to the largest size (in 2px steps) that fits `text` within `maxWidth`, and returns the final size. */
-function fitFontSize(
-  context: CanvasRenderingContext2D,
-  text: string,
-  maxWidth: number,
-  weight: number,
-  startSize: number,
-  minSize: number,
-): number {
-  let size = startSize;
-  context.font = `${weight} ${size}px "Noto Sans Thai", sans-serif`;
-  while (context.measureText(text).width > maxWidth && size > minSize) {
-    size -= 2;
-    context.font = `${weight} ${size}px "Noto Sans Thai", sans-serif`;
-  }
-  return size;
 }
 
 function roundedRectPath(
