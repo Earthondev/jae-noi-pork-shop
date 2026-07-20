@@ -214,6 +214,7 @@ img { display: block; }
 }
 @media (prefers-reduced-motion: reduce) {
   .hero-features { animation: none; width: auto; flex-wrap: wrap; }
+  .hero-features span:nth-child(n+4) { display: none; }
 }
 .hero-features span {
   display: inline-flex;
@@ -1466,9 +1467,11 @@ footer .footer-phone-links a:active { background: rgba(255, 255, 255, 0.1); }
 .track-form label:last-of-type input { text-transform: none; }
 .track-form button {
   min-height: 48px;
+  padding: 0 24px;
   border: 0;
   border-radius: 99px;
   font-weight: 800;
+  white-space: nowrap;
   margin-top: 8px;
   background: var(--red-700);
   color: white;
