@@ -33,10 +33,13 @@ type IdempotencyReceipt = {
 };
 
 const PROCESSING_RECEIPT_TTL_MS = 2 * 60 * 1000;
+// Loosened during the client's own testing period so repeated manual test
+// orders don't trip the limiter. Tighten back to 6/30min and 3/60min before
+// go-live (client asked to be reminded to close this out).
 const ORDER_IP_WINDOW_MS = 30 * 60 * 1000;
-const ORDER_IP_MAX_PER_WINDOW = 6;
+const ORDER_IP_MAX_PER_WINDOW = 50;
 const ORDER_PHONE_WINDOW_MS = 60 * 60 * 1000;
-const ORDER_PHONE_MAX_PER_WINDOW = 3;
+const ORDER_PHONE_MAX_PER_WINDOW = 20;
 
 class OrderRequestError extends Error {
   constructor(message: string, readonly status: number) {
