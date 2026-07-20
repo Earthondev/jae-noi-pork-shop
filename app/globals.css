@@ -2081,7 +2081,6 @@ footer .footer-phone-links a:active { background: rgba(255, 255, 255, 0.1); }
 .admin-form-group { padding-bottom: 20px; border-bottom: 1px solid var(--line); }
 .admin-form-group:last-of-type { padding-bottom: 0; border-bottom: 0; }
 .admin-form-group h3 { margin: 0 0 13px; color: var(--red-800); font-family: var(--font-display), serif; }
-.storefront-editor > .admin-save-button { position: sticky; bottom: calc(84px + env(safe-area-inset-bottom)); z-index: 10; box-shadow: 0 5px 0 var(--red-950), 0 10px 26px rgb(30 27 24 / 20%); }
 
 @media (min-width: 800px) {
   .admin-shell { padding-bottom: 24px; }
@@ -2236,13 +2235,12 @@ footer .footer-phone-links a:active { background: rgba(255, 255, 255, 0.1); }
 .admin-brand-upload { width: fit-content; min-height: 42px; padding: 0 12px; display: inline-flex; align-items: center; gap: 6px; border: 1px solid var(--admin-line); border-radius: 10px; background: var(--admin-surface); color: var(--admin-red); font-size: .72rem; }
 .admin-brand-upload svg { width: 16px; height: 16px; }
 .admin-brand-asset > input { width: 1px; height: 1px; position: absolute; overflow: hidden; clip: rect(0 0 0 0); }
-.admin-sticky-save { position: static; z-index: 10; margin: 0 -10px -10px; padding: 10px; display: grid; gap: 8px; border: 1px solid var(--admin-line); border-radius: 14px; background: rgb(255 253 249 / 95%); box-shadow: 0 10px 26px rgb(30 27 24 / 18%); backdrop-filter: blur(14px); }
+.admin-sticky-save { position: fixed; right: 16px; bottom: calc(88px + env(safe-area-inset-bottom)); left: 16px; z-index: 70; padding: 10px; display: grid; gap: 8px; border: 1px solid var(--admin-line); border-radius: 14px; background: rgb(255 253 249 / 95%); box-shadow: 0 10px 26px rgb(30 27 24 / 18%); backdrop-filter: blur(14px); transform: translateY(140%); opacity: 0; pointer-events: none; transition: transform .22s ease, opacity .18s ease; }
 .admin-sticky-save > span { color: var(--admin-muted); font-size: .68rem; font-weight: 800; text-align: center; }
-.admin-sticky-save.dirty { position: fixed; right: 16px; bottom: calc(88px + env(safe-area-inset-bottom)); left: 16px; z-index: 70; }
+.admin-sticky-save.dirty { transform: translateY(0); opacity: 1; pointer-events: auto; }
 .admin-sticky-save.dirty > span { color: #7a5600; }
 .admin-discard-button { min-height: 50px; border: 1px solid var(--admin-line); border-radius: 12px; background: white; color: var(--admin-muted); font-weight: 800; }
 .admin-discard-button:disabled { opacity: .55; cursor: wait; }
-.storefront-editor > .admin-save-button { position: static; }
 .admin-dialog-backdrop { position: fixed; inset: 0; z-index: 120; padding: 20px; display: grid; place-items: center; background: rgb(35 20 17 / 58%); backdrop-filter: blur(5px); animation: admin-fade .16s ease-out both; }
 .admin-dialog { width: min(100%, 420px); padding: 24px 18px 18px; position: relative; border: 1px solid var(--admin-line); border-radius: 22px; background: var(--admin-surface); box-shadow: 0 24px 70px rgb(25 12 10 / 30%); text-align: center; animation: admin-dialog-in .2s ease-out both; }
 .admin-dialog-close { width: 42px; height: 42px; position: absolute; top: 8px; right: 8px; border: 0; display: grid; place-items: center; background: transparent; color: var(--admin-muted); }
@@ -2271,8 +2269,8 @@ footer .footer-phone-links a:active { background: rgba(255, 255, 255, 0.1); }
   .admin-kpi-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); }
   .admin-round-summary > div { grid-template-columns: repeat(3, minmax(0, 1fr)); }
   .admin-brand-assets { grid-template-columns: minmax(180px, .45fr) minmax(280px, 1fr); }
-  .admin-sticky-save { grid-template-columns: 1fr auto auto; align-items: center; }
-  .admin-sticky-save.dirty { right: auto; left: 50%; width: min(900px, calc(100% - 40px)); transform: translateX(-50%); }
+  .admin-sticky-save { grid-template-columns: 1fr auto auto; align-items: center; right: auto; left: 50%; width: min(900px, calc(100% - 40px)); transform: translateX(-50%) translateY(140%); }
+  .admin-sticky-save.dirty { transform: translateX(-50%) translateY(0); }
   .admin-sticky-save > span { text-align: left; }
   .admin-sticky-save .admin-save-button { min-width: 220px; }
   .admin-dialog-actions { grid-template-columns: 1fr 1.25fr; }
