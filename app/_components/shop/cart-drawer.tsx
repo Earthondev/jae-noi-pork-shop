@@ -171,7 +171,7 @@ export function CartDrawer({ drawerRef, onClose, cart, checkout, storefront, ord
     }
   };
 
-  const saveQrImage = () => {
+  const saveQrImage = async () => {
     const qrCanvas = qrCanvasRef.current;
     if (!qrCanvas || !order.promptPayPayload || !storefront.promptPayId) {
       setQrSaveStatus("error");
@@ -179,6 +179,10 @@ export function CartDrawer({ drawerRef, onClose, cart, checkout, storefront, ord
     }
 
     setQrSaveStatus("saving");
+    // Without this, canvas text can render (and get measured) with a
+    // fallback font before Noto Sans Thai finishes loading, garbling glyphs
+    // and throwing off every width calculation below.
+    await document.fonts.ready;
     const canvas = document.createElement("canvas");
     canvas.width = 1080;
     canvas.height = 1350;
@@ -198,7 +202,7 @@ export function CartDrawer({ drawerRef, onClose, cart, checkout, storefront, ord
 
     context.textAlign = "center";
     context.fillStyle = "#FFFFFF";
-    context.font = '800 58px "Noto Sans Thai", sans-serif';
+    fitFontSize(context, storefront.storeName, 920, 800, 58, 32);
     context.fillText(storefront.storeName, canvas.width / 2, 96);
     context.font = '700 32px "Noto Sans Thai", sans-serif';
     context.fillStyle = "#F5E8C7";
@@ -221,18 +225,28 @@ export function CartDrawer({ drawerRef, onClose, cart, checkout, storefront, ord
     context.font = '600 26px "Noto Sans Thai", sans-serif';
     context.fillText("สแกนด้วยแอปธนาคารใดก็ได้", canvas.width / 2, 918);
 
+    // The pill background is sized to the actual measured text width, not a
+    // fixed guess — a fixed-width pill let long amounts spill past its
+    // right edge onto the white card behind it, where white-on-white text
+    // simply vanished instead of visibly clipping.
+    const amountText = `ยอดชำระ ${order.orderTotal.toLocaleString("th-TH")} บาท`;
+    const amountPaddingX = 56;
+    const amountMaxWidth = 880;
+    fitFontSize(context, amountText, amountMaxWidth - amountPaddingX * 2, 800, 44, 28);
+    const amountTextWidth = context.measureText(amountText).width;
+    const pillWidth = Math.min(amountMaxWidth, Math.max(320, amountTextWidth + amountPaddingX * 2));
     context.fillStyle = "#7A1F1F";
-    fillRoundedRect(context, 260, 946, 560, 92, 46);
+    fillRoundedRect(context, (canvas.width - pillWidth) / 2, 946, pillWidth, 92, 46);
     context.fillStyle = "#FFFFFF";
-    context.font = '800 44px "Noto Sans Thai", sans-serif';
-    context.fillText(`ยอดชำระ ${order.orderTotal.toLocaleString("th-TH")} บาท`, canvas.width / 2, 1006);
+    context.fillText(amountText, canvas.width / 2, 1006);
 
     context.fillStyle = "#6E5855";
     context.font = '600 26px "Noto Sans Thai", sans-serif';
     context.fillText("ชื่อบัญชีพร้อมเพย์", canvas.width / 2, 1082);
     context.fillStyle = "#2A1816";
-    context.font = '800 40px "Noto Sans Thai", sans-serif';
-    context.fillText(storefront.promptPayName ?? "ร้านเจ๊น้อย", canvas.width / 2, 1130);
+    const promptPayNameText = storefront.promptPayName ?? "ร้านเจ๊น้อย";
+    fitFontSize(context, promptPayNameText, 820, 800, 40, 24);
+    context.fillText(promptPayNameText, canvas.width / 2, 1130);
     context.fillStyle = "#6E5855";
     context.font = '700 30px "Noto Sans Thai", sans-serif';
     context.fillText(formatPromptPayId(storefront.promptPayId), canvas.width / 2, 1172);
@@ -493,7 +507,7 @@ export function CartDrawer({ drawerRef, onClose, cart, checkout, storefront, ord
                             title={`QR พร้อมเพย์ ${storefront.promptPayName ?? "ร้านเจ๊น้อย"} ยอด ${order.orderTotal} บาท`}
                           />
                         </div>
-                        <button className="qr-save-button" type="button" onClick={saveQrImage} disabled={qrSaveStatus === "saving"}>
+                        <button className="qr-save-button" type="button" onClick={() => void saveQrImage()} disabled={qrSaveStatus === "saving"}>
                           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.25" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
                             <path d="M12 3v12m0 0 4-4m-4 4-4-4" />
                             <path d="M5 19h14" />
@@ -588,6 +602,24 @@ export function CartDrawer({ drawerRef, onClose, cart, checkout, storefront, ord
       </aside>
     </div>
   );
+}
+
+/** Sets context.font to the largest size (in 2px steps) that fits `text` within `maxWidth`, and returns the final size. */
+function fitFontSize(
+  context: CanvasRenderingContext2D,
+  text: string,
+  maxWidth: number,
+  weight: number,
+  startSize: number,
+  minSize: number,
+): number {
+  let size = startSize;
+  context.font = `${weight} ${size}px "Noto Sans Thai", sans-serif`;
+  while (context.measureText(text).width > maxWidth && size > minSize) {
+    size -= 2;
+    context.font = `${weight} ${size}px "Noto Sans Thai", sans-serif`;
+  }
+  return size;
 }
 
 function roundedRectPath(
