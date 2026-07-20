@@ -2224,6 +2224,9 @@ footer .footer-phone-links a:active { background: rgba(255, 255, 255, 0.1); }
 .admin-live-preview a { display: inline-flex; align-items: center; gap: 5px; color: var(--admin-red); }
 .admin-live-preview svg { width: 15px; height: 15px; }
 .admin-live-preview iframe { width: 100%; height: 580px; border: 0; display: block; background: var(--admin-bg); }
+.admin-sub-tabs { margin-bottom: 14px; padding-bottom: 2px; display: flex; gap: 8px; overflow-x: auto; -webkit-overflow-scrolling: touch; }
+.admin-sub-tabs button { min-height: 40px; padding: 0 16px; flex: 0 0 auto; border: 1px solid var(--admin-line); border-radius: 999px; background: var(--admin-surface); color: var(--admin-muted); font-size: .78rem; font-weight: 800; white-space: nowrap; cursor: pointer; transition: background-color .15s, color .15s, border-color .15s; }
+.admin-sub-tabs button.active { border-color: var(--admin-red); background: var(--admin-red); color: #fff; }
 .admin-brand-assets { display: grid; gap: 12px; }
 .admin-brand-asset { display: grid; gap: 7px; color: var(--admin-ink); font-size: .78rem; font-weight: 800; cursor: pointer; }
 .admin-brand-asset-preview { min-height: 148px; position: relative; overflow: hidden; display: grid; place-items: center; border: 1px dashed #c9b499; border-radius: 14px; background: #f3e7d6; color: var(--admin-muted); }
