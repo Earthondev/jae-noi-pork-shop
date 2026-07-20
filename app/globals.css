@@ -2084,7 +2084,16 @@ footer .footer-phone-links a:active { background: rgba(255, 255, 255, 0.1); }
 .admin-card-actions button:disabled { opacity: .35; cursor: not-allowed; }
 .admin-image-preview { min-height: 190px; position: relative; overflow: hidden; border: 1px solid var(--line); border-radius: 14px; background: var(--cream-100); }
 .admin-image-preview img { object-fit: cover; }
-.storefront-editor { display: grid; gap: 22px; }
+/* .admin-edit-card's entrance animation uses `both` fill-mode, which keeps
+   its final translateY(0) transform applied forever after the animation
+   ends. Even though that's visually a no-op, a non-none transform on this
+   form still creates a new containing block for its position:fixed child
+   (.admin-sticky-save) — pinning the "unsaved changes" bar to the form's
+   box instead of the viewport, so it drifts away from the screen edge
+   whenever the mobile keyboard scrolls the form. Reset fill-mode to none so
+   the transform cleanly reverts to `none` once the entrance animation
+   finishes (same visual result, no lingering containing block). */
+.storefront-editor { display: grid; gap: 22px; animation-fill-mode: none; }
 .admin-form-group { padding-bottom: 20px; border-bottom: 1px solid var(--line); }
 .admin-form-group:last-of-type { padding-bottom: 0; border-bottom: 0; }
 .admin-form-group h3 { margin: 0 0 13px; color: var(--red-800); font-family: var(--font-display), serif; }
