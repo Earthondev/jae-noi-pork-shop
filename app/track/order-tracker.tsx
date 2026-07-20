@@ -112,12 +112,34 @@ async function saveReceiptPng(order: PublicOrderTracking, storeName: string): Pr
   URL.revokeObjectURL(url);
 }
 
-function OrderHistoryCard({ order, expanded, onToggle, storeName }: { order: PublicOrderTracking; expanded: boolean; onToggle: () => void; storeName: string }) {
+function OrderHistoryCard({ order, expanded, onToggle, storeName, phone, onConfirmed }: { order: PublicOrderTracking; expanded: boolean; onToggle: () => void; storeName: string; phone: string; onConfirmed: (orderId: string) => void }) {
   const [receiptError, setReceiptError] = useState<string | null>(null);
+  const [confirming, setConfirming] = useState(false);
+  const [confirmError, setConfirmError] = useState<string | null>(null);
   const currentStep = trackingStepIndex(order.orderStatus, order.fulfilment);
   const steps = order.fulfilment === "pickup"
     ? ["รับออเดอร์แล้ว", "กำลังเตรียม", "พร้อมรับหน้าร้าน", "สำเร็จ"]
     : ["รับออเดอร์แล้ว", "กำลังเตรียม", "จัดส่งแล้ว", "สำเร็จ"];
+  const canConfirmReceived = order.orderStatus === "shipped" || order.orderStatus === "ready_for_pickup";
+
+  async function handleConfirmReceived() {
+    setConfirming(true);
+    setConfirmError(null);
+    try {
+      const response = await fetch("/api/orders/track/confirm", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ phone, orderId: order.orderId }),
+      });
+      const result = await response.json().catch(() => null) as { error?: string } | null;
+      if (!response.ok) throw new CustomerFacingError(safeClientApiMessage(response.status, result, "TRACKING_UNAVAILABLE"));
+      onConfirmed(order.orderId);
+    } catch (confirmActionError) {
+      setConfirmError(confirmActionError instanceof CustomerFacingError ? confirmActionError.message : PUBLIC_ERROR_MESSAGES.TRACKING_UNAVAILABLE);
+    } finally {
+      setConfirming(false);
+    }
+  }
 
   return (
     <article className={`track-history-card${expanded ? " expanded" : ""}`}>
@@ -136,6 +158,14 @@ function OrderHistoryCard({ order, expanded, onToggle, storeName }: { order: Pub
                 </li>
               ))}
             </ol>
+          )}
+          {canConfirmReceived && (
+            <div className="track-confirm-received">
+              <button type="button" onClick={() => void handleConfirmReceived()} disabled={confirming}>
+                {confirming ? "กำลังยืนยัน..." : "ยืนยันว่าได้รับสินค้าแล้ว"}
+              </button>
+              {confirmError && <p className="track-error" role="alert">{confirmError}</p>}
+            </div>
           )}
           <div className="tracking-details">
             <div><span>รอบจัดส่ง</span><strong>{order.deliveryDate || "รอข้อมูล"}</strong></div>
@@ -177,6 +207,10 @@ export function OrderTracker({ storeName, phonePrimary, phoneSecondary }: { stor
   useEffect(() => {
     if (orders.length > 0) resultHeadingRef.current?.focus();
   }, [orders]);
+
+  function handleOrderConfirmed(orderId: string) {
+    setOrders((current) => current.map((order) => order.orderId === orderId ? { ...order, orderStatus: "completed" } : order));
+  }
 
   async function lookupOrder(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -241,6 +275,8 @@ export function OrderTracker({ storeName, phonePrimary, phoneSecondary }: { stor
                 key={order.orderId}
                 order={order}
                 storeName={storeName}
+                phone={phone}
+                onConfirmed={handleOrderConfirmed}
                 expanded={expandedOrderId === order.orderId}
                 onToggle={() => setExpandedOrderId((current) => current === order.orderId ? null : order.orderId)}
               />

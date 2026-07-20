@@ -63,6 +63,7 @@ export const orders = sqliteTable("orders", {
   paymentStatus: text("payment_status").notNull().default("waiting_for_payment"),
   orderStatus: text("order_status").notNull().default("received"),
   trackingNumber: text("tracking_number"),
+  shippedAt: text("shipped_at"),
   idempotencyKey: text("idempotency_key").notNull().unique(),
   createdAt: text("created_at").notNull(),
   updatedAt: text("updated_at").notNull(),

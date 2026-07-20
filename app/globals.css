@@ -1617,6 +1617,10 @@ footer .footer-phone-links a:active { background: rgba(255, 255, 255, 0.1); }
 .tracking-steps li.done > span { border-color: var(--red-700); background: var(--red-700); color: white; box-shadow: 0 2px 8px rgba(181, 21, 25, 0.25); }
 .tracking-steps strong { display: block; margin-top: 4px; }
 
+.track-confirm-received { margin: 4px 0 24px; display: grid; gap: 8px; }
+.track-confirm-received button { min-height: 46px; padding: 0 20px; border: 0; border-radius: 99px; background: var(--red-700); color: white; font-weight: 800; font-size: 0.88rem; box-shadow: 0 4px 12px rgba(181, 21, 25, 0.15); }
+.track-confirm-received button:disabled { opacity: 0.6; }
+
 .tracking-details { display: grid; gap: 8px; }
 .tracking-details > div { padding: 12px; display: grid; gap: 2px; border-radius: 12px; background: var(--cream-50); border: 1px solid var(--line); }
 .tracking-details span { color: var(--muted); font-size: 0.8rem; font-weight: 700; }

@@ -121,6 +121,7 @@ itself needs no migration since it's key/value.
 | `payment_status` | TEXT | NOT NULL | `'waiting_for_payment'` | `waiting_for_payment` \| `waiting_for_slip_review` \| `paid` \| `invalid_slip` \| `refunded`. |
 | `order_status` | TEXT | NOT NULL | `'received'` | `received` \| `preparing` \| `ready_for_pickup` \| `shipped` \| `completed` \| `cancelled`. |
 | `tracking_number` | TEXT | nullable | — | |
+| `shipped_at` | TEXT | nullable | — | ISO timestamp, set once the first time `order_status` enters `shipped`/`ready_for_pickup` (not touched on later edits). Drives the 7-day auto-complete sweep in `autoCompleteOverdueOrders()`. |
 | `idempotency_key` | TEXT | NOT NULL | — | UNIQUE. Client-generated, dedupes retried submits. |
 | `created_at`, `updated_at` | TEXT | NOT NULL | — | ISO timestamps. |
 

@@ -1,6 +1,8 @@
 import { env } from "cloudflare:workers";
 import type { AdminOrder, OrderStatus, PaymentStatus } from "./orders";
-import { maskPhone, normalizePhone, type PublicOrderTracking } from "../lib/order-tracking";
+import { maskPhone, matchesPhone, normalizePhone, type PublicOrderTracking } from "../lib/order-tracking";
+
+const AUTO_COMPLETE_AFTER_MS = 7 * 24 * 60 * 60 * 1000;
 
 type RuntimeBindings = { DB?: D1Database };
 
@@ -37,6 +39,7 @@ export type AdminOrderPatch = {
 };
 
 export type UpdateOrderStatusResult = "updated" | "not_found" | "payment_required";
+export type ConfirmReceivedResult = "updated" | "not_found" | "not_eligible";
 
 type OrderRow = {
   id: string;
@@ -100,7 +103,23 @@ export async function findOrderByIdempotencyKey(
   ).bind(idempotencyKey).first<{ orderId: string; paymentStatus: PaymentStatus }>();
 }
 
+/**
+ * Orders left "shipped"/"ready_for_pickup" for AUTO_COMPLETE_AFTER_MS with no
+ * customer confirmation get auto-flipped to "completed". Runs lazily on read
+ * (no Cron Trigger needed) — called from both the customer tracking lookup
+ * and the admin order list.
+ */
+export async function autoCompleteOverdueOrders(now: Date = new Date()): Promise<void> {
+  const db = database();
+  const cutoff = new Date(now.getTime() - AUTO_COMPLETE_AFTER_MS).toISOString();
+  await db.prepare(
+    `UPDATE orders SET order_status = 'completed', updated_at = ?
+     WHERE order_status IN ('shipped', 'ready_for_pickup') AND shipped_at IS NOT NULL AND shipped_at <= ?`,
+  ).bind(now.toISOString(), cutoff).run();
+}
+
 export async function getAdminOrders(): Promise<AdminOrder[]> {
+  await autoCompleteOverdueOrders();
   const db = database();
   const [ordersResult, itemsResult] = await db.batch([
     db.prepare(`SELECT id, round_id, customer_name, phone, address, note, admin_note, subtotal,
@@ -145,8 +164,9 @@ export async function getPublicOrdersByPhone(
   phone: string,
   options: { now?: Date; days?: number; limit?: number } = {},
 ): Promise<PublicOrderTracking[]> {
-  const db = database();
   const now = options.now ?? new Date();
+  await autoCompleteOverdueOrders(now);
+  const db = database();
   const days = Math.max(1, Math.min(options.days ?? 30, 31));
   const limit = Math.max(1, Math.min(options.limit ?? 10, 10));
   const cutoff = new Date(now.getTime() - days * 86_400_000).toISOString();
@@ -170,8 +190,8 @@ export async function getPublicOrdersByPhone(
 export async function updateAdminOrder(id: string, patch: AdminOrderPatch): Promise<UpdateOrderStatusResult> {
   const db = database();
   const current = await db.prepare(
-    "SELECT payment_status AS paymentStatus FROM orders WHERE id = ? LIMIT 1",
-  ).bind(id).first<{ paymentStatus: PaymentStatus }>();
+    "SELECT payment_status AS paymentStatus, shipped_at AS shippedAt FROM orders WHERE id = ? LIMIT 1",
+  ).bind(id).first<{ paymentStatus: PaymentStatus; shippedAt: string | null }>();
   if (!current) return "not_found";
   const effectivePaymentStatus = patch.paymentStatus ?? current.paymentStatus;
   const canAdvanceWithoutPayment = !patch.orderStatus || patch.orderStatus === "received" || patch.orderStatus === "cancelled";
@@ -181,12 +201,32 @@ export async function updateAdminOrder(id: string, patch: AdminOrderPatch): Prom
   const assignments: string[] = [];
   const values: Array<string | null> = [];
   if (patch.paymentStatus) { assignments.push("payment_status = ?"); values.push(patch.paymentStatus); }
-  if (patch.orderStatus) { assignments.push("order_status = ?"); values.push(patch.orderStatus); }
+  if (patch.orderStatus) {
+    assignments.push("order_status = ?"); values.push(patch.orderStatus);
+    // First time entering a "customer can now receive it" state starts the
+    // auto-complete clock; re-saving the same status later (e.g. correcting
+    // the tracking number) must not reset it.
+    if ((patch.orderStatus === "shipped" || patch.orderStatus === "ready_for_pickup") && !current.shippedAt) {
+      assignments.push("shipped_at = ?"); values.push(new Date().toISOString());
+    }
+  }
   if (patch.trackingNumber !== undefined) { assignments.push("tracking_number = ?"); values.push(patch.trackingNumber.trim() || null); }
   if (assignments.length === 0) return "updated";
   assignments.push("updated_at = ?");
   values.push(new Date().toISOString(), id);
   await db.prepare(`UPDATE orders SET ${assignments.join(", ")} WHERE id = ?`).bind(...values).run();
+  return "updated";
+}
+
+export async function confirmOrderReceivedByPhone(orderId: string, phone: string): Promise<ConfirmReceivedResult> {
+  const db = database();
+  const current = await db.prepare(
+    "SELECT phone AS phone, order_status AS orderStatus FROM orders WHERE id = ? LIMIT 1",
+  ).bind(orderId).first<{ phone: string; orderStatus: OrderStatus }>();
+  if (!current || !matchesPhone(current.phone, phone)) return "not_found";
+  if (current.orderStatus !== "shipped" && current.orderStatus !== "ready_for_pickup") return "not_eligible";
+  await db.prepare("UPDATE orders SET order_status = 'completed', updated_at = ? WHERE id = ?")
+    .bind(new Date().toISOString(), orderId).run();
   return "updated";
 }
 

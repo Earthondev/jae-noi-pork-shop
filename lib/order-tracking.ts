@@ -34,6 +34,10 @@ export function isTrackingLookupInput(orderId: string, phoneLast4: string): bool
   return ORDER_ID_PATTERN.test(orderId) && /^\d{4}$/.test(phoneLast4);
 }
 
+export function isValidOrderId(value: string): boolean {
+  return ORDER_ID_PATTERN.test(value);
+}
+
 export function isPhoneTrackingLookupInput(value: string): boolean {
   return /^0\d{8,9}$/.test(normalizePhone(value));
 }
