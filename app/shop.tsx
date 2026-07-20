@@ -8,12 +8,10 @@ import { BottomNav } from "./_components/shop/bottom-nav";
 import { CartDrawer, type OrderRecap } from "./_components/shop/cart-drawer";
 import { Hero } from "./_components/shop/hero";
 import { PhoneStrip } from "./_components/shop/phone-strip";
-import { ProductCard } from "./_components/shop/product-card";
 import { ProductGrid } from "./_components/shop/product-grid";
 import { SiteHeader } from "./_components/shop/site-header";
 import { useCheckoutDraft } from "./_hooks/use-checkout-draft";
 import { useStorefront } from "./_hooks/use-storefront";
-import type { CatalogProduct } from "../lib/product-catalog";
 import {
   CustomerFacingError,
   PUBLIC_ERROR_MESSAGES,
@@ -31,7 +29,7 @@ import { formatThaiAddress } from "../lib/thai-address";
 type ClientPaymentStatus = "waiting" | "verified" | "review" | "invalid";
 
 const StarIcon = () => (
-  <svg viewBox="0 0 24 24" fill="var(--gold-500)" style={{ width: 14, height: 14, display: "inline-block", marginRight: 2 }}>
+  <svg viewBox="0 0 24 24" fill="var(--gold-500)" style={{ width: 17, height: 17, display: "inline-block" }}>
     <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
   </svg>
 );
@@ -231,25 +229,6 @@ export function Shop() {
     return storefront.products.filter((product) => (product.category || "อื่น ๆ") === selectedCategory);
   }, [storefront.products, selectedCategory]);
   
-  const bestSellers = useMemo(() => {
-    const active = storefront.products.filter((p) => p.status === "เปิดขาย");
-    const naem = active.find((p) => p.name.includes("แหนม"));
-    const saikrok = active.find((p) => p.name.includes("ไส้กรอก"));
-    const capmoo = active.find((p) => p.name.includes("แคปหมู") || p.name.includes("แคบหมู"));
-    
-    const selected = new Set<CatalogProduct>();
-    if (naem) selected.add(naem);
-    if (saikrok) selected.add(saikrok);
-    if (capmoo) selected.add(capmoo);
-    
-    for (const p of active) {
-      if (selected.size >= 3) break;
-      selected.add(p);
-    }
-    
-    return Array.from(selected);
-  }, [storefront.products]);
-
   const cartItems = storefront.products.filter((product) => (quantities[product.id] ?? 0) > 0);
   const cartCount = cartItems.reduce((sum, product) => sum + (quantities[product.id] ?? 0), 0);
   const subtotal = useMemo(
@@ -371,27 +350,6 @@ export function Shop() {
     <main id="top">
       <SiteHeader cartCount={cartCount} onOpenCart={() => setCartOpen(true)} storeName={storefront.content.storeName} storeLogoUrl={storefront.content.storeLogoUrl} />
       <Hero storeLoading={storefront.storeLoading} rounds={storefront.rounds} nextRound={storefront.nextRound} content={storefront.content} />
-      
-      {bestSellers.length > 0 && storefront.products.length > 4 && !storefront.storeLoading && (
-        <section className="best-sellers-section">
-          <div className="section-heading">
-            <span className="eyebrow">เมนูยอดนิยม</span>
-            <h2>สินค้าแนะนำ (Best Sellers)</h2>
-            <p>เมนูแนะนำ ทำสดใหม่ทุกวัน ขายดีจนต้องลอง</p>
-          </div>
-          <div className="best-sellers-grid">
-            {bestSellers.map((product, index) => (
-              <ProductCard
-                key={`best-${product.id}`}
-                product={product}
-                quantity={quantities[product.id] ?? 0}
-                index={index}
-                onUpdateQuantity={updateQuantity}
-              />
-            ))}
-          </div>
-        </section>
-      )}
 
       <ProductGrid
         storeLoading={storefront.storeLoading}
