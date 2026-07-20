@@ -1,6 +1,6 @@
 import { env } from "cloudflare:workers";
 import { NextResponse } from "next/server";
-import { findOrderByIdempotencyKey, insertOrder } from "../../../db/order-repository";
+import { countRecentOrdersByPhone, findOrderByIdempotencyKey, insertOrder } from "../../../db/order-repository";
 import { getStorefrontData } from "../../../db/storefront-repository";
 import { createSecureOrderId } from "../../../lib/order-id";
 import {
@@ -12,6 +12,7 @@ import {
 } from "../../../lib/order-workflow";
 import { verifySlipWithSlipOk } from "../../../lib/slipok";
 import { publicErrorBody } from "../../../lib/public-errors";
+import { checkRateLimit, clientIpKey } from "../../../lib/rate-limit";
 import { reportServerError } from "../../../lib/server-monitoring";
 import { formatThaiAddress, type StructuredThaiAddress } from "../../../lib/thai-address";
 import { isValidStructuredThaiAddress } from "../../../lib/thai-address-validation";
@@ -32,6 +33,10 @@ type IdempotencyReceipt = {
 };
 
 const PROCESSING_RECEIPT_TTL_MS = 2 * 60 * 1000;
+const ORDER_IP_WINDOW_MS = 30 * 60 * 1000;
+const ORDER_IP_MAX_PER_WINDOW = 6;
+const ORDER_PHONE_WINDOW_MS = 60 * 60 * 1000;
+const ORDER_PHONE_MAX_PER_WINDOW = 3;
 
 class OrderRequestError extends Error {
   constructor(message: string, readonly status: number) {
@@ -95,6 +100,29 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "สลิปต้องเป็นไฟล์รูป JPG, PNG หรือ WebP ที่ถูกต้อง" }, { status: 400 });
     }
 
+    uploads = (env as unknown as UploadBindings).UPLOADS;
+    if (!uploads) {
+      reportServerError({
+        event: "order_storage_unavailable",
+        operation: "order.resolve_storage",
+        path: "/api/orders",
+        method: "POST",
+      });
+      return NextResponse.json(publicErrorBody("ORDER_UNAVAILABLE"), { status: 503 });
+    }
+
+    operation = "order.rate_limit_ip";
+    const clientKey = clientIpKey(request);
+    if (!(await checkRateLimit(uploads, "order-rate-ip", clientKey, { windowMs: ORDER_IP_WINDOW_MS, max: ORDER_IP_MAX_PER_WINDOW }))) {
+      return NextResponse.json({ error: "สั่งซื้อถี่เกินไป กรุณารอสักครู่แล้วลองใหม่" }, { status: 429, headers: { "Retry-After": String(ORDER_IP_WINDOW_MS / 1000) } });
+    }
+
+    operation = "order.rate_limit_phone";
+    const recentOrdersForPhone = await countRecentOrdersByPhone(phone, new Date(Date.now() - ORDER_PHONE_WINDOW_MS).toISOString());
+    if (recentOrdersForPhone >= ORDER_PHONE_MAX_PER_WINDOW) {
+      return NextResponse.json({ error: "เบอร์นี้สั่งซื้อถี่เกินไป กรุณารอสักครู่แล้วลองใหม่ หรือติดต่อร้านโดยตรง" }, { status: 429, headers: { "Retry-After": String(ORDER_PHONE_WINDOW_MS / 1000) } });
+    }
+
     operation = "order.load_storefront";
     const storefront = await getStorefrontData();
     const selectedRound = storefront.rounds.find((round) => round.id === roundId);
@@ -114,17 +142,6 @@ export async function POST(request: Request) {
       if (!Number.isInteger(quantity) || quantity < 1 || quantity > 99) throw new OrderRequestError(`จำนวน ${product.name} ไม่ถูกต้อง`, 400);
       return { id: product.id, name: product.name, unit: product.unit, quantity, unitPrice: product.price };
     });
-
-    uploads = (env as unknown as UploadBindings).UPLOADS;
-    if (!uploads) {
-      reportServerError({
-        event: "order_storage_unavailable",
-        operation: "order.resolve_storage",
-        path: "/api/orders",
-        method: "POST",
-      });
-      return NextResponse.json(publicErrorBody("ORDER_UNAVAILABLE"), { status: 503 });
-    }
 
     const subtotal = items.reduce((sum, item) => sum + item.unitPrice * item.quantity, 0);
     const shippingFee = fulfilment === "postal" ? storefront.shippingFee ?? 0 : 0;
@@ -189,7 +206,6 @@ export async function POST(request: Request) {
       operation = "order.store_slip";
       slipKey = `slips/${orderId}/original`;
       await uploads.put(slipKey, slipBytes, { httpMetadata: { contentType: slipImageType.contentType }, customMetadata: { orderId } });
-      const clientKey = request.headers.get("cf-connecting-ip") ?? request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ?? "local";
       const verifiedSlip = new File([slipBytes], slip.name, { type: slipImageType.contentType });
       const verification = await verifySlipWithSlipOk(verifiedSlip, subtotal + shippingFee, clientKey);
       const decision = paymentDecisionFromVerification(verification);

@@ -44,7 +44,7 @@ test("tracking API is private-by-default and rate limited", async () => {
 
   assert.match(route, /export async function POST/);
   assert.match(route, /Cache-Control.*private, no-store/);
-  assert.match(route, /canLookupOrder/);
+  assert.match(route, /checkRateLimit/);
   assert.match(route, /Retry-After/);
   assert.match(route, /ไม่พบออเดอร์ย้อนหลัง 30 วัน/);
   assert.doesNotMatch(route, /customerName|address/);

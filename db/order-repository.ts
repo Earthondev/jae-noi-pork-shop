@@ -133,6 +133,14 @@ export async function getAdminOrders(): Promise<AdminOrder[]> {
   }));
 }
 
+export async function countRecentOrdersByPhone(phone: string, sinceIso: string): Promise<number> {
+  const db = database();
+  const result = await db.prepare(
+    `SELECT COUNT(*) as count FROM orders WHERE phone_normalized = ? AND created_at >= ?`,
+  ).bind(normalizePhone(phone), sinceIso).first<{ count: number }>();
+  return result?.count ?? 0;
+}
+
 export async function getPublicOrdersByPhone(
   phone: string,
   options: { now?: Date; days?: number; limit?: number } = {},
