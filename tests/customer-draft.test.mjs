@@ -62,7 +62,7 @@ test("silently removes a product deleted from the sheet but names a temporarily 
   );
 });
 
-test("falls back without throwing when localStorage is blocked or corrupt", () => {
+test("falls back without throwing when browser storage is blocked or corrupt", () => {
   const blocked = {
     getItem() { throw new Error("blocked"); },
     setItem() { throw new Error("blocked"); },

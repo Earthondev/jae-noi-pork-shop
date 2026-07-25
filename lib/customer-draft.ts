@@ -93,7 +93,10 @@ export function clearCheckoutDraft(storage: DraftStorage | null): boolean {
 export function browserDraftStorage(): DraftStorage | null {
   if (typeof window === "undefined") return null;
   try {
-    return window.localStorage;
+    // Automatic checkout drafts include contact and address data. Keep them
+    // only for the current browser session; long-lived storage is reserved
+    // for the customer's explicit "remember me" opt-in.
+    return window.sessionStorage;
   } catch {
     return null;
   }

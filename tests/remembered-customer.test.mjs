@@ -15,7 +15,7 @@ class MemoryStorage {
   removeItem(key) { this.values.delete(key); }
 }
 
-test("remembers only customer contact details for 180 days", () => {
+test("remembers only customer contact details for 90 days", () => {
   const storage = new MemoryStorage();
   const now = Date.UTC(2026, 6, 15);
   assert.equal(saveRememberedCustomer(storage, { customerName: "ลูกค้าทดสอบ", phone: "093-168-7892", address: "โคราช" }, now), true);

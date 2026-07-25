@@ -1,6 +1,6 @@
 import { env } from "cloudflare:workers";
 import type { AdminOrder, OrderStatus, PaymentStatus } from "./orders";
-import { maskPhone, matchesPhone, normalizePhone, type PublicOrderTracking } from "../lib/order-tracking";
+import { maskPhone, matchesPhoneLast4, normalizePhone, type PublicOrderTracking } from "../lib/order-tracking";
 
 const AUTO_COMPLETE_AFTER_MS = 7 * 24 * 60 * 60 * 1000;
 
@@ -160,31 +160,27 @@ export async function countRecentOrdersByPhone(phone: string, sinceIso: string):
   return result?.count ?? 0;
 }
 
-export async function getPublicOrdersByPhone(
-  phone: string,
-  options: { now?: Date; days?: number; limit?: number } = {},
-): Promise<PublicOrderTracking[]> {
+export async function getPublicOrderByIdAndPhoneLast4(
+  orderId: string,
+  phoneLast4: string,
+  options: { now?: Date; days?: number } = {},
+): Promise<PublicOrderTracking | null> {
   const now = options.now ?? new Date();
   await autoCompleteOverdueOrders(now);
   const db = database();
   const days = Math.max(1, Math.min(options.days ?? 30, 31));
-  const limit = Math.max(1, Math.min(options.limit ?? 10, 10));
   const cutoff = new Date(now.getTime() - days * 86_400_000).toISOString();
   const futureLimit = new Date(now.getTime() + 5 * 60_000).toISOString();
-  const ordersResult = await db.prepare(`SELECT id, round_id, customer_name, phone, address, note, admin_note,
+  const row = await db.prepare(`SELECT id, round_id, customer_name, phone, address, note, admin_note,
     subtotal, shipping_fee, total, slip_key, payment_status, order_status, created_at, updated_at,
     fulfilment, tracking_number, delivery_date
-    FROM orders WHERE phone_normalized = ? AND created_at >= ? AND created_at <= ?
-    ORDER BY created_at DESC LIMIT ?`)
-    .bind(normalizePhone(phone), cutoff, futureLimit, limit).all<OrderRow>();
-  const rows = ordersResult.results;
-  if (rows.length === 0) return [];
-  const placeholders = rows.map(() => "?").join(",");
+    FROM orders WHERE id = ? AND created_at >= ? AND created_at <= ? LIMIT 1`)
+    .bind(orderId, cutoff, futureLimit).first<OrderRow>();
+  if (!row || !matchesPhoneLast4(row.phone, phoneLast4)) return null;
   const itemsResult = await db.prepare(
-    `SELECT order_id, name, quantity, unit_price FROM order_items WHERE order_id IN (${placeholders}) ORDER BY id`,
-  ).bind(...rows.map((row) => row.id)).all<ItemRow>();
-  const itemsByOrder = groupItems(itemsResult.results);
-  return rows.map((row) => toPublicOrder(row, itemsByOrder.get(row.id) ?? []));
+    "SELECT order_id, name, quantity, unit_price FROM order_items WHERE order_id = ? ORDER BY id",
+  ).bind(row.id).all<ItemRow>();
+  return toPublicOrder(row, itemsResult.results);
 }
 
 export async function updateAdminOrder(id: string, patch: AdminOrderPatch): Promise<UpdateOrderStatusResult> {
@@ -218,12 +214,12 @@ export async function updateAdminOrder(id: string, patch: AdminOrderPatch): Prom
   return "updated";
 }
 
-export async function confirmOrderReceivedByPhone(orderId: string, phone: string): Promise<ConfirmReceivedResult> {
+export async function confirmOrderReceivedByPhoneLast4(orderId: string, phoneLast4: string): Promise<ConfirmReceivedResult> {
   const db = database();
   const current = await db.prepare(
     "SELECT phone AS phone, order_status AS orderStatus FROM orders WHERE id = ? LIMIT 1",
   ).bind(orderId).first<{ phone: string; orderStatus: OrderStatus }>();
-  if (!current || !matchesPhone(current.phone, phone)) return "not_found";
+  if (!current || !matchesPhoneLast4(current.phone, phoneLast4)) return "not_found";
   if (current.orderStatus !== "shipped" && current.orderStatus !== "ready_for_pickup") return "not_eligible";
   await db.prepare("UPDATE orders SET order_status = 'completed', updated_at = ? WHERE id = ?")
     .bind(new Date().toISOString(), orderId).run();

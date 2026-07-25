@@ -14,6 +14,8 @@ import { verifySlipWithSlipOk } from "../../../lib/slipok";
 import { publicErrorBody } from "../../../lib/public-errors";
 import { checkRateLimit, clientIpKey } from "../../../lib/rate-limit";
 import { reportServerError } from "../../../lib/server-monitoring";
+import { ImageNormalizationError, normalizeUploadedImage, type ImageTransformBinding } from "../../../lib/image-normalization";
+import { MalformedRequestBodyError, parseBoundedFormData, RequestBodyTooLargeError, toOwnedArrayBuffer, UnsupportedRequestContentTypeError } from "../../../lib/request-body";
 import { formatThaiAddress, type StructuredThaiAddress } from "../../../lib/thai-address";
 import { isValidStructuredThaiAddress } from "../../../lib/thai-address-validation";
 import {
@@ -23,7 +25,7 @@ import {
   validateOrderRequestFields,
 } from "../../../lib/order-request-validation";
 
-type UploadBindings = { UPLOADS?: R2Bucket };
+type UploadBindings = { UPLOADS?: R2Bucket; IMAGES?: ImageTransformBinding };
 type IdempotencyReceipt = {
   state: "processing" | "completed";
   orderId: string;
@@ -33,13 +35,12 @@ type IdempotencyReceipt = {
 };
 
 const PROCESSING_RECEIPT_TTL_MS = 2 * 60 * 1000;
-// Loosened during the client's own testing period so repeated manual test
-// orders don't trip the limiter. Tighten back to 6/30min and 3/60min before
-// go-live (client asked to be reminded to close this out).
 const ORDER_IP_WINDOW_MS = 30 * 60 * 1000;
-const ORDER_IP_MAX_PER_WINDOW = 50;
+const ORDER_IP_MAX_PER_WINDOW = 6;
 const ORDER_PHONE_WINDOW_MS = 60 * 60 * 1000;
-const ORDER_PHONE_MAX_PER_WINDOW = 20;
+const ORDER_PHONE_MAX_PER_WINDOW = 3;
+const MAX_ORDER_REQUEST_BYTES = 6 * 1024 * 1024;
+const MAX_NORMALIZED_SLIP_BYTES = 6 * 1024 * 1024;
 
 class OrderRequestError extends Error {
   constructor(message: string, readonly status: number) {
@@ -68,7 +69,26 @@ export async function POST(request: Request) {
   let operation = "order.parse_request";
 
   try {
-    const form = await request.formData();
+    const bindings = env as unknown as UploadBindings;
+    uploads = bindings.UPLOADS;
+    if (!uploads) {
+      reportServerError({
+        event: "order_storage_unavailable",
+        operation: "order.resolve_storage",
+        path: "/api/orders",
+        method: "POST",
+      });
+      return NextResponse.json(publicErrorBody("ORDER_UNAVAILABLE"), { status: 503 });
+    }
+
+    operation = "order.rate_limit_ip";
+    const clientKey = clientIpKey(request);
+    if (!(await checkRateLimit(uploads, "order-rate-ip", clientKey, { windowMs: ORDER_IP_WINDOW_MS, max: ORDER_IP_MAX_PER_WINDOW }))) {
+      return NextResponse.json({ error: "สั่งซื้อถี่เกินไป กรุณารอสักครู่แล้วลองใหม่" }, { status: 429, headers: { "Retry-After": String(ORDER_IP_WINDOW_MS / 1000) } });
+    }
+
+    operation = "order.parse_request";
+    const form = await parseBoundedFormData(request, MAX_ORDER_REQUEST_BYTES);
     const customerName = String(form.get("customerName") ?? "").trim();
     const phone = String(form.get("phone") ?? "").trim();
     const structuredAddress: StructuredThaiAddress = {
@@ -97,27 +117,10 @@ export async function POST(request: Request) {
     if (slip instanceof File && slip.size > 5 * 1024 * 1024) {
       return NextResponse.json({ error: "สลิปต้องเป็นรูป JPG, PNG หรือ WebP ขนาดไม่เกิน 5 MB" }, { status: 400 });
     }
-    const slipBytes = slip instanceof File && slip.size > 0 ? new Uint8Array(await slip.arrayBuffer()) : null;
-    const slipImageType = slipBytes ? detectSupportedImageType(slipBytes) : null;
-    if (slipBytes && !slipImageType) {
+    const uploadedSlipBytes = slip instanceof File && slip.size > 0 ? new Uint8Array(await slip.arrayBuffer()) : null;
+    const uploadedSlipType = uploadedSlipBytes ? detectSupportedImageType(uploadedSlipBytes) : null;
+    if (uploadedSlipBytes && !uploadedSlipType) {
       return NextResponse.json({ error: "สลิปต้องเป็นไฟล์รูป JPG, PNG หรือ WebP ที่ถูกต้อง" }, { status: 400 });
-    }
-
-    uploads = (env as unknown as UploadBindings).UPLOADS;
-    if (!uploads) {
-      reportServerError({
-        event: "order_storage_unavailable",
-        operation: "order.resolve_storage",
-        path: "/api/orders",
-        method: "POST",
-      });
-      return NextResponse.json(publicErrorBody("ORDER_UNAVAILABLE"), { status: 503 });
-    }
-
-    operation = "order.rate_limit_ip";
-    const clientKey = clientIpKey(request);
-    if (!(await checkRateLimit(uploads, "order-rate-ip", clientKey, { windowMs: ORDER_IP_WINDOW_MS, max: ORDER_IP_MAX_PER_WINDOW }))) {
-      return NextResponse.json({ error: "สั่งซื้อถี่เกินไป กรุณารอสักครู่แล้วลองใหม่" }, { status: 429, headers: { "Retry-After": String(ORDER_IP_WINDOW_MS / 1000) } });
     }
 
     operation = "order.rate_limit_phone";
@@ -149,6 +152,10 @@ export async function POST(request: Request) {
     const subtotal = items.reduce((sum, item) => sum + item.unitPrice * item.quantity, 0);
     const shippingFee = fulfilment === "postal" ? storefront.shippingFee ?? 0 : 0;
     const address = fulfilment === "postal" ? formatThaiAddress(structuredAddress) : storefront.pickupAddress ?? "";
+    operation = "order.normalize_slip";
+    const normalizedSlip = uploadedSlipBytes
+      ? await normalizeUploadedImage(uploadedSlipBytes, bindings.IMAGES, { purpose: "payment-slip", maxOutputBytes: MAX_NORMALIZED_SLIP_BYTES })
+      : null;
     const fingerprint = await sha256Hex(JSON.stringify({
       customerName,
       phone,
@@ -157,7 +164,7 @@ export async function POST(request: Request) {
       roundId,
       fulfilment,
       items: [...items].sort((left, right) => left.id.localeCompare(right.id)),
-      slip: slip instanceof File && slipBytes && slipImageType ? { name: slip.name, size: slipBytes.byteLength, type: slipImageType.contentType } : null,
+      slip: slip instanceof File && normalizedSlip ? { size: normalizedSlip.bytes.byteLength, type: normalizedSlip.contentType } : null,
     }));
     let orderId = await createSecureOrderId(selectedRound.id, idempotencyKey);
     const createdAt = new Date().toISOString();
@@ -205,11 +212,11 @@ export async function POST(request: Request) {
     let paymentStatus: SheetPaymentStatus = "รอชำระเงิน";
     let adminNote = "";
 
-    if (slip instanceof File && slipBytes && slipImageType) {
+    if (slip instanceof File && normalizedSlip) {
       operation = "order.store_slip";
       slipKey = `slips/${orderId}/original`;
-      await uploads.put(slipKey, slipBytes, { httpMetadata: { contentType: slipImageType.contentType }, customMetadata: { orderId } });
-      const verifiedSlip = new File([slipBytes], slip.name, { type: slipImageType.contentType });
+      await uploads.put(slipKey, normalizedSlip.bytes, { httpMetadata: { contentType: normalizedSlip.contentType }, customMetadata: { orderId } });
+      const verifiedSlip = new File([toOwnedArrayBuffer(normalizedSlip.bytes)], `slip.${normalizedSlip.extension}`, { type: normalizedSlip.contentType });
       const verification = await verifySlipWithSlipOk(verifiedSlip, subtotal + shippingFee, clientKey);
       const decision = paymentDecisionFromVerification(verification);
       paymentStatus = decision.paymentStatus;
@@ -258,6 +265,15 @@ export async function POST(request: Request) {
     }
     if (error instanceof OrderPayloadValidationError) {
       return NextResponse.json({ error: error.message }, { status: 400 });
+    }
+    if (error instanceof RequestBodyTooLargeError) {
+      return NextResponse.json({ error: "ข้อมูลออเดอร์หรือไฟล์สลิปมีขนาดใหญ่เกินกำหนด" }, { status: 413 });
+    }
+    if (error instanceof UnsupportedRequestContentTypeError || error instanceof MalformedRequestBodyError) {
+      return NextResponse.json({ error: "ข้อมูลออเดอร์ไม่ถูกต้อง กรุณาตรวจสอบแล้วลองใหม่" }, { status: 400 });
+    }
+    if (error instanceof ImageNormalizationError) {
+      return NextResponse.json({ error: "สลิปไม่ใช่รูปที่ระบบอ่านได้ หรือรูปมีขนาดใหญ่เกินกำหนด" }, { status: 400 });
     }
     reportServerError({
       event: "order_write_failed",

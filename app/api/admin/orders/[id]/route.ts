@@ -5,7 +5,9 @@ import { isSameOriginMutation } from "../../../../../lib/admin-auth";
 import { updateAdminOrder } from "../../../../../db/order-repository";
 import { publicErrorBody } from "../../../../../lib/public-errors";
 import { reportServerError } from "../../../../../lib/server-monitoring";
+import { MalformedRequestBodyError, parseBoundedJson, RequestBodyTooLargeError, UnsupportedRequestContentTypeError } from "../../../../../lib/request-body";
 
+const MAX_UPDATE_BODY_BYTES = 4 * 1024;
 const statuses: OrderStatus[] = ["received", "preparing", "ready_for_pickup", "shipped", "completed", "cancelled"];
 const paymentStatuses: PaymentStatus[] = ["waiting_for_payment", "waiting_for_slip_review", "paid", "invalid_slip", "refunded"];
 
@@ -14,11 +16,16 @@ export async function PATCH(request: Request, context: { params: Promise<{ id: s
   if (!user) return NextResponse.json({ error: "กรุณาเข้าสู่ระบบผู้ดูแล" }, { status: 401 });
   if (!isSameOriginMutation(request)) return NextResponse.json({ error: "คำขอไม่ถูกต้อง" }, { status: 403 });
 
-  const body = await request.json().catch(() => null) as {
-    orderStatus?: unknown;
-    paymentStatus?: unknown;
-    trackingNumber?: unknown;
-  } | null;
+  let body: { orderStatus?: unknown; paymentStatus?: unknown; trackingNumber?: unknown } | null;
+  try {
+    body = await parseBoundedJson(request, MAX_UPDATE_BODY_BYTES) as typeof body;
+  } catch (error) {
+    if (error instanceof RequestBodyTooLargeError) return NextResponse.json({ error: "ข้อมูลมีขนาดใหญ่เกินกำหนด" }, { status: 413 });
+    if (error instanceof UnsupportedRequestContentTypeError || error instanceof MalformedRequestBodyError) {
+      return NextResponse.json({ error: "ข้อมูลคำขอไม่ถูกต้อง" }, { status: 400 });
+    }
+    throw error;
+  }
   const orderStatus = body?.orderStatus;
   const paymentStatus = body?.paymentStatus;
   const trackingNumber = body?.trackingNumber;

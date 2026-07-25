@@ -33,9 +33,6 @@ const orderLabels: Record<PublicOrderTracking["orderStatus"], string> = {
   cancelled: "ยกเลิก",
 };
 
-const INITIAL_VISIBLE_ORDERS = 3;
-const ORDERS_PER_PAGE = 3;
-
 function formatDate(value: string): string {
   const date = new Date(value);
   return Number.isNaN(date.getTime()) ? value || "—" : date.toLocaleString("th-TH", { dateStyle: "medium", timeStyle: "short" });
@@ -127,7 +124,7 @@ async function saveReceiptPng(order: PublicOrderTracking, storeName: string): Pr
   URL.revokeObjectURL(url);
 }
 
-function OrderHistoryCard({ order, expanded, onToggle, storeName, phone, onConfirmed }: { order: PublicOrderTracking; expanded: boolean; onToggle: () => void; storeName: string; phone: string; onConfirmed: (orderId: string) => void }) {
+function OrderHistoryCard({ order, expanded, onToggle, storeName, phoneLast4, onConfirmed }: { order: PublicOrderTracking; expanded: boolean; onToggle: () => void; storeName: string; phoneLast4: string; onConfirmed: (orderId: string) => void }) {
   const [receiptError, setReceiptError] = useState<string | null>(null);
   const [confirming, setConfirming] = useState(false);
   const [confirmError, setConfirmError] = useState<string | null>(null);
@@ -144,7 +141,7 @@ function OrderHistoryCard({ order, expanded, onToggle, storeName, phone, onConfi
       const response = await fetch("/api/orders/track/confirm", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ phone, orderId: order.orderId }),
+        body: JSON.stringify({ phoneLast4, orderId: order.orderId }),
       });
       const result = await response.json().catch(() => null) as { error?: string } | null;
       if (!response.ok) throw new CustomerFacingError(safeClientApiMessage(response.status, result, "TRACKING_UNAVAILABLE"));
@@ -203,11 +200,11 @@ function OrderHistoryCard({ order, expanded, onToggle, storeName, phone, onConfi
   );
 }
 
-export function OrderTracker({ storeName, phonePrimary, phoneSecondary }: { storeName: string; phonePrimary: string; phoneSecondary: string }) {
-  const [phone, setPhone] = useState("");
+export function OrderTracker({ storeName, phonePrimary, phoneSecondary, initialOrderId }: { storeName: string; phonePrimary: string; phoneSecondary: string; initialOrderId: string }) {
+  const [orderId, setOrderId] = useState(initialOrderId);
+  const [phoneLast4, setPhoneLast4] = useState("");
   const [orders, setOrders] = useState<PublicOrderTracking[]>([]);
   const [expandedOrderId, setExpandedOrderId] = useState<string | null>(null);
-  const [visibleOrderCount, setVisibleOrderCount] = useState(INITIAL_VISIBLE_ORDERS);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const resultHeadingRef = useRef<HTMLHeadingElement>(null);
@@ -233,12 +230,11 @@ export function OrderTracker({ storeName, phonePrimary, phoneSecondary }: { stor
     setError(null);
     setOrders([]);
     setExpandedOrderId(null);
-    setVisibleOrderCount(INITIAL_VISIBLE_ORDERS);
     try {
       const response = await fetch("/api/orders/track", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ phone }),
+        body: JSON.stringify({ orderId, phoneLast4 }),
       });
       const result = await response.json().catch(() => null) as { orders?: PublicOrderTracking[]; error?: string } | null;
       if (!response.ok || !result?.orders?.length) {
@@ -270,10 +266,11 @@ export function OrderTracker({ storeName, phonePrimary, phoneSecondary }: { stor
 
       <section className="track-hero">
         <p className="eyebrow">ตรวจได้ด้วยตัวเองตลอดเวลา</p>
-        <h1>ประวัติและสถานะออเดอร์</h1>
-        <p>กรอกเบอร์โทรศัพท์ที่ใช้สั่งซื้อ เพื่อติดตามสถานะออเดอร์</p>
+        <h1>ติดตามสถานะออเดอร์</h1>
+        <p>ใช้เลขออเดอร์และเบอร์โทร 4 ตัวท้าย เพื่อปกป้องข้อมูลการสั่งซื้อของคุณ</p>
         <form className="track-form" onSubmit={lookupOrder}>
-          <label>เบอร์โทรศัพท์<input value={phone} onChange={(event) => setPhone(event.target.value.replace(/\D/g, "").slice(0, 10))} inputMode="tel" autoComplete="tel" pattern="0[0-9]{8,9}" maxLength={10} placeholder="เช่น 0931687892" required /></label>
+          <label>เลขออเดอร์<input value={orderId} onChange={(event) => setOrderId(event.target.value.toUpperCase().replace(/[^A-Z0-9-]/g, "").slice(0, 22))} autoComplete="off" pattern="JN-[0-9]{8}-[23456789ABCDEFGHJKLMNPQRSTUVWXYZ]{10}" maxLength={22} placeholder="เช่น JN-20260726-7G4K2P9ABC" required /></label>
+          <label>เบอร์โทร 4 ตัวท้าย<input value={phoneLast4} onChange={(event) => setPhoneLast4(event.target.value.replace(/\D/g, "").slice(0, 4))} inputMode="numeric" autoComplete="tel" pattern="[0-9]{4}" maxLength={4} placeholder="เช่น 7892" required /></label>
           <button type="submit" disabled={loading}>{loading ? "กำลังค้นหา..." : "ติดตามสถานะ"}</button>
         </form>
         {error && <p className="track-error" role="alert">{error}</p>}
@@ -283,32 +280,19 @@ export function OrderTracker({ storeName, phonePrimary, phoneSecondary }: { stor
 
       {orders.length > 0 && (
         <section className="track-history" aria-live="polite">
-          <div className="track-history-heading"><div><p className="eyebrow">ย้อนหลัง 30 วัน</p><h2 ref={resultHeadingRef} tabIndex={-1}>พบ {orders.length} ออเดอร์</h2></div><span>{orders[0].maskedPhone}</span></div>
+          <div className="track-history-heading"><div><p className="eyebrow">ข้อมูลส่วนตัวได้รับการปกป้อง</p><h2 ref={resultHeadingRef} tabIndex={-1}>พบออเดอร์</h2></div><span>{orders[0].maskedPhone}</span></div>
           <div className="track-history-list">
-            {orders.slice(0, visibleOrderCount).map((order) => (
+            {orders.map((order) => (
               <OrderHistoryCard
                 key={order.orderId}
                 order={order}
                 storeName={storeName}
-                phone={phone}
+                phoneLast4={phoneLast4}
                 onConfirmed={handleOrderConfirmed}
                 expanded={expandedOrderId === order.orderId}
                 onToggle={() => setExpandedOrderId((current) => current === order.orderId ? null : order.orderId)}
               />
             ))}
-          </div>
-          <div className="track-history-pagination" aria-live="polite">
-            <p>แสดงแล้ว {Math.min(visibleOrderCount, orders.length)} จาก {orders.length} ออเดอร์</p>
-            {visibleOrderCount < orders.length && (
-              <button
-                type="button"
-                onClick={() => setVisibleOrderCount((current) => Math.min(current + ORDERS_PER_PAGE, orders.length))}
-                aria-label={`แสดงออเดอร์เพิ่มเติม อีก ${Math.min(ORDERS_PER_PAGE, orders.length - visibleOrderCount)} รายการ`}
-              >
-                ดูออเดอร์เพิ่มเติม
-                <span aria-hidden="true">↓</span>
-              </button>
-            )}
           </div>
         </section>
       )}

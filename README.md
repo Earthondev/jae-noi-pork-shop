@@ -1,111 +1,351 @@
 # เจ๊น้อย เขียงหมูตะคร้อ
 
-เว็บไซต์สั่งซื้อสินค้าสำหรับร้านเจ๊น้อย เขียงหมูตะคร้อ ออกแบบแบบ mobile-first และใช้ภาษาไทยเป็นหลัก
+เว็บสั่งสินค้าและระบบหลังบ้านภาษาไทยสำหรับร้านเจ๊น้อย เขียงหมูตะคร้อ ออกแบบแบบ
+mobile-first และรันบน Cloudflare Workers โดยใช้ D1 เป็นฐานข้อมูลหลักและ R2
+สำหรับรูปสินค้า สลิป และข้อมูลประกอบที่ไม่ควรอยู่ในฐานข้อมูล
 
-## ฟังก์ชันหลัก
+## สถานะระบบปัจจุบัน
 
-- เลือกสินค้าและปรับจำนวนในตะกร้า
-- กรอกข้อมูลผู้รับและที่อยู่จัดส่ง
-- แนบสลิปการชำระเงิน
-- บันทึกออเดอร์และไฟล์แบบถาวร
+- หน้าร้าน ลูกค้า และหลังบ้านใช้ข้อมูลจาก Cloudflare D1 แล้ว
+- Google Sheets ไม่ได้อยู่ในเส้นทางทำงานปกติ เหลือไว้เฉพาะสคริปต์นำเข้าข้อมูลเก่า
+- โค้ดหลังบ้านตรวจ Cloudflare Access JWT, audience, issuer และ email allowlist ซ้ำใน Worker
+- Cloudflare Access edge policy สำหรับ `/admin*` และ `/api/admin/*` ต้องตั้งและตรวจใน
+  Cloudflare Zero Trust หลัง deploy เพราะเป็นค่าภายนอก repository
+- SlipOK เตรียมโค้ดไว้แล้ว แต่ต้องคง `SLIPOK_ENABLED=false` จนกว่าจะผูกบัญชีและทดสอบสลิปจริง
+- Production deploy ผ่าน Cloudflare Worker ตามค่าที่กำหนดใน environment ของผู้ดูแล
+
+## ความสามารถหลัก
+
+### หน้าร้านและลูกค้า
+
+- แสดงสินค้าแยกหมวดหมู่ พร้อมสถานะเปิดขาย ปิดชั่วคราว และรอข้อมูล
+- ตะกร้าสินค้าและ checkout ที่เหมาะกับมือถือ
+- เลือกรับเองหน้าร้านหรือจัดส่งไปรษณีย์
+- เลือกจังหวัด อำเภอ ตำบล และเติมรหัสไปรษณีย์อัตโนมัติ
+- สร้าง PromptPay QR จากยอดที่คำนวณฝั่งระบบ
+- แนบสลิป JPG, PNG หรือ WebP ขนาดไม่เกิน 5 MB โดยระบบถอดรหัสและเข้ารหัสใหม่
+  ก่อนเก็บ เพื่อล้าง EXIF, metadata และข้อมูลที่อาจถูกต่อท้ายไฟล์
+- ป้องกันการสร้างออเดอร์ซ้ำด้วย idempotency key
+- กู้คืนตะกร้าและข้อมูลที่กรอกไว้เฉพาะ browser session ปัจจุบัน
+  โดยตรวจราคาและสถานะสินค้าล่าสุดก่อนใช้
+- ลูกค้าเลือกจำชื่อและที่อยู่บนอุปกรณ์ได้เองเป็นเวลา 90 วัน และลบข้อมูลที่จำไว้ได้
 - ติดตามออเดอร์ด้วยเลขออเดอร์และเบอร์โทร 4 ตัวท้าย
-- ดาวน์โหลดใบยืนยันการชำระเงินเป็น PNG หรือบันทึกเป็น PDF
-- หลังบ้านสำหรับตรวจสลิปและเปลี่ยนสถานะออเดอร์
-- หลังบ้านล็อกอินด้วยชื่อผู้ใช้และรหัสผ่าน พร้อม session 8 ชั่วโมงและจำกัดการลองรหัสผิด
-- ออเดอร์และรายการสินค้าในออเดอร์เก็บใน Cloudflare D1 แบบ transaction
-- สถานะสินค้าและลำดับการแสดงผลควบคุมจากแถวใน Google Sheets
-- ปิดขายบางรายการหรือเพิ่มสินค้าใหม่ได้โดยไม่แก้รายการสินค้าในโค้ด
-- รองรับการส่งมอบไปบัญชี Cloudflare ของลูกค้า โดยล็อกหลังบ้านด้วยรหัสผ่านของร้าน
+  เพื่อไม่ให้ค้นประวัติทั้งหมดจากเบอร์โทรเพียงอย่างเดียว
+- ลูกค้ายืนยันว่าได้รับสินค้าแล้วได้ และระบบปิดงานอัตโนมัติเมื่อเกินระยะเวลาที่กำหนด
+- ดาวน์โหลดใบยืนยันการชำระเงินเป็น PNG หรือพิมพ์/บันทึกเป็น PDF
 
-หน้าติดตามส่งกลับเฉพาะข้อมูลที่ลูกค้าจำเป็นต้องเห็น ไม่ส่งชื่อ ที่อยู่เต็ม
-หรือรูปสลิปธนาคาร และจำกัดจำนวนครั้งค้นหาต่อเครือข่ายเพื่อลดการเดาออเดอร์
+### ระบบหลังบ้าน
 
-## ข้อมูลที่รอยืนยัน
+- ดูออเดอร์ แยกสถานะชำระเงินและสถานะจัดส่ง
+- ป้องกันการเลื่อนออเดอร์ไปขั้นเตรียมหรือจัดส่งก่อนยืนยันการชำระเงิน
+- เพิ่ม แก้ไข ปิดขาย และเปิดขายสินค้าอีกครั้ง
+- อัปโหลดรูปสินค้า โลโก้ และภาพปกเข้า R2 หลังถอดรหัส ย่อ และเข้ารหัสใหม่เป็น WebP
+- ลากการ์ดสินค้าเพื่อเรียงลำดับ รองรับ touch, mouse, keyboard และ auto-scroll
+- สร้างและแก้ไขรอบขาย พร้อมสรุปยอดเฉพาะออเดอร์ที่ชำระแล้วและไม่ถูกยกเลิก
+- แก้ข้อความหน้าร้าน เบอร์โทร ค่าส่ง จุดรับสินค้า และข้อมูล PromptPay
+- ตรวจการแก้ไขชนกันด้วย version/fingerprint และรีเฟรชข้อมูลในหน้าเดิม
+- รักษาแท็บหลังบ้านผ่าน URL เช่น `/admin?tab=products`
 
-- น้ำหนักแคปหมูต่อกล่อง
-- ที่อยู่สำหรับรับสินค้าเองหน้าร้าน
-- เปิดใช้ SlipOK หลังสมัครบัญชีและทดสอบสลิปจริง
+## สถาปัตยกรรม
+
+| ส่วน | หน้าที่ |
+| --- | --- |
+| Next.js + React + vinext | App Router, UI, Server Components และ API routes |
+| Cloudflare Workers | รันเว็บและ API ที่ edge |
+| Cloudflare D1 (`DB`) | สินค้า รอบขาย การตั้งค่าร้าน ออเดอร์ และรายการสินค้า |
+| R2 `UPLOADS` | สลิป, session หลังบ้าน, rate limit, idempotency receipt และ storefront snapshot |
+| R2 `PRODUCT_MEDIA` | รูปสินค้า โลโก้ และภาพปก |
+| Cloudflare Images (`IMAGES`) | ถอดรหัส ย่อ และเข้ารหัสรูปอัปโหลดใหม่ก่อนเก็บ รวมถึง optimize รูปหน้าร้าน |
+| Cloudflare Access | ควบคุมสิทธิ์เข้าหลังบ้านใน production |
+| SlipOK | ตรวจสลิปแบบเลือกเปิด ใช้ server-side เท่านั้น |
+| Sentry | รับเหตุผิดปกติที่ตัดข้อมูลลูกค้าออกแล้ว |
+
+หน้า `/api/storefront` อ่าน D1 และ cache ที่ edge 30 วินาที เมื่ออ่านข้อมูลสดไม่ได้
+ระบบสามารถใช้ last-known-good snapshot จาก R2 ชั่วคราวแทนได้ การแก้ข้อมูลจากหลังบ้าน
+จะล้าง cache ของหน้าร้านทันที
+
+## โครงสร้างโปรเจกต์
+
+```text
+app/                 หน้าเว็บ, หลังบ้าน และ API routes
+app/_components/     UI ของหน้าร้านและ checkout
+app/admin/           dashboard, login และ dialog ของผู้ดูแล
+db/                  repository สำหรับ D1 และ schema อ้างอิง
+lib/                 validation, auth, tracking, rate limit และ monitoring
+migrations/          migration SQL ที่ใช้กับ D1 จริง
+drizzle/             ผลจาก drizzle-kit สำหรับเทียบ schema ไม่ใช่ migration production
+worker/              Cloudflare Worker entry point และ image optimization
+scripts/             setup, doctor, import, build guard และ deployment helpers
+tests/               Node unit/integration tests
+tests-e2e/           Playwright browser tests
+docs/                คู่มือ production, monitoring และ SlipOK
+```
 
 ## เริ่มพัฒนา
 
+### ความต้องการ
+
+- Node.js `>=22.13.0`
+- npm
+- Wrangler CLI login เฉพาะเมื่อต้องใช้ D1 staging หรือ deploy
+
+### ตั้งค่าครั้งแรก
+
 ```bash
 npm install
+cp .env.example .env.local
+```
+
+สร้างรหัสผ่าน local เป็น hash โดยไม่เก็บรหัสจริงลงไฟล์:
+
+```bash
+ADMIN_PASSWORD='ตั้งรหัสชั่วคราวที่เดายาก' npm run admin:hash-password
+```
+
+นำ hash ที่ได้ไปใส่ `ADMIN_PASSWORD_HASH` ใน `.env.local` และสร้าง
+`ADMIN_AUTH_SECRET` แบบสุ่มอย่างน้อย 32 bytes เช่น:
+
+```bash
+openssl rand -hex 32
+```
+
+จากนั้นรัน:
+
+```bash
 npm run dev:setup
 npm run dev
 ```
 
-`npm run dev:setup` สร้าง `.dev.vars` จากกุญแจที่เก็บนอก repository และบังคับให้ใช้
-ชีต Development เท่านั้น จากนั้น `npm run dev` จะตรวจบัญชีระบบ โครงสร้างชีต และ
-พอร์ต 3000 ก่อนเปิดเว็บ ถ้าค่าใดไม่ครบจะหยุดพร้อมบอกสาเหตุ แทนการเปิดหน้าร้านว่าง
+`dev:setup` รวมค่าจาก `.env`, `.env.local` และ `.dev.vars` เดิม แล้วสร้าง
+`.dev.vars` ที่ permission `0600` พร้อมบังคับค่าปลอดภัยสำหรับเครื่องพัฒนา:
 
-local เป็นโหมดอ่านอย่างเดียวโดยค่าเริ่มต้น (`ALLOW_DEV_WRITES=false`) จึงใช้ตรวจ UI
-ได้โดยไม่สร้างออเดอร์หรือแก้ชีต หากต้องตรวจสิทธิ์เขียน ให้ใช้
-`npm run dev:doctor:write` ซึ่งเขียนเครื่องหมายชั่วคราวเฉพาะชีต Development
-ตรวจผล แล้วล้างออกทันที คำสั่งนี้ปฏิเสธชีต Production เสมอ
+- `APP_ENV=development`
+- `ALLOW_DEV_WRITES=false`
+- `SLIPOK_ENABLED=false`
+- ตัด Google service-account credentials ออกจาก runtime ปกติ
 
-### บัญชีระบบ Google Sheets
+เปิดเว็บที่ `http://localhost:3000`
 
-ชีตส่วนตัวจะถูกอ่านและเขียนจากฝั่งเซิร์ฟเวอร์ผ่านบัญชีเฉพาะระบบ
-`jae-noi-sheets@jae-noi-shop-20260713.iam.gserviceaccount.com` เท่านั้น โดยต้องตั้งค่า:
+### โหมดฐานข้อมูลสำหรับ local
 
-- `GOOGLE_SHEET_ID`
-- `GOOGLE_SERVICE_ACCOUNT_EMAIL`
-- `GOOGLE_PRIVATE_KEY`
+| คำสั่ง | ฐานข้อมูล | เหมาะกับ |
+| --- | --- | --- |
+| `npm run dev` | Miniflare D1 ในเครื่อง | พัฒนา UI และข้อมูลทดสอบโดยไม่แตะ D1 จริง |
+| `npm run dev:remote-db` | D1 staging จริง | ทดสอบ integration และการเขียนข้อมูลเหมือน production |
+
+ก่อนใช้ `dev:remote-db` ต้อง:
+
+1. login Wrangler ด้วย `npx wrangler whoami`
+2. ตั้ง `ALLOW_DEV_WRITES=true` ใน `.dev.vars`
+3. ยอมรับว่าการเพิ่ม/แก้/ลบข้อมูลจะเกิดขึ้นจริงในฐาน staging
+
+โหมดนี้ล็อก database name และ ID ไว้ที่ staging ใน
+`scripts/local-remote-d1.mjs` และไม่เลือก production จาก environment ภายนอก
+
+หมายเหตุ: `ALLOW_DEV_WRITES` เป็น safety gate สำหรับการเปิดโหมด remote staging
+ไม่ใช่ firewall ของทุก API ส่วน `PRODUCT_MEDIA` ใน local ถูกตั้งให้ใช้ R2 แบบ remote
+เพื่อให้ทดสอบรูปจริงได้ ดังนั้นการอัปโหลดรูปจากหลังบ้าน local จะเขียนเข้า bucket
+ที่กำหนดใน environment จริง แม้ D1 จะเป็น Miniflare
+
+หากเป็นเครื่องใหม่และ local D1 ยังไม่มี schema ให้ build config แล้ว apply
+migration จาก source of truth:
+
+```bash
+npm run build
+npx wrangler d1 migrations apply site-creator-d1 \
+  --local --config dist/server/wrangler.json
+```
+
+ใส่ข้อมูลตัวอย่างเฉพาะฐาน local ได้ด้วย:
+
+```bash
+npx wrangler d1 execute site-creator-d1 \
+  --local --config dist/server/wrangler.json --file scripts/seed.sql
+```
+
+`scripts/seed.sql` ใช้ `INSERT OR REPLACE` จึงควรใช้กับ local ที่ตั้งใจเป็นข้อมูล
+ทดสอบเท่านั้น ห้ามเปลี่ยน `--local` เป็น `--remote`
+
+## Environment และ secrets
+
+ใช้ `.env.example` เป็นรายการค่าที่ระบบรองรับ แต่ห้าม commit `.env`,
+`.env.local`, `.dev.vars`, private key, API key, password หรือรายชื่ออีเมลผู้ดูแล
+
+### Local runtime
+
+- `APP_ENV`
+- `ALLOW_DEV_WRITES`
+- `ADMIN_USERNAME`
+- `ADMIN_PASSWORD_HASH`
+- `ADMIN_AUTH_SECRET`
+- `ADMIN_PASSWORD_FALLBACK_ENABLED`
+- `PRODUCT_MEDIA_ORIGIN`
+- `SLIPOK_*` และ `SENTRY_*` เมื่อจำเป็น
+
+### Cloudflare build settings
+
+- `CLOUDFLARE_WORKER_NAME`
+- `CLOUDFLARE_D1_DATABASE_NAME`
+- `CLOUDFLARE_D1_DATABASE_ID`
+- `CLOUDFLARE_R2_BUCKET_NAME`
+- `CLOUDFLARE_PRODUCT_MEDIA_BUCKET_NAME`
+- `CLOUDFLARE_CUSTOM_DOMAIN` (ไม่บังคับ)
 - `PRODUCT_MEDIA_ORIGIN`
 
-ห้ามนำไฟล์กุญแจบัญชีระบบขึ้น Git ไฟล์สำหรับเครื่องพัฒนาให้เก็บนอก repository
-และจำกัดสิทธิ์การอ่านเฉพาะผู้ใช้ ส่วนระบบจริงให้เก็บใน encrypted secrets ของผู้ให้บริการโฮสต์
-บนเครื่องนี้กุญแจอยู่ที่ `~/.config/jae-noi-pork-shop/google-service-account.json`
-และ `.dev.vars` ถูก ignore พร้อมจำกัดสิทธิ์อ่านเฉพาะเจ้าของไฟล์
+### Production runtime secrets
 
-### ฐานข้อมูลออเดอร์ Cloudflare D1
+ตั้งผ่าน Cloudflare/Wrangler เท่านั้น:
 
-เส้นทางสร้างออเดอร์ ติดตามออเดอร์ หลังบ้าน และเปิดสลิปอ่านข้อมูลจาก D1 binding
-ชื่อ `DB` ส่วนไฟล์สลิปยังเก็บใน R2 binding ชื่อ `UPLOADS` ตามเดิม ตารางถูกสร้างจาก
-`migrations/0001_orders.sql` และต้อง apply migration ใน staging ก่อนเปิดรับออเดอร์
+- `ADMIN_AUTH_SECRET`
+- `ADMIN_PASSWORD_HASH`
+- `ADMIN_PASSWORD_FALLBACK_ENABLED`
+- `ADMIN_ALLOWED_EMAILS`
+- `CLOUDFLARE_ACCESS_TEAM_DOMAIN`
+- `CLOUDFLARE_ACCESS_AUD`
+- `SLIPOK_BRANCH_ID`, `SLIPOK_API_KEY`, `SLIPOK_ENABLED`
+- `SENTRY_DSN`
 
-Google Sheets ยังใช้สำหรับสินค้า รอบจัดส่ง และข้อความหน้าร้านในช่วงเปลี่ยนผ่านเท่านั้น
-ห้ามเปิด production หลังเปลี่ยนมา D1 จนกว่าจะนำออเดอร์เดิมเข้า D1 และเทียบจำนวน
-ออเดอร์ ยอดรวม และรายการสินค้ากับชีตต้นทางครบถ้วน
+ค่ากลุ่ม `GOOGLE_*` ใช้เฉพาะ `scripts/export-sheet-orders-to-d1-sql.mjs`
+เมื่อต้องนำเข้าข้อมูลเก่าจาก Google Sheets ไม่ได้ถูกใช้โดยหน้าร้านหรือหลังบ้านปัจจุบัน
 
-Cloudflare build ต้องได้รับ `CLOUDFLARE_WORKER_NAME`, `CLOUDFLARE_D1_DATABASE_NAME`
-และ `CLOUDFLARE_D1_DATABASE_ID` ทุกครั้ง ระบบจะตรวจค่าก่อนและหลัง build เพื่อป้องกัน
-การ deploy staging ไปทับ production หรือเชื่อมฐานผิดตัว
+## ฐานข้อมูลและ migration
 
-โครงสร้าง D1 สำหรับสินค้า รอบจัดส่ง และการตั้งค่าร้านอยู่ใน
-`migrations/0002_storefront_cms.sql` โดยมี `version` สำหรับตรวจการแก้ไขชนกันและ
-`sort_order` สำหรับรักษาลำดับสินค้าเดิมจากชีต ระหว่างนำเข้าข้อมูลจริง storefront
-ยังอ่านจาก Google Sheets จนกว่าการตรวจจำนวนและ fingerprint จะผ่าน
+ไฟล์จริงสำหรับ production อยู่ใน `migrations/*.sql`:
 
-### Catalog สินค้า
+1. `0001_orders.sql` — ออเดอร์และรายการสินค้า
+2. `0002_storefront_cms.sql` — สินค้า รอบขาย และการตั้งค่าหน้าร้าน
+3. `0003_order_shipped_at.sql` — เวลาเริ่มจัดส่ง/พร้อมรับ
+4. `0004_orders_round_id_index.sql` — index สำหรับสรุปออเดอร์ตามรอบ
 
-เว็บไซต์อ่าน `สินค้า!A:I` ตามลำดับแถวโดยไม่เรียงชื่อใหม่ คอลัมน์ F รองรับ
-`เปิดขาย`, `ปิดชั่วคราว`, `รอข้อมูล` และ `ซ่อนสินค้า` พร้อมแปลงค่าเก่า
-`หยุดขาย` เป็น `ปิดชั่วคราว` อัตโนมัติ รูปสินค้าใช้ URL ในคอลัมน์ I
-และถูกส่งจาก R2 bucket `jae-noi-pork-shop-media` ผ่าน path `/media/products/*`
-โดยไม่เปิดเผย bucket สลิป
+`db/schema.ts` ต้องแก้ให้ตรงกับ migration แต่ `drizzle/*.sql` ไม่ถูก apply เข้า
+production โดยอัตโนมัติ อ่านรายละเอียด schema และข้อควรระวังได้ที่
+[DATABASE_SCHEMA.md](./DATABASE_SCHEMA.md)
 
-หน้า storefront cache ที่ Cloudflare 30 วินาทีและหน้าเว็บตรวจข้อมูลใหม่ทุก 30 วินาที
-รวมถึงตอนกลับเข้าแท็บหรือเปิดตะกร้า ส่วนการยืนยันออเดอร์อ่าน Google Sheets สดเสมอ
+หลัง build สำหรับ Cloudflare ให้ตรวจ migration ก่อน apply:
 
-### ระบบล็อกอินหลังบ้าน
+```bash
+npx wrangler d1 migrations list "$CLOUDFLARE_D1_DATABASE_NAME" \
+  --remote --config dist/server/wrangler.json
 
-ระบบจริงใช้ Cloudflare Access ป้องกันทั้ง `/admin*` และ `/api/admin/*` ใน
-application เดียวกัน รองรับ Google และอีเมล OTP พร้อมตรวจลายเซ็น Access JWT,
-issuer, audience และอีเมล allowlist ซ้ำใน Worker รหัสผ่าน PBKDF2 เดิมเก็บเป็น
-ทางสำรองและปิดด้วย `ADMIN_PASSWORD_FALLBACK_ENABLED=false` ในระบบจริง
-ห้ามเก็บรหัสจริงหรือรายชื่ออีเมลผู้ดูแลใน Git หรือ Google Sheets
+npx wrangler d1 migrations apply "$CLOUDFLARE_D1_DATABASE_NAME" \
+  --remote --config dist/server/wrangler.json
+```
 
-### SlipOK (เตรียมไว้แต่ยังปิดอยู่)
+ตรวจชื่อ database และ account ทุกครั้งก่อนตอบ `yes` เพราะคำสั่ง `--remote`
+เปลี่ยนฐานข้อมูลจริง
 
-ตัวเชื่อม SlipOK ถูกเตรียมไว้แล้วและจะไม่เรียก API จนกว่า `SLIPOK_ENABLED=true`
-พร้อมตั้งค่า `SLIPOK_BRANCH_ID` และ `SLIPOK_API_KEY` ฝั่งเซิร์ฟเวอร์ ดูรายการก่อนเปิดใช้ใน
-`docs/slipok-integration.md`
+## คำสั่งสำคัญ
 
-### ส่งมอบให้ลูกค้า
+| คำสั่ง | ใช้ทำอะไร |
+| --- | --- |
+| `npm run dev` | เปิด local server กับ Miniflare |
+| `npm run dev:remote-db` | เปิด local UI กับ D1 staging |
+| `npm run dev:doctor` | ตรวจ local config และพอร์ต 3000 |
+| `npm run build` | build สำหรับตรวจในเครื่อง |
+| `npm run lint` | ตรวจ ESLint |
+| `npx tsc --noEmit` | ตรวจ TypeScript |
+| `npm test` | build และรัน Node tests |
+| `npm run test:e2e` | รัน Playwright บนมือถือและเดสก์ท็อป |
+| `npm audit --omit=dev` | ตรวจช่องโหว่ dependency ที่ถูกใช้ใน production |
+| `npm run db:generate` | สร้าง Drizzle diff เพื่อช่วยตรวจ schema |
+| `npm run db:export-sheet-orders` | สร้าง SQL สำหรับนำเข้าข้อมูลเก่าจาก Sheets |
+| `npm run build:cloudflare` | build production และผูก config ที่ระบุชัด |
+| `npm run deploy:cloudflare` | build, ตรวจ bindings และ deploy Worker |
 
-การ deploy ระยะยาวใช้บัญชี Cloudflare และโดเมนที่ลูกค้าเป็นเจ้าของ ผู้พัฒนา
-เข้าดูแลผ่านสิทธิ์สมาชิกโดยไม่ใช้รหัสผ่านร่วมกัน ขั้นตอน, secrets และรายการ
-ทดสอบก่อนเปิดขายอยู่ใน `docs/cloudflare-client-handoff.md`
+## ตรวจสอบก่อน push หรือ deploy
 
-ตรวจความพร้อมก่อนเผยแพร่ด้วย `npm run lint` และ `npm run build`
+```bash
+npm run lint
+npx tsc --noEmit
+npm test
+npm run test:e2e
+npm audit --omit=dev
+```
+
+E2E ไม่ส่งออเดอร์จริง แต่ตรวจ validation, ที่อยู่, PromptPay summary และ layout
+บน viewport มือถือ/เดสก์ท็อป
+
+## Deploy ไป Cloudflare
+
+1. ตรวจ account:
+
+   ```bash
+   npx wrangler whoami
+   ```
+
+2. โหลด build settings ที่ไม่ใช่ secret จาก `.env`:
+
+   ```bash
+   set -a
+   source .env
+   set +a
+   ```
+
+3. Build และตรวจ bindings:
+
+   ```bash
+   npm run build:cloudflare
+   node scripts/assert-cloudflare-dist.mjs
+   ```
+
+4. ตรวจและ apply migration ที่รออยู่ตามหัวข้อฐานข้อมูล
+
+5. Deploy:
+
+   ```bash
+   npm run deploy:cloudflare
+   ```
+
+6. ตรวจอย่างน้อย:
+
+   - `/` และ `/api/storefront` ตอบ `2xx`
+   - HTTP ถูก redirect ไป HTTPS และ HTTPS response มี HSTS
+   - response มี CSP, `X-Frame-Options`, `X-Content-Type-Options`,
+     `Referrer-Policy` และ `Permissions-Policy`
+   - `/admin` และ `/api/admin/*` ถูกส่งไป Cloudflare Access เมื่อยังไม่ล็อกอิน
+   - `/api/orders/track` ต้องใช้เลขออเดอร์และเบอร์โทร 4 ตัวท้าย
+   - อัปโหลดรูปสินค้าและสลิปจริงได้ แสดงผลได้ และ object ที่เก็บเป็นไฟล์เข้ารหัสใหม่
+   - D1 ไม่มี migration ค้าง
+   - bindings `DB`, `UPLOADS`, `PRODUCT_MEDIA` และ `IMAGES` ชี้ resource production ที่ถูกต้อง
+   - หน้า Admin อ่านออเดอร์ สินค้า รอบขาย และรูปจาก bindings production ที่ถูกต้อง
+
+`scripts/check-cloudflare-build-env.mjs` และ `scripts/assert-cloudflare-dist.mjs`
+จะหยุด deployment หาก Worker, D1 หรือ R2 ไม่ตรงกับค่าที่กำหนด แต่ไม่แทนการตรวจ
+account และ database ด้วยตนเอง
+
+## ความปลอดภัยและความเป็นส่วนตัว
+
+- HTTP ที่ไม่ใช่ localhost ถูก redirect ไป HTTPS และ HTTPS เปิด HSTS
+- Worker ใส่ CSP, SAMEORIGIN framing, `nosniff`, referrer policy และ permissions policy
+  ให้ทั้งหน้าเว็บ API และ media response
+- Permissions Policy ปิดกล้อง ไมโครโฟน ตำแหน่ง screen capture, sensor,
+  Bluetooth, USB, serial และอุปกรณ์ XR เพราะหน้าร้านไม่จำเป็นต้องใช้
+  โดยยังคง clipboard และ Web Share ที่ลูกค้าเป็นผู้กดใช้งานเอง
+- Production ควรใช้ Cloudflare Access ที่ edge และโค้ดตรวจ Access JWT, issuer,
+  audience และ email allowlist ซ้ำใน Worker
+- Password fallback ใช้ PBKDF2 และควรปิดใน production ด้วย `ADMIN_PASSWORD_FALLBACK_ENABLED=false`
+- Mutation หลังบ้านต้องผ่าน session และ same-origin check
+- API ติดตามออเดอร์ใช้เลขออเดอร์แบบสุ่มร่วมกับเบอร์โทร 4 ตัวท้าย
+  และไม่ส่งชื่อ ที่อยู่เต็ม หรือรูปสลิปกลับไปยังลูกค้า
+- การสร้างออเดอร์จำกัด 6 ครั้งต่อ 30 นาทีต่อ IP และ 3 ครั้งต่อ 60 นาทีต่อเบอร์โทร
+- การค้นหาออเดอร์จำกัด 8 ครั้งต่อ 15 นาทีต่อ IP
+- ทุก JSON และ multipart endpoint มีเพดานขนาด request body และตรวจขนาดจาก stream
+  ก่อน parse เพื่อไม่ให้ request ขนาดใหญ่กินหน่วยความจำ Worker
+- สลิปและรูปตรวจ signature จาก bytes แล้วใช้ Cloudflare Images ถอดรหัสและเข้ารหัสใหม่
+  ระบบจะปฏิเสธไฟล์เมื่อถอดรหัสไม่ได้หรือไม่มี `IMAGES` binding
+- Automatic checkout draft ที่มีข้อมูลติดต่อใช้ `sessionStorage` ส่วนข้อมูลที่ลูกค้า
+  เลือกให้จำใช้ `localStorage` อายุไม่เกิน 90 วัน
+- Monitoring ตัดข้อมูลลูกค้า request body, cookie, authorization และ raw error ออก
+
+ข้อจำกัดที่ทราบ: vinext ยังสร้าง inline React Server Component bootstrap scripts
+และไม่มี per-request nonce hook ในปัจจุบัน จึงต้องอนุญาต inline script ใน CSP
+จนกว่าจะรองรับ nonce โดย CSP ยังคงห้าม third-party script, object, cross-origin form
+และ third-party framing
+
+## เอกสารเพิ่มเติม
+
+- [DATABASE_SCHEMA.md](./DATABASE_SCHEMA.md) — schema และ workflow ของ D1 migration
+- [docs/cloudflare-client-handoff.md](./docs/cloudflare-client-handoff.md) — การส่งมอบและตั้งค่า Cloudflare
+- [docs/monitoring.md](./docs/monitoring.md) — Sentry, quota และ incident response
+- [docs/slipok-integration.md](./docs/slipok-integration.md) — เงื่อนไขก่อนเปิด SlipOK
+- [figma-plugin/README.md](./figma-plugin/README.md) — เครื่องมือช่วยบันทึกและทบทวน UX/UI ใน Figma

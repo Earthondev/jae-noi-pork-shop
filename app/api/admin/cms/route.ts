@@ -22,7 +22,9 @@ import {
   updateAdminStorefrontSettings,
   type CmsMutationResult,
 } from "../../../../db/cms-repository";
+import { MalformedRequestBodyError, parseBoundedJson, RequestBodyTooLargeError, UnsupportedRequestContentTypeError } from "../../../../lib/request-body";
 
+const MAX_CMS_BODY_BYTES = 64 * 1024;
 type ActionBody = Record<string, unknown> & { action?: unknown };
 type CloudflareCacheStorage = CacheStorage & { default?: Cache };
 
@@ -44,7 +46,16 @@ export async function POST(request: Request) {
   if (!user) return json({ error: "กรุณาเข้าสู่ระบบผู้ดูแล" }, 401);
   if (!isSameOriginMutation(request)) return json({ error: "คำขอไม่ถูกต้อง" }, 403);
 
-  const body = await request.json().catch(() => null) as ActionBody | null;
+  let body: ActionBody | null;
+  try {
+    body = await parseBoundedJson(request, MAX_CMS_BODY_BYTES) as ActionBody | null;
+  } catch (error) {
+    if (error instanceof RequestBodyTooLargeError) return json({ error: "ข้อมูลมีขนาดใหญ่เกินกำหนด" }, 413);
+    if (error instanceof UnsupportedRequestContentTypeError || error instanceof MalformedRequestBodyError) {
+      return json({ error: "ข้อมูลคำขอไม่ถูกต้อง" }, 400);
+    }
+    throw error;
+  }
   if (!body || typeof body.action !== "string") return json({ error: "ไม่พบคำสั่งที่ต้องการ" }, 400);
 
   try {

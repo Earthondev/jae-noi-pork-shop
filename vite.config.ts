@@ -116,6 +116,9 @@ export default defineConfig(async ({ command }) => {
         remote: isLocalDevelopment,
       },
     ],
+    // A single binding handles both storefront optimization and security
+    // normalization of uploaded product/slip images.
+    images: { binding: "IMAGES" },
   };
 
   // Wrangler snapshots its log path while the Cloudflare plugin is imported.

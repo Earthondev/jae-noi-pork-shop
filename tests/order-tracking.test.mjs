@@ -5,6 +5,7 @@ import {
   isTrackingLookupInput,
   isPhoneTrackingLookupInput,
   matchesPhone,
+  matchesPhoneLast4,
   maskPhone,
   trackingStepIndex,
 } from "../lib/order-tracking.ts";
@@ -24,6 +25,8 @@ test("accepts a full Thai phone number and compares it without formatting", () =
   assert.equal(isPhoneTrackingLookupInput("09316878921"), false);
   assert.equal(matchesPhone("093-168-7892", "0931687892"), true);
   assert.equal(matchesPhone("093-168-7892", "0931687893"), false);
+  assert.equal(matchesPhoneLast4("093-168-7892", "7892"), true);
+  assert.equal(matchesPhoneLast4("093-168-7892", "7893"), false);
 });
 
 test("masks the customer phone and maps fulfilment progress", () => {
@@ -46,11 +49,11 @@ test("tracking API is private-by-default and rate limited", async () => {
   assert.match(route, /Cache-Control.*private, no-store/);
   assert.match(route, /checkRateLimit/);
   assert.match(route, /Retry-After/);
-  assert.match(route, /ไม่พบออเดอร์ย้อนหลัง 30 วัน/);
+  assert.match(route, /เลขออเดอร์และเบอร์โทร 4 ตัวท้าย/);
   assert.doesNotMatch(route, /customerName|address/);
-  assert.match(repository, /getPublicOrdersByPhone/);
+  assert.match(repository, /getPublicOrderByIdAndPhoneLast4/);
+  assert.match(repository, /matchesPhoneLast4/);
   assert.match(route, /days:\s*30/);
-  assert.match(route, /limit:\s*10/);
   assert.match(repository, /maskPhone/);
 });
 
@@ -66,9 +69,9 @@ test("tracking page has accessible progress and paid-only receipt actions", asyn
   assert.match(tracker, /paymentStatus === "paid"/);
   assert.match(tracker, /บันทึกเป็นรูป PNG/);
   assert.match(tracker, /พิมพ์หรือบันทึก PDF/);
-  assert.match(tracker, /INITIAL_VISIBLE_ORDERS = 3/);
-  assert.match(tracker, /ดูออเดอร์เพิ่มเติม/);
-  assert.match(tracker, /orders\.slice\(0, visibleOrderCount\)/);
+  assert.match(tracker, /phoneLast4/);
+  assert.match(tracker, /เลขออเดอร์/);
+  assert.doesNotMatch(tracker, /JSON\.stringify\(\{ phone \}\)/);
   assert.match(tracker, /"ติดตามสถานะ"/);
   assert.doesNotMatch(tracker, /โดยไม่แสดงชื่อ ที่อยู่ หรือสลิป/);
   assert.match(shop, /href="\/track"/);

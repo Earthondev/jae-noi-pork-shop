@@ -1,5 +1,5 @@
 export const REMEMBERED_CUSTOMERS_STORAGE_KEY = "jae_noi_remembered_customers_v1";
-export const REMEMBERED_CUSTOMER_TTL_MS = 180 * 24 * 60 * 60 * 1000;
+export const REMEMBERED_CUSTOMER_TTL_MS = 90 * 24 * 60 * 60 * 1000;
 
 const MAX_REMEMBERED_CUSTOMERS = 5;
 

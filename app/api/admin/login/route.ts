@@ -12,7 +12,9 @@ import {
   recordFailedLogin,
   verifyAdminCredentials,
 } from "../../../../lib/admin-auth";
+import { MalformedRequestBodyError, parseBoundedJson, RequestBodyTooLargeError, UnsupportedRequestContentTypeError } from "../../../../lib/request-body";
 
+const MAX_LOGIN_BODY_BYTES = 2 * 1024;
 const PRIVATE_HEADERS = {
   "Cache-Control": "private, no-store",
   "X-Content-Type-Options": "nosniff",
@@ -43,10 +45,16 @@ export async function POST(request: Request) {
     );
   }
 
-  const body = await request.json().catch(() => null) as {
-    username?: unknown;
-    password?: unknown;
-  } | null;
+  let body: { username?: unknown; password?: unknown } | null;
+  try {
+    body = await parseBoundedJson(request, MAX_LOGIN_BODY_BYTES) as typeof body;
+  } catch (error) {
+    if (error instanceof RequestBodyTooLargeError) return privateJson({ error: "ข้อมูลเข้าสู่ระบบมีขนาดใหญ่เกินกำหนด" }, 413);
+    if (error instanceof UnsupportedRequestContentTypeError || error instanceof MalformedRequestBodyError) {
+      return privateJson({ error: "ข้อมูลเข้าสู่ระบบไม่ถูกต้อง" }, 400);
+    }
+    throw error;
+  }
   const username = typeof body?.username === "string" ? body.username : "";
   const password = typeof body?.password === "string" ? body.password : "";
 

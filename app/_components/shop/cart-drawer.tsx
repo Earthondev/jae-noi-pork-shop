@@ -484,7 +484,7 @@ export function CartDrawer({ drawerRef, onClose, cart, checkout, storefront, ord
                   <section className="remember-customer-control full" aria-label="การจำข้อมูลลูกค้าบนอุปกรณ์นี้">
                     <label>
                       <input type="checkbox" checked={checkout.rememberDetails} onChange={(event) => checkout.onToggleRemember(event.target.checked)} />
-                      <span><strong>จำชื่อและที่อยู่บนอุปกรณ์นี้</strong><small>ช่วยเติมข้อมูลให้อัตโนมัติครั้งหน้า · เก็บไว้ 180 วัน</small></span>
+                      <span><strong>จำชื่อและที่อยู่บนอุปกรณ์นี้</strong><small>ช่วยเติมข้อมูลให้อัตโนมัติครั้งหน้า · เก็บไว้ 90 วัน และลบได้ทุกเมื่อ</small></span>
                     </label>
                     {checkout.rememberedForCurrentPhone && (
                       <div className="remembered-customer-status" role="status">
