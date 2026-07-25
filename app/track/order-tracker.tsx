@@ -14,6 +14,7 @@ import {
   PUBLIC_ERROR_MESSAGES,
   safeClientApiMessage,
 } from "../../lib/public-errors";
+import { fitFontSize } from "../../lib/qr-image";
 
 const paymentLabels: Record<PublicOrderTracking["paymentStatus"], string> = {
   waiting_for_payment: "รอชำระเงิน",
@@ -53,6 +54,11 @@ async function saveReceiptPng(order: PublicOrderTracking, storeName: string): Pr
   const context = canvas.getContext("2d");
   if (!context) throw new Error("อุปกรณ์นี้ยังไม่รองรับการบันทึกรูป");
 
+  // Text width is fit to the canvas before drawing — a long CMS-edited store
+  // name or product name would otherwise silently run past the card edge
+  // (the same bug class previously fixed for the PromptPay QR pill).
+  const maxTextWidth = canvas.width - 78 * 2;
+
   context.fillStyle = "#fffaf0";
   context.fillRect(0, 0, canvas.width, canvas.height);
   context.fillStyle = "#b51519";
@@ -61,16 +67,20 @@ async function saveReceiptPng(order: PublicOrderTracking, storeName: string): Pr
   context.fillRect(0, 190, canvas.width, 12);
   context.textAlign = "center";
   context.fillStyle = "#ffffff";
-  context.font = "700 52px 'Noto Sans Thai', sans-serif";
+  const storeNameSize = fitFontSize(context, storeName, canvas.width - 120, 700, 52, 28);
+  context.font = `700 ${storeNameSize}px "Noto Sans Thai", sans-serif`;
   context.fillText(storeName, canvas.width / 2, 86);
   context.font = "500 30px 'Noto Sans Thai', sans-serif";
   context.fillText("ใบยืนยันการชำระเงิน", canvas.width / 2, 145);
 
   context.textAlign = "left";
   context.fillStyle = "#281616";
-  context.font = "700 34px 'Noto Sans Thai', sans-serif";
-  context.fillText(`เลขออเดอร์  ${order.orderId}`, 78, 275);
+  const orderIdLine = `เลขออเดอร์  ${order.orderId}`;
+  const orderIdSize = fitFontSize(context, orderIdLine, maxTextWidth, 700, 34, 20);
+  context.font = `700 ${orderIdSize}px "Noto Sans Thai", sans-serif`;
+  context.fillText(orderIdLine, 78, 275);
   context.fillStyle = "#237343";
+  context.font = "700 34px 'Noto Sans Thai', sans-serif";
   context.fillText("ชำระแล้ว", 78, 330);
   context.fillStyle = "#765d56";
   context.font = "500 26px 'Noto Sans Thai', sans-serif";
@@ -86,8 +96,11 @@ async function saveReceiptPng(order: PublicOrderTracking, storeName: string): Pr
   context.fillStyle = "#281616";
   context.font = "700 30px 'Noto Sans Thai', sans-serif";
   context.fillText("รายการสินค้า", 78, 525);
-  context.font = "500 27px 'Noto Sans Thai', sans-serif";
-  lines.forEach((line, index) => context.fillText(line, 78, 585 + index * 62));
+  lines.forEach((line, index) => {
+    const lineSize = fitFontSize(context, line, maxTextWidth, 500, 27, 16);
+    context.font = `500 ${lineSize}px "Noto Sans Thai", sans-serif`;
+    context.fillText(line, 78, 585 + index * 62);
+  });
 
   const totalY = 640 + lines.length * 62;
   context.strokeStyle = "#ead6b5";
@@ -96,8 +109,10 @@ async function saveReceiptPng(order: PublicOrderTracking, storeName: string): Pr
   context.lineTo(1002, totalY);
   context.stroke();
   context.fillStyle = "#8d1014";
-  context.font = "800 40px 'Noto Sans Thai', sans-serif";
-  context.fillText(`ยอดชำระทั้งหมด  ${order.total.toLocaleString("th-TH")} บาท`, 78, totalY + 70);
+  const totalLine = `ยอดชำระทั้งหมด  ${order.total.toLocaleString("th-TH")} บาท`;
+  const totalSize = fitFontSize(context, totalLine, maxTextWidth, 800, 40, 24);
+  context.font = `800 ${totalSize}px "Noto Sans Thai", sans-serif`;
+  context.fillText(totalLine, 78, totalY + 70);
   context.fillStyle = "#765d56";
   context.font = "500 24px 'Noto Sans Thai', sans-serif";
   context.fillText("เอกสารนี้ออกโดยระบบร้านเจ๊น้อย กรุณาเก็บเลขออเดอร์ไว้ติดตามสินค้า", 78, totalY + 135);

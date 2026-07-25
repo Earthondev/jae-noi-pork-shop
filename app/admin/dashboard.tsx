@@ -1,7 +1,7 @@
 "use client";
 
-import { DndContext, PointerSensor, closestCenter, useSensor, useSensors, type DragEndEvent, type DragStartEvent } from "@dnd-kit/core";
-import { SortableContext, arrayMove, useSortable, verticalListSortingStrategy } from "@dnd-kit/sortable";
+import { DndContext, DragOverlay, KeyboardSensor, MouseSensor, TouchSensor, closestCenter, useSensor, useSensors, type DragEndEvent, type DragStartEvent } from "@dnd-kit/core";
+import { SortableContext, arrayMove, sortableKeyboardCoordinates, useSortable, verticalListSortingStrategy } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import Image from "next/image";
 import Link from "next/link";
@@ -95,6 +95,15 @@ export function AdminDashboard({ initialOrders, initialCms, userName, serverNow,
     return () => window.removeEventListener("popstate", syncTabFromUrl);
   }, []);
 
+  // Opening a create/edit form hides the header and collapses the page to
+  // just the form. Without resetting scroll, the browser clamps whatever
+  // scroll offset the admin was at (e.g. deep in a long product list) to the
+  // new, much shorter page height — an uncontrolled jump that can land
+  // anywhere, including on top of the save button.
+  useEffect(() => {
+    if (isNavHidden) window.scrollTo(0, 0);
+  }, [isNavHidden]);
+
   useEffect(() => {
     if (!formDirty) return;
     const handler = (event: BeforeUnloadEvent) => {
@@ -176,7 +185,7 @@ export function AdminDashboard({ initialOrders, initialCms, userName, serverNow,
         <aside className={`admin-drawer ${drawerOpen ? "open" : ""}`}>
           <div className="admin-drawer-header">
             <div className="admin-brand-lockup">
-              <span className="admin-brand-logo"><Image src={adminImageSrc(cms.settings.storeLogoUrl) || "/images/products/jae-noi-shop-logo.jpg"} alt={`โลโก้ ${cms.settings.storeName}`} fill sizes="48px" unoptimized /></span>
+              <span className="admin-brand-logo"><Image src={adminImageSrc(cms.settings.storeLogoUrl) || "/images/products/jae-noi-shop-logo.jpg"} alt={`โลโก้ ${cms.settings.storeName}`} fill sizes="48px" /></span>
               <div>
                 <p>ระบบจัดการหลังบ้าน</p>
                 <strong>{cms.settings.storeName}</strong>
@@ -456,7 +465,11 @@ function ProductsPanel({ products, saving, mutate, setNotice, onFormActive, onFo
   const [dragOverride, setDragOverride] = useState<string[] | null>(null);
   const sortIds = dragOverride ?? baseOrderIds;
   const [activeDragId, setActiveDragId] = useState<string | null>(null);
-  const dragSensors = useSensors(useSensor(PointerSensor, { activationConstraint: { delay: 150, tolerance: 6 } }));
+  const dragSensors = useSensors(
+    useSensor(MouseSensor, { activationConstraint: { distance: 6 } }),
+    useSensor(TouchSensor, { activationConstraint: { delay: 200, tolerance: 8 } }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
+  );
 
   function handleDragStart(event: DragStartEvent) {
     setActiveDragId(String(event.active.id));
@@ -492,11 +505,16 @@ function ProductsPanel({ products, saving, mutate, setNotice, onFormActive, onFo
   const activeVisible = useMemo(() => visible.filter((product) => product.status !== "ซ่อนสินค้า"), [visible]);
   const archivedVisible = useMemo(() => visible.filter((product) => product.status === "ซ่อนสินค้า"), [visible]);
   const canReorder = view === "list" && category === "ทั้งหมด" && !searchQuery.trim();
+  const isReordering = saving === "product.reorder";
 
   const activeProduct = useMemo(() => {
     if (editing) return products.find((p) => p.id === editing) ?? null;
     return null;
   }, [editing, products]);
+  const activeDragProduct = useMemo(
+    () => products.find((product) => product.id === activeDragId) ?? null,
+    [activeDragId, products],
+  );
 
   const isDirty = useMemo(() => {
     if (creating) {
@@ -559,13 +577,13 @@ function ProductsPanel({ products, saving, mutate, setNotice, onFormActive, onFo
     return {
       onEdit: () => { setDraft({ id: product.id, name: product.name, unit: product.unit || "", detail: product.detail || "", price: product.price, status: product.status, imageUrl: product.imageUrl || "", category: product.category || "" }); setEditing(product.id); setCreating(false); },
       onArchive: () => setConfirm({ title: `ปิดขาย ${product.name}?`, description: "สินค้าจะหายจากหน้าร้าน แต่ประวัติออเดอร์เก่าจะยังอยู่ครบและนำกลับมาได้", confirmLabel: "ปิดขายสินค้า", tone: "danger", action: async () => { await mutate("product.update", { product: { ...product, status: "ซ่อนสินค้า" } }, "ปิดขายสินค้าแล้ว"); } }),
-      onRestore: () => void mutate("product.update", { product: { ...product, status: "ปิดชั่วคราว" } }, "เปิดขายสินค้าอีกครั้ง"),
+      onRestore: () => setConfirm({ title: `เปิดขาย ${product.name} อีกครั้ง?`, description: "สินค้าจะกลับมาแสดงบนหน้าร้านทันที", confirmLabel: "เปิดขายสินค้า", tone: "primary", action: async () => { await mutate("product.update", { product: { ...product, status: "ปิดชั่วคราว" } }, "เปิดขายสินค้าอีกครั้ง"); } }),
     };
   }
 
   function productCard(product: AdminProduct) {
     return <article className={`admin-product-card ${product.status === "ซ่อนสินค้า" ? "is-archived" : ""}`} key={product.id}>
-      {productCardBody(product, productHandlers(product))}
+      {productCardBody(product, productHandlers(product), undefined, saving !== null)}
     </article>;
   }
 
@@ -620,16 +638,30 @@ function ProductsPanel({ products, saving, mutate, setNotice, onFormActive, onFo
         {canReorder ? (
           <>
             {activeVisible.length > 1 && <p className="admin-sort-hint">กดค้างที่จุดจับ <AdminIcon name="grip" /> แล้วลากขึ้นลงเพื่อจัดเรียงลำดับสินค้าใหม่</p>}
-            <DndContext sensors={dragSensors} collisionDetection={closestCenter} onDragStart={handleDragStart} onDragEnd={handleDragEnd} onDragCancel={() => setActiveDragId(null)}>
+            <DndContext
+              sensors={dragSensors}
+              collisionDetection={closestCenter}
+              autoScroll
+              onDragStart={handleDragStart}
+              onDragEnd={handleDragEnd}
+              onDragCancel={() => setActiveDragId(null)}
+            >
               <SortableContext items={sortIds} strategy={verticalListSortingStrategy}>
                 <div className="admin-card-list admin-product-list view-list">
                   {sortIds.map((id) => {
                     const product = products.find((item) => item.id === id);
                     if (!product) return null;
-                    return <SortableProductCard key={id} product={product} isActiveDrag={activeDragId === id} handlers={productHandlers(product)} />;
+                    return <SortableProductCard key={id} product={product} isActiveDrag={activeDragId === id} disabled={isReordering} busy={saving !== null} handlers={productHandlers(product)} />;
                   })}
                 </div>
               </SortableContext>
+              <DragOverlay dropAnimation={{ duration: 200, easing: "cubic-bezier(0.2, 0.8, 0.2, 1)" }}>
+                {activeDragProduct ? (
+                  <article className="admin-product-card admin-product-drag-overlay" aria-hidden="true">
+                    {productCardBody(activeDragProduct, productHandlers(activeDragProduct), undefined, true)}
+                  </article>
+                ) : null}
+              </DragOverlay>
             </DndContext>
           </>
         ) : (
@@ -662,12 +694,12 @@ function ProductsPanel({ products, saving, mutate, setNotice, onFormActive, onFo
 
 type ProductCardHandlers = { onEdit: () => void; onArchive: () => void; onRestore: () => void };
 
-function productCardBody(product: AdminProduct, handlers: ProductCardHandlers, dragHandle?: React.ReactNode) {
+function productCardBody(product: AdminProduct, handlers: ProductCardHandlers, dragHandle?: React.ReactNode, busy = false) {
   const firstImage = product.imageUrl ? product.imageUrl.split(",")[0] : "";
   return <div className="product-card-body">
     {dragHandle}
     <div className="product-card-image-wrap">
-      {firstImage ? <Image src={adminImageSrc(firstImage)} alt={`รูปสินค้า ${product.name}`} fill sizes="96px" unoptimized /> : <div className="product-card-no-image"><AdminIcon name="image" /></div>}
+      {firstImage ? <Image src={adminImageSrc(firstImage)} alt={`รูปสินค้า ${product.name}`} fill sizes="96px" /> : <div className="product-card-no-image"><AdminIcon name="image" /></div>}
     </div>
     <div className="product-card-info">
       <div className="product-card-title-row">
@@ -683,23 +715,30 @@ function productCardBody(product: AdminProduct, handlers: ProductCardHandlers, d
       {product.detail && <p className="product-card-desc">{product.detail}</p>}
 
       <div className="product-card-actions-row">
-        <button type="button" className="action-btn edit-btn" onClick={handlers.onEdit}><AdminIcon name="edit" /><span>แก้ไข</span></button>
+        <button type="button" className="action-btn edit-btn" disabled={busy} onClick={handlers.onEdit}><AdminIcon name="edit" /><span>แก้ไข</span></button>
         {product.status !== "ซ่อนสินค้า" ? (
-          <button className="action-btn delete-btn" type="button" onClick={handlers.onArchive}><AdminIcon name="hide" /><span>ปิดขาย</span></button>
+          <button className="action-btn delete-btn" type="button" disabled={busy} onClick={handlers.onArchive}><AdminIcon name="hide" /><span>ปิดขาย</span></button>
         ) : (
-          <button className="action-btn restore-btn" type="button" onClick={handlers.onRestore}><AdminIcon name="check" /><span>เปิดขาย</span></button>
+          <button className="action-btn restore-btn" type="button" disabled={busy} onClick={handlers.onRestore}><AdminIcon name="check" /><span>เปิดขาย</span></button>
         )}
       </div>
     </div>
   </div>;
 }
 
-function SortableProductCard({ product, isActiveDrag, handlers }: { product: AdminProduct; isActiveDrag: boolean; handlers: ProductCardHandlers }) {
-  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: product.id });
+function SortableProductCard({ product, isActiveDrag, disabled, busy, handlers }: { product: AdminProduct; isActiveDrag: boolean; disabled: boolean; busy: boolean; handlers: ProductCardHandlers }) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
+    id: product.id,
+    disabled,
+    transition: {
+      duration: 200,
+      easing: "cubic-bezier(0.2, 0.8, 0.2, 1)",
+    },
+  });
   const style = { transform: CSS.Transform.toString(transform), transition };
-  const dragHandle = <button type="button" className="product-drag-handle" aria-label={`ลากเพื่อจัดเรียง ${product.name}`} {...attributes} {...listeners}><AdminIcon name="grip" /></button>;
+  const dragHandle = <button type="button" className="product-drag-handle" disabled={disabled} aria-label={`ลากเพื่อจัดเรียง ${product.name}`} {...attributes} {...listeners}><AdminIcon name="grip" /></button>;
   return <article ref={setNodeRef} style={style} className={`admin-product-card${isDragging ? " is-dragging" : ""}${isActiveDrag ? " is-active-drag" : ""}`}>
-    {productCardBody(product, handlers, dragHandle)}
+    {productCardBody(product, handlers, dragHandle, busy)}
   </article>;
 }
 
@@ -738,7 +777,7 @@ function ProductForm({ title, value, disabled, uploading, lockId = false, onChan
           {images.map((imgUrl, idx) => (
             <div key={imgUrl} className="admin-image-slot">
               <div className="image-slot-preview">
-                <Image src={adminImageSrc(imgUrl)} alt={idx === 0 ? `รูปหลักของ ${value.name || "สินค้า"}` : `รูปที่ ${idx + 1} ของ ${value.name || "สินค้า"}`} fill sizes="120px" unoptimized />
+                <Image src={adminImageSrc(imgUrl)} alt={idx === 0 ? `รูปหลักของ ${value.name || "สินค้า"}` : `รูปที่ ${idx + 1} ของ ${value.name || "สินค้า"}`} fill sizes="120px" />
                 <span className="image-slot-badge">{idx === 0 ? "รูปหลัก" : `${idx + 1}`}</span>
               </div>
               <div className="image-slot-actions">
@@ -869,7 +908,7 @@ function StorefrontPanel({ settings, saving, mutate, setNotice, onFormActive, on
 }
 
 function BrandAsset({ label, value, ratio, uploading, onUpload }: { label: string; value: string; ratio: "square" | "cover"; uploading: boolean; onUpload: (file: File) => void }) {
-  return <label className={`admin-brand-asset ${ratio}`}><span>{label}</span><span className="admin-brand-asset-preview">{value ? <Image src={adminImageSrc(value)} alt={`ตัวอย่าง${label}`} fill sizes="320px" unoptimized /> : <AdminIcon name="image" />}</span><span className="admin-brand-upload"><AdminIcon name="image" />{uploading ? "กำลังอัปโหลด…" : "เลือกรูป"}</span><input disabled={uploading} type="file" accept="image/*" onChange={(event) => { const file = event.target.files?.[0]; if (file) onUpload(file); }} /></label>;
+  return <label className={`admin-brand-asset ${ratio}`}><span>{label}</span><span className="admin-brand-asset-preview">{value ? <Image src={adminImageSrc(value)} alt={`ตัวอย่าง${label}`} fill sizes="320px" /> : <AdminIcon name="image" />}</span><span className="admin-brand-upload"><AdminIcon name="image" />{uploading ? "กำลังอัปโหลด…" : "เลือกรูป"}</span><input disabled={uploading} type="file" accept="image/*" onChange={(event) => { const file = event.target.files?.[0]; if (file) onUpload(file); }} /></label>;
 }
 
 function Kpi({ icon, label, value, accent = false }: { icon: AdminIconName; label: string; value: string; accent?: boolean }) { return <div className={accent ? "accent" : ""}><span><AdminIcon name={icon} />{label}</span><strong>{value}</strong></div>; }

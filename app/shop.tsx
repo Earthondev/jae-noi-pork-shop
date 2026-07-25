@@ -423,7 +423,7 @@ export function Shop() {
         </div>
       </section>
 
-      <footer><Image src={storefront.content.storeLogoUrl} alt={storefront.content.storeName} width={150} height={90} unoptimized={storefront.content.storeLogoUrl.startsWith("/media/")} /><p>โทรสั่งซื้อ / สอบถาม</p><div className="footer-phone-links" aria-label="เบอร์โทรร้านเจ๊น้อย"><a href={`tel:${storefront.content.phonePrimary.replace(/[^\d+]/g, "")}`}>{storefront.content.phonePrimary}</a><a href={`tel:${storefront.content.phoneSecondary.replace(/[^\d+]/g, "")}`}>{storefront.content.phoneSecondary}</a></div><Link href="/track">ติดตามออเดอร์</Link></footer>
+      <footer><Image src={storefront.content.storeLogoUrl} alt={storefront.content.storeName} width={150} height={90} /><p>โทรสั่งซื้อ / สอบถาม</p><div className="footer-phone-links" aria-label="เบอร์โทรร้านเจ๊น้อย"><a href={`tel:${storefront.content.phonePrimary.replace(/[^\d+]/g, "")}`}>{storefront.content.phonePrimary}</a><a href={`tel:${storefront.content.phoneSecondary.replace(/[^\d+]/g, "")}`}>{storefront.content.phoneSecondary}</a></div><Link href="/track">ติดตามออเดอร์</Link></footer>
 
       {cartOpen && (
         <CartDrawer

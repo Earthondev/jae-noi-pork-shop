@@ -28,6 +28,23 @@ interface ExecutionContext {
 // dangerouslyAllowSVG: true in next.config.js and uncomment below:
 // const imageConfig: ImageConfig = { dangerouslyAllowSVG: true };
 
+// R2-backed reads for /media/products/* and /media/brand/*, shared by the
+// direct same-origin route below and by the image optimizer's fetchAsset —
+// the optimizer's own ASSETS binding only serves prebuilt static files, so
+// it can't reach these dynamically-served R2 objects on its own.
+async function fetchProductMedia(pathname: string, env: Env): Promise<Response> {
+  const key = pathname.slice("/media/".length);
+  if (!key || key.includes("..") || key.startsWith("/")) return new Response(null, { status: 400 });
+  if (!env.PRODUCT_MEDIA) return new Response(null, { status: 503 });
+  const object = await env.PRODUCT_MEDIA.get(key);
+  if (!object) return new Response(null, { status: 404 });
+  const headers = new Headers();
+  object.writeHttpMetadata(headers);
+  headers.set("etag", object.httpEtag);
+  headers.set("x-content-type-options", "nosniff");
+  return new Response(object.body, { headers });
+}
+
 const worker = {
   async fetch(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
     const url = new URL(request.url);
@@ -61,7 +78,13 @@ const worker = {
       }
       const allowedWidths = [...DEFAULT_DEVICE_SIZES, ...DEFAULT_IMAGE_SIZES];
       return handleImageOptimization(request, {
-        fetchAsset: (path) => assets.fetch(new Request(new URL(path, request.url))),
+        fetchAsset: (path) => {
+          const assetUrl = new URL(path, request.url);
+          if (assetUrl.pathname.startsWith("/media/products/") || assetUrl.pathname.startsWith("/media/brand/")) {
+            return fetchProductMedia(assetUrl.pathname, env);
+          }
+          return assets.fetch(new Request(assetUrl));
+        },
         transformImage: async (body, { width, format, quality }) => {
           const result = await images.input(body).transform(width > 0 ? { width } : {}).output({ format, quality });
           return result.response();

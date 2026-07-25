@@ -15,7 +15,7 @@ export function SiteHeader({ cartCount, onOpenCart, storeName, storeLogoUrl }: S
     <header className="site-header">
       <a className="brand" href="#top" aria-label="กลับไปด้านบน">
         <span className="brand-mark">
-          <Image src={storeLogoUrl} alt="" width={80} height={80} priority unoptimized={storeLogoUrl.startsWith("/media/")} />
+          <Image src={storeLogoUrl} alt="" width={80} height={80} priority />
         </span>
         <span className="brand-name">{storeName}</span>
       </a>

@@ -87,7 +87,7 @@ export function Hero({ storeLoading, rounds, nextRound, content }: HeroProps) {
         </div>
         <div className="hero-image-wrap">
           <div className="hero-image-inner">
-            <Image className="hero-image" src={content.storeCoverUrl} alt="ภาพปกหน้าร้านเจ๊น้อย" width={900} height={900} priority unoptimized={content.storeCoverUrl.startsWith("/media/")} />
+            <Image className="hero-image" src={content.storeCoverUrl} alt="ภาพปกหน้าร้านเจ๊น้อย" width={900} height={900} priority />
           </div>
           <p className="hero-stamp">สดจริง<br /><strong>จากร้าน</strong></p>
         </div>

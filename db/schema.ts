@@ -70,6 +70,7 @@ export const orders = sqliteTable("orders", {
 }, (table) => [
   index("orders_phone_created_at_idx").on(table.phoneNormalized, table.createdAt),
   index("orders_created_at_idx").on(table.createdAt),
+  index("orders_round_id_idx").on(table.roundId),
 ]);
 
 export const orderItems = sqliteTable("order_items", {

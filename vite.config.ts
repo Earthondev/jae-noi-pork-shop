@@ -2,6 +2,11 @@ import vinext from "vinext";
 import { defineConfig } from "vite";
 import hostingConfig from "./.openai/hosting.json";
 import { sites } from "./build/sites-vite-plugin";
+import {
+  LOCAL_REMOTE_D1_DATABASE_ID,
+  LOCAL_REMOTE_D1_DATABASE_NAME,
+  isRemoteStagingD1Enabled,
+} from "./scripts/local-remote-d1.mjs";
 
 const SITE_CREATOR_PLACEHOLDER_DATABASE_ID =
   "00000000-0000-4000-8000-000000000000";
@@ -21,6 +26,7 @@ export default defineConfig(async ({ command }) => {
   process.env.MINIFLARE_REGISTRY_PATH ??= ".wrangler/registry";
 
   const isLocalDevelopment = command === "serve";
+  const useRemoteStagingD1 = isLocalDevelopment && isRemoteStagingD1Enabled();
   const isCloudflareDeployment =
     command === "build" && process.env.DEPLOY_TARGET === "cloudflare";
   const customDomain = process.env.CLOUDFLARE_CUSTOM_DOMAIN?.trim();
@@ -83,8 +89,13 @@ export default defineConfig(async ({ command }) => {
       ? [
           {
             binding: d1,
-            database_name: "site-creator-d1",
-            database_id: SITE_CREATOR_PLACEHOLDER_DATABASE_ID,
+            database_name: useRemoteStagingD1
+              ? LOCAL_REMOTE_D1_DATABASE_NAME
+              : "site-creator-d1",
+            database_id: useRemoteStagingD1
+              ? LOCAL_REMOTE_D1_DATABASE_ID
+              : SITE_CREATOR_PLACEHOLDER_DATABASE_ID,
+            remote: useRemoteStagingD1,
           },
         ]
       : [],

@@ -172,14 +172,32 @@ export function useStorefront({
   useEffect(() => {
     mountedRef.current = true;
     void refreshStorefront();
-    const interval = window.setInterval(() => void refreshStorefront(), 30_000);
-    const handleVisibility = () => {
-      if (document.visibilityState === "visible") void refreshStorefront();
+    // Paused while the tab is hidden — a backgrounded tab has no reason to
+    // keep polling every 30s, and refreshing immediately on becoming visible
+    // again already covers the "came back after a while" case.
+    let interval: number | null = null;
+    const startInterval = () => {
+      if (interval !== null) return;
+      interval = window.setInterval(() => void refreshStorefront(), 30_000);
     };
+    const stopInterval = () => {
+      if (interval === null) return;
+      window.clearInterval(interval);
+      interval = null;
+    };
+    const handleVisibility = () => {
+      if (document.visibilityState === "visible") {
+        void refreshStorefront();
+        startInterval();
+      } else {
+        stopInterval();
+      }
+    };
+    if (document.visibilityState === "visible") startInterval();
     document.addEventListener("visibilitychange", handleVisibility);
     return () => {
       mountedRef.current = false;
-      window.clearInterval(interval);
+      stopInterval();
       document.removeEventListener("visibilitychange", handleVisibility);
     };
   }, [refreshStorefront]);

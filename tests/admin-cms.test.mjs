@@ -74,6 +74,20 @@ test("CMS domain validation is returned as an input error instead of an outage",
   );
 });
 
+test("product sorting supports smooth touch, mouse, and keyboard reordering", async () => {
+  const dashboard = await readFile(new URL("../app/admin/dashboard.tsx", import.meta.url), "utf8");
+  const styles = await readFile(new URL("../app/globals.css", import.meta.url), "utf8");
+
+  assert.match(dashboard, /useSensor\(TouchSensor/);
+  assert.match(dashboard, /useSensor\(MouseSensor/);
+  assert.match(dashboard, /useSensor\(KeyboardSensor/);
+  assert.match(dashboard, /sortableKeyboardCoordinates/);
+  assert.match(dashboard, /<DragOverlay/);
+  assert.match(dashboard, /autoScroll/);
+  assert.match(styles, /\.admin-product-drag-overlay/);
+  assert.match(styles, /touch-action: none/);
+});
+
 test("admin order query limits item reads to the visible 500 orders", async () => {
   const repository = await readFile(new URL("../db/order-repository.ts", import.meta.url), "utf8");
   assert.match(repository, /INNER JOIN \(SELECT id FROM orders ORDER BY created_at DESC LIMIT 500\)/);

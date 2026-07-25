@@ -1,3 +1,5 @@
+import Image from "next/image";
+import { useState } from "react";
 import { PRODUCT_IMAGE_PLACEHOLDER } from "../../../lib/product-catalog";
 import type { Product } from "../../_hooks/use-storefront";
 
@@ -12,23 +14,24 @@ export function ProductCard({ product, quantity, index, onUpdateQuantity }: Prod
   const isPurchasable = product.status === "เปิดขาย" && product.price !== null;
   const badge = product.status === "ปิดชั่วคราว" ? "ปิดรับชั่วคราว" : product.status === "รอข้อมูล" ? "รอข้อมูล" : product.unit;
   const statusClass = product.status === "เปิดขาย" ? "open" : product.status === "ปิดชั่วคราว" ? "closed" : "waiting";
+  const [imageSrc, setImageSrc] = useState(product.image);
+  const [trackedImage, setTrackedImage] = useState(product.image);
+  if (product.image !== trackedImage) {
+    setTrackedImage(product.image);
+    setImageSrc(product.image);
+  }
 
   return (
     <article className={`product-card status-${statusClass}`} style={{ "--delay": `${index * 90}ms` } as React.CSSProperties}>
       <div className="product-image-wrap">
-        {/* Product URLs are server-validated against the dedicated public R2 media origin. */}
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img
-          src={product.image}
+        <Image
+          src={imageSrc}
           alt={product.name}
           width={760}
           height={680}
-          loading={index === 0 ? "eager" : "lazy"}
-          decoding="async"
-          onError={(event) => {
-            event.currentTarget.onerror = null;
-            event.currentTarget.src = PRODUCT_IMAGE_PLACEHOLDER;
-          }}
+          sizes="(max-width: 600px) 50vw, 380px"
+          priority={index === 0}
+          onError={() => setImageSrc(PRODUCT_IMAGE_PLACEHOLDER)}
         />
         <span className={`product-badge${product.status === "ปิดชั่วคราว" ? " closed" : ""}`}>{badge}</span>
         {product.status === "ปิดชั่วคราว" && <span className="product-closed-overlay" aria-hidden="true">พักขาย</span>}

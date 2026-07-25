@@ -1,10 +1,12 @@
 import { env } from "cloudflare:workers";
+import { checkRateLimit } from "./rate-limit";
 import { reportServerError } from "./server-monitoring";
 
 type SlipOkBindings = {
   SLIPOK_ENABLED?: string;
   SLIPOK_BRANCH_ID?: string;
   SLIPOK_API_KEY?: string;
+  UPLOADS?: R2Bucket;
 };
 
 type SlipOkResponse = {
@@ -27,11 +29,8 @@ export type SlipVerificationResult =
   | { status: "pending"; reason: string }
   | { status: "rejected"; reason: string };
 
-type RateLimitEntry = { count: number; resetsAt: number };
-
 const RATE_LIMIT_WINDOW_MS = 15 * 60 * 1000;
 const RATE_LIMIT_MAX_ATTEMPTS = 5;
-const attemptsByClient = new Map<string, RateLimitEntry>();
 
 function bindings(): SlipOkBindings {
   return env as unknown as SlipOkBindings;
@@ -44,16 +43,16 @@ function configuration(): { branchId: string; apiKey: string } | null {
   return values.SLIPOK_ENABLED === "true" && branchId && apiKey ? { branchId, apiKey } : null;
 }
 
-function canAttempt(clientKey: string): boolean {
-  const now = Date.now();
-  const current = attemptsByClient.get(clientKey);
-  if (!current || current.resetsAt <= now) {
-    attemptsByClient.set(clientKey, { count: 1, resetsAt: now + RATE_LIMIT_WINDOW_MS });
-    return true;
-  }
-  if (current.count >= RATE_LIMIT_MAX_ATTEMPTS) return false;
-  current.count += 1;
-  return true;
+// Backed by R2 (via the shared checkRateLimit helper) instead of an
+// in-memory Map — Workers isolates are short-lived and requests for the
+// same client can land on different isolates, so a plain in-process Map
+// never reliably enforced this cap. No UPLOADS binding means we can't
+// verify the cap, so fail closed to a "pending"/manual-review outcome
+// rather than risk unbounded calls to the paid SlipOK API.
+async function canAttempt(clientKey: string): Promise<boolean> {
+  const uploads = bindings().UPLOADS;
+  if (!uploads) return false;
+  return checkRateLimit(uploads, "slipok-verify", clientKey, { windowMs: RATE_LIMIT_WINDOW_MS, max: RATE_LIMIT_MAX_ATTEMPTS });
 }
 
 function safeReason(code: number | undefined): SlipVerificationResult {
@@ -84,7 +83,7 @@ export async function verifySlipWithSlipOk(
 ): Promise<SlipVerificationResult> {
   const config = configuration();
   if (!config) return { status: "disabled" };
-  if (!canAttempt(clientKey)) {
+  if (!(await canAttempt(clientKey))) {
     return { status: "pending", reason: "มีการตรวจสลิปถี่เกินไป ร้านจะตรวจสอบให้ภายหลัง" };
   }
 

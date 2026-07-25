@@ -134,8 +134,13 @@ export async function reorderAdminProducts(orderedIds: string[]): Promise<CmsMut
   const remainder = allIds.filter((id) => !orderedSet.has(id));
   const finalOrder = [...orderedIds, ...remainder];
   const now = new Date().toISOString();
-  await db.batch(finalOrder.map((id, index) => db.prepare("UPDATE products SET sort_order=?,version=version+1,updated_at=? WHERE id=?").bind(-(index + 1), now, id)));
-  await db.batch(finalOrder.map((id, index) => db.prepare("UPDATE products SET sort_order=?,updated_at=? WHERE id=?").bind(index + 1, now, id)));
+  // Both passes run in a single db.batch() call — one transaction — so an
+  // interruption can never leave the table stuck at the negative
+  // placeholder values from an incomplete first pass.
+  await db.batch([
+    ...finalOrder.map((id, index) => db.prepare("UPDATE products SET sort_order=?,version=version+1,updated_at=? WHERE id=?").bind(-(index + 1), now, id)),
+    ...finalOrder.map((id, index) => db.prepare("UPDATE products SET sort_order=?,updated_at=? WHERE id=?").bind(index + 1, now, id)),
+  ]);
   return "updated";
 }
 
