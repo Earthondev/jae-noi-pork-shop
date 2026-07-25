@@ -332,10 +332,10 @@ img { display: block; }
   grid-template-columns: 48px 1fr;
   align-items: center;
   gap: 16px;
-  border: 1px solid var(--line);
+  border: 1.5px solid var(--red-600);
   border-radius: var(--radius-md);
   background: var(--white);
-  box-shadow: var(--shadow-md);
+  box-shadow: var(--shadow-lg);
 }
 .round-status-icon {
   width: 44px;
@@ -343,11 +343,15 @@ img { display: block; }
   display: grid;
   place-items: center;
   border-radius: 50%;
-  background: rgba(181, 21, 25, 0.08);
+  background: rgba(181, 21, 25, 0.14);
   color: var(--red-700);
   font-size: 1.2rem;
   font-weight: 900;
 }
+/* Open round = green (go/available), closed or no round = red (stop/unavailable) */
+.round-callout--open { border-color: var(--success); }
+.round-callout--open .round-status-icon { background: rgba(74, 112, 67, 0.14); color: var(--success); }
+.round-callout--open strong { color: var(--success); }
 .round-callout.is-loading { display: flex; justify-content: center; }
 .round-callout strong {
   display: block;
@@ -372,51 +376,6 @@ img { display: block; }
 }
 .round-skeleton-title { width: 50%; height: 16px; margin-bottom: 6px; }
 .round-skeleton-detail { width: 75%; }
-
-/* Phone Strip Header & Quick links */
-.phone-strip {
-  margin-top: 16px;
-  padding: 32px 16px;
-  display: grid;
-  gap: 20px;
-  background: var(--cream-100);
-  position: relative;
-  z-index: 4;
-}
-.phone-strip-copy { display: flex; align-items: center; gap: 14px; }
-.phone-strip-icon {
-  width: 46px;
-  height: 46px;
-  display: grid;
-  place-items: center;
-  flex: 0 0 auto;
-  border-radius: 50%;
-  background: var(--red-700);
-  color: white;
-  font-size: 1.2rem;
-  box-shadow: 0 4px 12px rgba(181, 21, 25, 0.2);
-}
-.phone-strip-icon svg { width: 22px; height: 22px; fill: currentColor; }
-.phone-strip h2 { color: var(--ink); font-size: 1.05rem; font-weight: 800; margin: 0; }
-.phone-strip p { margin: 4px 0 0; color: var(--muted); font-size: 0.8rem; line-height: 1.4; }
-.phone-strip-links { display: grid; grid-template-columns: 1fr; gap: 10px; }
-.phone-strip-links a {
-  min-height: 60px;
-  padding: 10px 16px;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  border: 1px solid var(--line);
-  border-radius: var(--radius-sm);
-  background: var(--white);
-  color: var(--red-800);
-  text-decoration: none;
-  box-shadow: var(--shadow-sm);
-  transition: all 0.2s ease;
-}
-.phone-strip-links a:active { transform: scale(0.97); background: var(--cream-50); }
-.phone-strip-links span { color: var(--muted); font-size: 0.72rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; }
-.phone-strip-links strong { font-family: var(--font-body), sans-serif; font-size: 1.05rem; font-weight: 800; }
 
 /* Horizontal scrolling categories bar */
 .categories-container {
@@ -641,30 +600,38 @@ img { display: block; }
 
 /* Order Flow section */
 .order-flow {
-  margin: 0 16px 40px;
-  padding: 24px;
-  background: linear-gradient(135deg, var(--red-950) 0%, var(--red-800) 100%);
-  color: white;
-  border-radius: var(--radius-md);
+  margin: 28px 16px 40px;
   display: grid;
-  gap: 20px;
-  box-shadow: var(--shadow-md);
+  gap: 14px;
 }
-.order-flow > div { display: grid; grid-template-columns: 40px 1fr; column-gap: 12px; align-items: center; }
+.order-flow > div {
+  display: grid;
+  grid-template-columns: 48px 1fr;
+  column-gap: 14px;
+  align-items: center;
+  padding: 20px;
+  background: var(--white);
+  border: 1.5px solid var(--red-600);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-sm);
+  transition: box-shadow 0.2s ease, transform 0.2s ease;
+}
+.order-flow > div:hover { box-shadow: var(--shadow-md); transform: translateY(-2px); }
 .order-flow span {
   grid-row: 1 / 3;
-  width: 40px;
-  height: 40px;
+  width: 48px;
+  height: 48px;
   display: grid;
   place-items: center;
   background: var(--gold-500);
   color: var(--red-950);
   border-radius: 50%;
   font-weight: 800;
-  font-size: 1.05rem;
+  font-size: 1.1rem;
+  box-shadow: 0 4px 10px rgba(212, 160, 23, 0.35);
 }
-.order-flow h3 { margin: 0; font-size: 0.98rem; font-weight: 800; }
-.order-flow p { margin: 2px 0 0; color: rgba(255, 255, 255, 0.75); font-size: 0.8rem; line-height: 1.4; }
+.order-flow h3 { margin: 0; color: var(--ink); font-size: 1rem; font-weight: 800; }
+.order-flow p { margin: 2px 0 0; color: var(--muted); font-size: 0.82rem; line-height: 1.4; }
 
 /* Story section */
 .story {
@@ -1704,7 +1671,6 @@ footer .footer-phone-links a:active { background: rgba(255, 255, 255, 0.1); }
   .site-header { padding-inline: 8px; gap: 6px; }
   .brand-name { display: none; }
   .cart-button { padding-left: 8px; }
-  .phone-strip-links { grid-template-columns: 1fr; }
   .closed-round-phone-links { grid-template-columns: 1fr; }
   .track-order-summary { padding-inline: 14px; gap: 8px; }
   .track-order-summary strong { font-size: 0.82rem; }
@@ -1733,17 +1699,14 @@ footer .footer-phone-links a:active { background: rgba(255, 255, 255, 0.1); }
   .hero-stamp { left: -10%; top: 10%; }
   
   .preorder-status { width: min(600px, calc(100% - 40px)); margin: -48px auto 0; }
-  
-  .phone-strip { padding: 24px 6vw; grid-template-columns: auto minmax(360px, 500px); align-items: center; justify-content: space-between; }
-  .phone-strip-links { grid-template-columns: 1fr 1fr; }
-  
+
   .products-section { padding: 48px 6vw; }
   .section-heading { display: flex; justify-content: space-between; align-items: flex-end; gap: 32px; }
   .section-heading > p { max-width: 360px; }
   .categories-container { padding-inline: 6vw; }
   .product-grid { grid-template-columns: repeat(3, 1fr); gap: 24px; }
   
-  .order-flow { margin: 0 6vw 48px; grid-template-columns: repeat(3, 1fr); padding: 30px; }
+  .order-flow { margin: 40px 6vw 48px; grid-template-columns: repeat(3, 1fr); gap: 20px; }
   .story { margin: 0 6vw 48px; display: grid; grid-template-columns: 1fr 1fr; }
   .story > img { height: 100%; min-height: 480px; }
   .story > div { align-self: center; padding: 5vw; }
@@ -2001,6 +1964,23 @@ footer .footer-phone-links a:active { background: rgba(255, 255, 255, 0.1); }
 .admin-tracking-control > span:last-child { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 7px; }
 .admin-tracking-control button { min-width: 82px; min-height: 46px; padding: 0 10px; border: 0; border-radius: 10px; background: var(--red-700); color: white; font-size: .78rem; font-weight: 800; }
 .admin-tracking-control button:disabled { background: #c8bbb0; cursor: not-allowed; }
+.admin-status-save-bar {
+  margin-top: 2px;
+  padding: 10px 12px;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 10px;
+  border: 1px solid #f0d998;
+  border-radius: 12px;
+  background: #fff8e6;
+  animation: admin-reveal .18s ease-out both;
+}
+.admin-status-save-bar > span { flex: 1 1 160px; color: #7a5600; font-size: .74rem; font-weight: 800; }
+.admin-status-discard-btn, .admin-status-save-btn { min-height: 38px; padding: 0 14px; border-radius: 10px; font-size: .76rem; font-weight: 800; }
+.admin-status-discard-btn { border: 1px solid var(--line); background: white; color: var(--muted); }
+.admin-status-save-btn { border: 0; background: var(--red-700); color: white; }
+.admin-status-save-btn:disabled, .admin-status-discard-btn:disabled { opacity: .55; cursor: wait; }
 .admin-empty { padding: 50px 20px; text-align: center; color: var(--muted); }
 
 @media (min-width: 800px) {
@@ -2090,15 +2070,6 @@ footer .footer-phone-links a:active { background: rgba(255, 255, 255, 0.1); }
 .admin-card-actions button:disabled { opacity: .35; cursor: not-allowed; }
 .admin-image-preview { min-height: 190px; position: relative; overflow: hidden; border: 1px solid var(--line); border-radius: 14px; background: var(--cream-100); }
 .admin-image-preview img { object-fit: cover; }
-/* .admin-edit-card's entrance animation uses `both` fill-mode, which keeps
-   its final translateY(0) transform applied forever after the animation
-   ends. Even though that's visually a no-op, a non-none transform on this
-   form still creates a new containing block for its position:fixed child
-   (.admin-sticky-save) — pinning the "unsaved changes" bar to the form's
-   box instead of the viewport, so it drifts away from the screen edge
-   whenever the mobile keyboard scrolls the form. Reset fill-mode to none so
-   the transform cleanly reverts to `none` once the entrance animation
-   finishes (same visual result, no lingering containing block). */
 .storefront-editor { display: grid; gap: 22px; animation-fill-mode: none; }
 .admin-form-group { padding-bottom: 20px; border-bottom: 1px solid var(--line); }
 .admin-form-group:last-of-type { padding-bottom: 0; border-bottom: 0; }
@@ -2257,9 +2228,16 @@ footer .footer-phone-links a:active { background: rgba(255, 255, 255, 0.1); }
 .admin-brand-upload { width: fit-content; min-height: 42px; padding: 0 12px; display: inline-flex; align-items: center; gap: 6px; border: 1px solid var(--admin-line); border-radius: 10px; background: var(--admin-surface); color: var(--admin-red); font-size: .72rem; }
 .admin-brand-upload svg { width: 16px; height: 16px; }
 .admin-brand-asset > input { width: 1px; height: 1px; position: absolute; overflow: hidden; clip: rect(0 0 0 0); }
-.admin-sticky-save { position: fixed; right: 16px; bottom: calc(88px + env(safe-area-inset-bottom)); left: 16px; z-index: 70; padding: 10px; display: grid; gap: 8px; border: 1px solid var(--admin-line); border-radius: 14px; background: rgb(255 253 249 / 95%); box-shadow: 0 10px 26px rgb(30 27 24 / 18%); backdrop-filter: blur(14px); transform: translateY(140%); opacity: 0; pointer-events: none; transition: transform .22s ease, opacity .18s ease; }
-.admin-sticky-save > span { color: var(--admin-muted); font-size: .68rem; font-weight: 800; text-align: center; }
-.admin-sticky-save.dirty { transform: translateY(0); opacity: 1; pointer-events: auto; }
+/* Used to be position:fixed to the viewport bottom so it was always
+   reachable without scrolling — but on mobile, opening the keyboard to edit
+   a field shrinks the visual viewport without moving a fixed element pinned
+   to the layout viewport, so the bar would drift up and land on top of
+   whatever field the admin was actively typing into. A plain block at the
+   end of the form avoids that entirely: it can only ever appear below the
+   fields, never over them, at the cost of needing a scroll to reach it. */
+.admin-sticky-save { margin-top: 10px; padding: 14px; display: grid; gap: 8px; border: 1px solid var(--admin-line); border-radius: 14px; background: var(--admin-surface-strong); }
+.admin-sticky-save > span { color: var(--admin-muted); font-size: .72rem; font-weight: 800; text-align: center; }
+.admin-sticky-save.dirty { border-color: #f0d998; background: #fff8e6; }
 .admin-sticky-save.dirty > span { color: #7a5600; }
 .admin-discard-button { min-height: 50px; border: 1px solid var(--admin-line); border-radius: 12px; background: white; color: var(--admin-muted); font-weight: 800; }
 .admin-discard-button:disabled { opacity: .55; cursor: wait; }
@@ -2291,8 +2269,7 @@ footer .footer-phone-links a:active { background: rgba(255, 255, 255, 0.1); }
   .admin-kpi-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); }
   .admin-round-summary > div { grid-template-columns: repeat(3, minmax(0, 1fr)); }
   .admin-brand-assets { grid-template-columns: minmax(180px, .45fr) minmax(280px, 1fr); }
-  .admin-sticky-save { grid-template-columns: 1fr auto auto; align-items: center; right: auto; left: 50%; width: min(900px, calc(100% - 40px)); transform: translateX(-50%) translateY(140%); }
-  .admin-sticky-save.dirty { transform: translateX(-50%) translateY(0); }
+  .admin-sticky-save { grid-template-columns: 1fr auto auto; align-items: center; }
   .admin-sticky-save > span { text-align: left; }
   .admin-sticky-save .admin-save-button { min-width: 220px; }
   .admin-dialog-actions { grid-template-columns: 1fr 1.25fr; }
@@ -2350,67 +2327,42 @@ footer .footer-phone-links a:active { background: rgba(255, 255, 255, 0.1); }
   margin-bottom: 12px;
   align-items: center;
 }
-.admin-view-toggle button.admin-sort-mode-btn.active {
-  background: var(--admin-red) !important;
-  color: #ffffff !important;
-}
-
-/* Sort mode list */
-.admin-sort-list {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  margin: 16px 0;
-}
-.admin-sort-item {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 14px 16px;
-  background: var(--admin-surface);
-  border: 1px solid var(--admin-line);
-  border-radius: 16px;
-  gap: 12px;
-}
-.sort-item-info {
-  display: flex;
-  flex-direction: column;
-  min-width: 0;
-}
-.sort-item-info strong {
-  font-size: 0.95rem;
-  color: var(--admin-red-dark);
-}
-.sort-item-info span {
-  font-size: 0.72rem;
-  color: var(--admin-muted);
-}
-.sort-item-actions {
-  display: flex;
-  gap: 6px;
-}
-.sort-arrow-btn {
-  height: 38px;
-  padding: 0 12px;
-  border-radius: 10px;
-  border: 1px solid var(--admin-line);
-  background: var(--admin-surface);
-  color: var(--admin-muted);
-  font-size: 0.75rem;
-  font-weight: 700;
-  cursor: pointer;
+/* Product reordering — press-and-hold the grip on a card, drag with @dnd-kit */
+.admin-sort-hint {
+  margin: 4px 0 12px;
   display: flex;
   align-items: center;
-  gap: 4px;
+  gap: 5px;
+  color: var(--admin-muted);
+  font-size: 0.76rem;
+  line-height: 1.5;
 }
-.sort-arrow-btn:hover:not(:disabled) {
-  background: #f5eae0;
-  color: var(--admin-red-dark);
+.admin-sort-hint svg { width: 14px; height: 14px; flex-shrink: 0; }
+.admin-product-card.is-dragging {
+  z-index: 5;
+  position: relative;
 }
-.sort-arrow-btn:disabled {
-  opacity: 0.4;
-  cursor: not-allowed;
+.admin-product-card.is-active-drag {
+  outline: 2px solid var(--admin-red);
+  outline-offset: -2px;
+  box-shadow: 0 14px 34px rgba(0, 0, 0, 0.45) !important;
 }
+.product-drag-handle {
+  width: 32px;
+  height: 96px;
+  flex: 0 0 auto;
+  display: grid;
+  place-items: center;
+  border: 0;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.06);
+  color: #999999;
+  cursor: grab;
+  touch-action: none;
+}
+.product-drag-handle:hover { background: rgba(255, 255, 255, 0.12); color: #ffffff; }
+.product-drag-handle:active { cursor: grabbing; }
+.admin-product-card.is-active-drag .product-drag-handle { color: var(--admin-red); }
 
 .admin-archived-toggle {
   width: 100%;
@@ -2813,12 +2765,21 @@ footer .footer-phone-links a:active { background: rgba(255, 255, 255, 0.1); }
   }
 }
 
+.add-product-mobile-btn {
+  display: none;
+}
+
 @media (max-width: 800px) {
   .admin-mobile-fab {
     display: flex;
   }
   .add-product-top-btn {
     display: none !important;
+  }
+  .add-product-mobile-btn {
+    display: inline-flex;
+    width: 100%;
+    margin-bottom: 13px;
   }
 }
 

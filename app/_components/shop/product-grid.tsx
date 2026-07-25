@@ -25,7 +25,6 @@ export function ProductGrid({
     <section className="products-section" id="products">
       <div className="section-heading">
         <div>
-          <p className="eyebrow">เลือกของอร่อย</p>
           <h2>สินค้าของเจ๊น้อย</h2>
         </div>
         <p>กดเพิ่มลงตะกร้าได้ทันที รายการที่ข้อมูลยังไม่ครบจะแสดง “รอข้อมูล” อย่างชัดเจน</p>

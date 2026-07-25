@@ -187,104 +187,120 @@ export function CartDrawer({ drawerRef, onClose, cart, checkout, storefront, ord
     const canvas = document.createElement("canvas");
     canvas.width = 1080;
     canvas.height = 1350;
-    const context = canvas.getContext("2d");
-    if (!context) {
-      setQrSaveStatus("error");
-      return;
+    // iOS Safari resolves canvas web fonts and text direction unreliably
+    // for a canvas that's never been part of the document — it can silently
+    // fall back to a system font with different Thai glyph widths, which
+    // throws off every measureText-based centering below (Android/Chrome
+    // doesn't have this quirk, which is why this only showed up on iPhone).
+    // Parking it off-screen in the DOM while we draw avoids that.
+    canvas.style.position = "fixed";
+    canvas.style.left = "-9999px";
+    canvas.style.top = "0";
+    document.body.appendChild(canvas);
+    try {
+      const context = canvas.getContext("2d");
+      if (!context) {
+        setQrSaveStatus("error");
+        return;
+      }
+      context.direction = "ltr";
+      context.textBaseline = "alphabetic";
+      context.textAlign = "left";
+
+      context.fillStyle = "#FAF9F6";
+      context.fillRect(0, 0, canvas.width, canvas.height);
+
+      context.fillStyle = "#7A1F1F";
+      context.fillRect(0, 0, canvas.width, 200);
+      context.fillStyle = "#D4A017";
+      context.fillRect(0, 200, canvas.width, 12);
+
+      context.fillStyle = "#FFFFFF";
+      fitFontSize(context, storefront.storeName, 920, 800, 58, 32);
+      fillTextCentered(context, storefront.storeName, canvas.width / 2, 96);
+      context.font = '700 32px "Noto Sans Thai", sans-serif';
+      context.fillStyle = "#F5E8C7";
+      fillTextCentered(context, "พร้อมเพย์ · สแกนเพื่อชำระเงิน", canvas.width / 2, 160);
+
+      context.fillStyle = "#FFFFFF";
+      fillRoundedRect(context, 64, 252, 952, 940, 44);
+      context.strokeStyle = "#EBD6C8";
+      context.lineWidth = 4;
+      strokeRoundedRect(context, 64, 252, 952, 940, 44);
+
+      context.fillStyle = "#FFFFFF";
+      fillRoundedRect(context, 250, 292, 580, 580, 28);
+      context.strokeStyle = "#D4A017";
+      context.lineWidth = 5;
+      strokeRoundedRect(context, 250, 292, 580, 580, 28);
+      context.drawImage(qrCanvas, 280, 322, 520, 520);
+
+      context.fillStyle = "#6E5855";
+      context.font = '600 26px "Noto Sans Thai", sans-serif';
+      fillTextCentered(context, "สแกนด้วยแอปธนาคารใดก็ได้", canvas.width / 2, 918);
+
+      // The pill background is sized to the actual measured text width, not a
+      // fixed guess — a fixed-width pill let long amounts spill past its
+      // right edge onto the white card behind it, where white-on-white text
+      // simply vanished instead of visibly clipping.
+      const amountText = `ยอดชำระ ${order.orderTotal.toLocaleString("th-TH")} บาท`;
+      const amountPaddingX = 56;
+      const amountMaxWidth = 880;
+      fitFontSize(context, amountText, amountMaxWidth - amountPaddingX * 2, 800, 44, 28);
+      const amountTextWidth = context.measureText(amountText).width;
+      const pillWidth = computePillWidth(amountTextWidth, { paddingX: amountPaddingX, minWidth: 320, maxWidth: amountMaxWidth });
+      context.fillStyle = "#7A1F1F";
+      fillRoundedRect(context, (canvas.width - pillWidth) / 2, 946, pillWidth, 92, 46);
+      context.fillStyle = "#FFFFFF";
+      fillTextCentered(context, amountText, canvas.width / 2, 1006);
+
+      context.fillStyle = "#6E5855";
+      context.font = '600 26px "Noto Sans Thai", sans-serif';
+      fillTextCentered(context, "ชื่อบัญชีพร้อมเพย์", canvas.width / 2, 1082);
+      context.fillStyle = "#2A1816";
+      const promptPayNameText = storefront.promptPayName ?? "ร้านเจ๊น้อย";
+      fitFontSize(context, promptPayNameText, 820, 800, 40, 24);
+      fillTextCentered(context, promptPayNameText, canvas.width / 2, 1130);
+      context.fillStyle = "#6E5855";
+      context.font = '700 30px "Noto Sans Thai", sans-serif';
+      fillTextCentered(context, formatPromptPayId(storefront.promptPayId), canvas.width / 2, 1172);
+
+      context.fillStyle = "#7A1F1F";
+      context.font = '800 34px "Noto Sans Thai", sans-serif';
+      fillTextCentered(context, "อร่อยจากใจเจ๊น้อย · ขอบคุณที่อุดหนุนค่ะ", canvas.width / 2, 1248);
+
+      context.fillStyle = "#6E5855";
+      context.font = '600 24px "Noto Sans Thai", sans-serif';
+      fillTextCentered(context, "กรุณาตรวจสอบชื่อผู้รับและยอดเงินก่อนยืนยันการโอน", canvas.width / 2, 1312);
+
+      const filename = `promptpay-jae-noi-${order.orderTotal}.png`;
+      const blob = dataUrlToBlob(canvas.toDataURL("image/png"));
+      const file = new File([blob], filename, { type: "image/png" });
+      const shareFiles = { files: [file] };
+
+      if (navigator.share && navigator.canShare?.(shareFiles)) {
+        void navigator.share({
+          ...shareFiles,
+          title: `QR พร้อมเพย์ ${storefront.storeName}`,
+          text: `ยอดชำระ ${order.orderTotal.toLocaleString("th-TH")} บาท`,
+        }).then(() => {
+          showQrSaveSuccess(setQrSaveStatus);
+        }).catch((error: unknown) => {
+          if (error instanceof DOMException && error.name === "AbortError") {
+            setQrSaveStatus("idle");
+            return;
+          }
+          downloadBlob(blob, filename);
+          showQrSaveSuccess(setQrSaveStatus);
+        });
+        return;
+      }
+
+      downloadBlob(blob, filename);
+      showQrSaveSuccess(setQrSaveStatus);
+    } finally {
+      document.body.removeChild(canvas);
     }
-
-    context.fillStyle = "#FAF9F6";
-    context.fillRect(0, 0, canvas.width, canvas.height);
-
-    context.fillStyle = "#7A1F1F";
-    context.fillRect(0, 0, canvas.width, 200);
-    context.fillStyle = "#D4A017";
-    context.fillRect(0, 200, canvas.width, 12);
-
-    context.textAlign = "center";
-    context.fillStyle = "#FFFFFF";
-    fitFontSize(context, storefront.storeName, 920, 800, 58, 32);
-    context.fillText(storefront.storeName, canvas.width / 2, 96);
-    context.font = '700 32px "Noto Sans Thai", sans-serif';
-    context.fillStyle = "#F5E8C7";
-    context.fillText("พร้อมเพย์ · สแกนเพื่อชำระเงิน", canvas.width / 2, 160);
-
-    context.fillStyle = "#FFFFFF";
-    fillRoundedRect(context, 64, 252, 952, 940, 44);
-    context.strokeStyle = "#EBD6C8";
-    context.lineWidth = 4;
-    strokeRoundedRect(context, 64, 252, 952, 940, 44);
-
-    context.fillStyle = "#FFFFFF";
-    fillRoundedRect(context, 250, 292, 580, 580, 28);
-    context.strokeStyle = "#D4A017";
-    context.lineWidth = 5;
-    strokeRoundedRect(context, 250, 292, 580, 580, 28);
-    context.drawImage(qrCanvas, 280, 322, 520, 520);
-
-    context.fillStyle = "#6E5855";
-    context.font = '600 26px "Noto Sans Thai", sans-serif';
-    context.fillText("สแกนด้วยแอปธนาคารใดก็ได้", canvas.width / 2, 918);
-
-    // The pill background is sized to the actual measured text width, not a
-    // fixed guess — a fixed-width pill let long amounts spill past its
-    // right edge onto the white card behind it, where white-on-white text
-    // simply vanished instead of visibly clipping.
-    const amountText = `ยอดชำระ ${order.orderTotal.toLocaleString("th-TH")} บาท`;
-    const amountPaddingX = 56;
-    const amountMaxWidth = 880;
-    fitFontSize(context, amountText, amountMaxWidth - amountPaddingX * 2, 800, 44, 28);
-    const amountTextWidth = context.measureText(amountText).width;
-    const pillWidth = computePillWidth(amountTextWidth, { paddingX: amountPaddingX, minWidth: 320, maxWidth: amountMaxWidth });
-    context.fillStyle = "#7A1F1F";
-    fillRoundedRect(context, (canvas.width - pillWidth) / 2, 946, pillWidth, 92, 46);
-    context.fillStyle = "#FFFFFF";
-    context.fillText(amountText, canvas.width / 2, 1006);
-
-    context.fillStyle = "#6E5855";
-    context.font = '600 26px "Noto Sans Thai", sans-serif';
-    context.fillText("ชื่อบัญชีพร้อมเพย์", canvas.width / 2, 1082);
-    context.fillStyle = "#2A1816";
-    const promptPayNameText = storefront.promptPayName ?? "ร้านเจ๊น้อย";
-    fitFontSize(context, promptPayNameText, 820, 800, 40, 24);
-    context.fillText(promptPayNameText, canvas.width / 2, 1130);
-    context.fillStyle = "#6E5855";
-    context.font = '700 30px "Noto Sans Thai", sans-serif';
-    context.fillText(formatPromptPayId(storefront.promptPayId), canvas.width / 2, 1172);
-
-    context.fillStyle = "#7A1F1F";
-    context.font = '800 34px "Noto Sans Thai", sans-serif';
-    context.fillText("อร่อยจากใจเจ๊น้อย · ขอบคุณที่อุดหนุนค่ะ", canvas.width / 2, 1248);
-
-    context.fillStyle = "#6E5855";
-    context.font = '600 24px "Noto Sans Thai", sans-serif';
-    context.fillText("กรุณาตรวจสอบชื่อผู้รับและยอดเงินก่อนยืนยันการโอน", canvas.width / 2, 1312);
-
-    const filename = `promptpay-jae-noi-${order.orderTotal}.png`;
-    const blob = dataUrlToBlob(canvas.toDataURL("image/png"));
-    const file = new File([blob], filename, { type: "image/png" });
-    const shareFiles = { files: [file] };
-
-    if (navigator.share && navigator.canShare?.(shareFiles)) {
-      void navigator.share({
-        ...shareFiles,
-        title: `QR พร้อมเพย์ ${storefront.storeName}`,
-        text: `ยอดชำระ ${order.orderTotal.toLocaleString("th-TH")} บาท`,
-      }).then(() => {
-        showQrSaveSuccess(setQrSaveStatus);
-      }).catch((error: unknown) => {
-        if (error instanceof DOMException && error.name === "AbortError") {
-          setQrSaveStatus("idle");
-          return;
-        }
-        downloadBlob(blob, filename);
-        showQrSaveSuccess(setQrSaveStatus);
-      });
-      return;
-    }
-
-    downloadBlob(blob, filename);
-    showQrSaveSuccess(setQrSaveStatus);
   };
 
   return (
@@ -649,6 +665,16 @@ function strokeRoundedRect(
 ) {
   roundedRectPath(context, x, y, width, height, radius);
   context.stroke();
+}
+
+// iOS Safari has been observed drawing fillText with textAlign "center" at
+// the wrong x position on this canvas (text runs off the right edge instead
+// of centering) while Android/desktop render it correctly — measuring the
+// text ourselves and drawing with the default left alignment sidesteps
+// whatever WebKit is getting wrong about "center" here.
+function fillTextCentered(context: CanvasRenderingContext2D, text: string, centerX: number, y: number) {
+  const width = context.measureText(text).width;
+  context.fillText(text, centerX - width / 2, y);
 }
 
 function formatFileSize(bytes: number): string {

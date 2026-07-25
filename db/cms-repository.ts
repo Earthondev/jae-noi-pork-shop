@@ -115,6 +115,30 @@ export async function moveAdminProduct(id: string, direction: "up" | "down", exp
   return "updated";
 }
 
+// Renumbers sort_order for the given (active) products in the order given,
+// then appends every other product (e.g. archived ones the caller didn't
+// include) after them in their existing relative order — so a drag-reorder
+// of the visible list can never collide with `products_sort_order_idx`'s
+// unique constraint on rows it didn't touch. Two passes (negative, then
+// final) for the same reason moveAdminProduct does it: renumbering in place
+// would collide with itself mid-batch since sort_order must stay unique at
+// every step, not just at the end.
+export async function reorderAdminProducts(orderedIds: string[]): Promise<CmsMutationResult> {
+  const { db } = bindings();
+  if (orderedIds.length === 0) return "updated";
+  const allRows = await db.prepare("SELECT id FROM products ORDER BY sort_order").all<{ id: string }>();
+  const allIds = allRows.results.map((row) => row.id);
+  const allIdSet = new Set(allIds);
+  if (!orderedIds.every((id) => allIdSet.has(id))) return "not_found";
+  const orderedSet = new Set(orderedIds);
+  const remainder = allIds.filter((id) => !orderedSet.has(id));
+  const finalOrder = [...orderedIds, ...remainder];
+  const now = new Date().toISOString();
+  await db.batch(finalOrder.map((id, index) => db.prepare("UPDATE products SET sort_order=?,version=version+1,updated_at=? WHERE id=?").bind(-(index + 1), now, id)));
+  await db.batch(finalOrder.map((id, index) => db.prepare("UPDATE products SET sort_order=?,updated_at=? WHERE id=?").bind(index + 1, now, id)));
+  return "updated";
+}
+
 export async function createAdminRound(input: RoundInput): Promise<CmsMutationResult> {
   const round = validateRoundInput(input); const id = roundIdFromDeliveryDate(round.deliveryDate); const { db } = bindings();
   if (await db.prepare("SELECT 1 FROM delivery_rounds WHERE id=? OR delivery_date=?").bind(id, round.deliveryDate).first()) return "duplicate";

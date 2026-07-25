@@ -1,5 +1,8 @@
 "use client";
 
+import { DndContext, PointerSensor, closestCenter, useSensor, useSensors, type DragEndEvent, type DragStartEvent } from "@dnd-kit/core";
+import { SortableContext, arrayMove, useSortable, verticalListSortingStrategy } from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
 import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
@@ -231,13 +234,30 @@ export function AdminDashboard({ initialOrders, initialCms, userName, serverNow,
   </main>;
 }
 
+type StatusDraft = { orderStatus: OrderStatus; paymentStatus: PaymentStatus };
+
 function OrdersPanel({ orders, setOrders, saving, setSaving, setNotice }: { orders: AdminOrder[]; setOrders: React.Dispatch<React.SetStateAction<AdminOrder[]>>; saving: string | null; setSaving: (value: string | null) => void; setNotice: (value: string) => void }) {
   const [query, setQuery] = useState("");
   const [range, setRange] = useState<OrderRange>("today");
   const [filter, setFilter] = useState<OrderFilter>("all");
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
   const [trackingDrafts, setTrackingDrafts] = useState<Record<string, string>>(() => Object.fromEntries(orders.map((order) => [order.id, order.tracking_number ?? ""])));
+  // Status dropdowns used to write straight to the server on every change.
+  // They now stage into this per-order draft instead, so nothing persists
+  // until the admin presses "บันทึกสถานะ" — matching how every other panel
+  // requires an explicit save.
+  const [statusDrafts, setStatusDrafts] = useState<Record<string, StatusDraft>>({});
   const [confirm, setConfirm] = useState<ConfirmState>(null);
+
+  function draftFor(order: AdminOrder): StatusDraft {
+    return statusDrafts[order.id] ?? { orderStatus: order.order_status, paymentStatus: order.payment_status };
+  }
+  function setDraftField(order: AdminOrder, patch: Partial<StatusDraft>) {
+    setStatusDrafts((current) => ({ ...current, [order.id]: { ...draftFor(order), ...patch } }));
+  }
+  function clearDraft(orderId: string) {
+    setStatusDrafts((current) => { if (!(orderId in current)) return current; const next = { ...current }; delete next[orderId]; return next; });
+  }
 
   const filtered = useMemo(() => orders.filter((order) => {
     const normalized = query.trim().toLowerCase();
@@ -279,16 +299,31 @@ function OrdersPanel({ orders, setOrders, saving, setSaving, setNotice }: { orde
   }
 
   // Payment-status changes the customer can see (and that are hard to walk
-  // back) all require an explicit confirmation, not just "paid".
-  function requestPaymentChange(order: AdminOrder, status: PaymentStatus) {
+  // back) all require an explicit confirmation, not just "paid" — on top of
+  // the draft/save step every field now goes through.
+  function saveOrderStatus(order: AdminOrder) {
+    const draft = draftFor(order);
+    const orderChanged = draft.orderStatus !== order.order_status;
+    const paymentChanged = draft.paymentStatus !== order.payment_status;
+    if (!orderChanged && !paymentChanged) return;
+    const commit = async () => {
+      const patch: { orderStatus?: OrderStatus; paymentStatus?: PaymentStatus } = {};
+      if (orderChanged) patch.orderStatus = draft.orderStatus;
+      if (paymentChanged) patch.paymentStatus = draft.paymentStatus;
+      const success = paymentChanged
+        ? (draft.paymentStatus === "paid" ? `ยืนยันการชำระเงิน ${order.id} แล้ว` : `อัปเดตการชำระเงิน ${order.id} แล้ว`)
+        : `อัปเดตออเดอร์ ${order.id} แล้ว`;
+      await updateOrder(order.id, patch, success);
+      clearDraft(order.id);
+    };
     const prompts: Partial<Record<PaymentStatus, { title: string; description: string; confirmLabel: string; tone?: "danger" | "primary" }>> = {
       paid: { title: "ยืนยันว่าเงินเข้าแล้ว", description: `ตรวจยอด ${formatMoney(order.total)} ของออเดอร์ ${order.id} ในแอปธนาคารแล้วใช่ไหม?`, confirmLabel: "ยืนยันชำระแล้ว" },
       refunded: { title: "ยืนยันว่าคืนเงินแล้ว", description: `ออเดอร์ ${order.id} จะแสดงสถานะ "คืนเงินแล้ว" ให้ลูกค้าเห็นทันที ยืนยันว่าโอนเงิน ${formatMoney(order.total)} คืนเรียบร้อยแล้วใช่ไหม?`, confirmLabel: "ยืนยันคืนเงินแล้ว", tone: "danger" },
       invalid_slip: { title: "แจ้งว่าสลิปไม่ถูกต้อง?", description: `ออเดอร์ ${order.id} จะแสดงสถานะ "สลิปไม่ถูกต้อง" ให้ลูกค้าเห็น และถูกนับเป็นรายการที่ต้องตรวจ`, confirmLabel: "ยืนยันสลิปไม่ถูกต้อง", tone: "danger" },
     };
-    const prompt = prompts[status];
-    if (!prompt) { void updateOrder(order.id, { paymentStatus: status }, `อัปเดตการชำระเงิน ${order.id} แล้ว`); return; }
-    setConfirm({ ...prompt, action: async () => { await updateOrder(order.id, { paymentStatus: status }, status === "paid" ? `ยืนยันการชำระเงิน ${order.id} แล้ว` : `อัปเดตการชำระเงิน ${order.id} แล้ว`); } });
+    const prompt = paymentChanged ? prompts[draft.paymentStatus] : undefined;
+    if (!prompt) { void commit(); return; }
+    setConfirm({ ...prompt, action: commit });
   }
 
   return <section className="admin-panel admin-orders-panel">
@@ -318,6 +353,8 @@ function OrdersPanel({ orders, setOrders, saving, setSaving, setNotice }: { orde
       {filtered.map((order) => {
         const isExpanded = expanded.has(order.id);
         const isSaving = saving === `order:${order.id}`;
+        const draft = draftFor(order);
+        const statusDirty = draft.orderStatus !== order.order_status || draft.paymentStatus !== order.payment_status;
         return <article className={`admin-order admin-order-compact${isExpanded ? " expanded" : ""}${isSaving ? " is-saving" : ""}`} aria-busy={isSaving} key={order.id}>
           <button className="admin-order-summary" type="button" aria-expanded={isExpanded} onClick={() => setExpanded((current) => toggleSet(current, order.id))}>
             <span><small>{safeThaiDateTime(order.created_at)} · {order.round_id || "ไม่ระบุรอบ"}</small><strong>{order.id}</strong><em>{order.customer_name} · {formatMoney(order.total)}</em></span>
@@ -327,8 +364,9 @@ function OrdersPanel({ orders, setOrders, saving, setSaving, setNotice }: { orde
             <div className="admin-order-grid"><div><span>ลูกค้า</span><p>{order.customer_name}</p><a href={`tel:${phoneHref(order.phone)}`}><AdminIcon name="phone" />{order.phone}</a></div><div><span>รายการ</span><p>{order.items || "—"}</p><strong>{formatMoney(order.total)}</strong></div><div className="full"><span>{order.fulfilment === "pickup" ? "รับเองหน้าร้าน" : "ที่อยู่จัดส่ง"}</span><p>{order.address}</p>{order.note && <small>หมายเหตุ: {order.note}</small>}{order.admin_note && <small className="verification-note">ผลตรวจสลิป: {order.admin_note}</small>}</div></div>
             <div className="admin-controls">
               <div className="admin-slip-control">{order.slip_key ? <div className="admin-slip-actions"><a className="slip-link" href={`/api/admin/slips/${encodeURIComponent(order.id)}`} target="_blank" rel="noreferrer"><AdminIcon name="image" />เปิดดูสลิป</a><a className="slip-link slip-download-link" href={`/api/admin/slips/${encodeURIComponent(order.id)}?download=1`}><AdminIcon name="download" />ดาวน์โหลดสลิป</a></div> : <span className="no-slip">ยังไม่มีสลิป</span>}<small>ตรวจเงินเข้าในแอปธนาคารก่อนกดยืนยัน</small></div>
-              <label><span>สถานะชำระเงิน</span><select disabled={saving === `order:${order.id}`} value={order.payment_status} onChange={(event) => requestPaymentChange(order, event.target.value as PaymentStatus)}>{Object.entries(paymentStatusLabels).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label>
-              <label><span>สถานะออเดอร์</span><select disabled={saving === `order:${order.id}`} value={order.order_status} onChange={(event) => void updateOrder(order.id, { orderStatus: event.target.value as OrderStatus }, `อัปเดตออเดอร์ ${order.id} แล้ว`)}>{Object.entries(statusLabels).map(([value, label]) => <option key={value} value={value} disabled={(order.payment_status !== "paid" && !["received", "cancelled"].includes(value)) || (order.fulfilment === "pickup" && value === "shipped") || (order.fulfilment === "postal" && value === "ready_for_pickup")}>{label}</option>)}</select>{order.payment_status !== "paid" && <small className="status-select-hint">ต้องยืนยัน &quot;ชำระแล้ว&quot; ก่อน จึงจะเลือกสถานะเตรียม/จัดส่งได้</small>}</label>
+              <label><span>สถานะชำระเงิน</span><select disabled={isSaving} value={draft.paymentStatus} onChange={(event) => setDraftField(order, { paymentStatus: event.target.value as PaymentStatus })}>{Object.entries(paymentStatusLabels).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label>
+              <label><span>สถานะออเดอร์</span><select disabled={isSaving} value={draft.orderStatus} onChange={(event) => setDraftField(order, { orderStatus: event.target.value as OrderStatus })}>{Object.entries(statusLabels).map(([value, label]) => <option key={value} value={value} disabled={(order.payment_status !== "paid" && !["received", "cancelled"].includes(value)) || (order.fulfilment === "pickup" && value === "shipped") || (order.fulfilment === "postal" && value === "ready_for_pickup")}>{label}</option>)}</select>{order.payment_status !== "paid" && <small className="status-select-hint">ต้องยืนยัน &quot;ชำระแล้ว&quot; ก่อน จึงจะเลือกสถานะเตรียม/จัดส่งได้</small>}</label>
+              {statusDirty && <div className="admin-status-save-bar"><span>มีการแก้ไขสถานะที่ยังไม่ได้บันทึก</span><button type="button" className="admin-status-discard-btn" disabled={isSaving} onClick={() => clearDraft(order.id)}>ยกเลิก</button><button type="button" className="admin-status-save-btn" disabled={isSaving} onClick={() => saveOrderStatus(order)}>{isSaving ? "กำลังบันทึก…" : "บันทึกสถานะ"}</button></div>}
               {order.fulfilment === "postal" && <label className="admin-tracking-control"><span>เลขพัสดุ</span><span><input maxLength={100} value={trackingDrafts[order.id] ?? ""} onChange={(event) => setTrackingDrafts((current) => ({ ...current, [order.id]: event.target.value }))} placeholder="กรอกหลังส่งสินค้า" /><button type="button" disabled={saving === `order:${order.id}` || order.payment_status !== "paid"} onClick={() => void updateOrder(order.id, { trackingNumber: trackingDrafts[order.id] ?? "", orderStatus: "shipped" }, `บันทึกเลขพัสดุและอัปเดตเป็นจัดส่งแล้ว ${order.id}`)}>บันทึกและจัดส่งแล้ว</button></span><small className="status-select-hint">บันทึกแล้วลูกค้าเช็คสถานะเองได้ที่หน้าติดตามพัสดุ ไม่ต้องแจ้งซ้ำ</small></label>}
             </div>
           </div>}
@@ -388,7 +426,7 @@ function RoundsPanel({ rounds, saving, mutate, onFormActive, onFormDirty }: { ro
             <div className="admin-round-sales"><span>ยอดชำระแล้วรอบนี้</span><strong>{formatMoney(round.sales)}</strong></div>
             <dl className="admin-mini-stats"><div><dt>เปิดรับ</dt><dd>{formatInputDateTime(round.opensAt)}</dd></div><div><dt>ปิดรับ</dt><dd>{formatInputDateTime(round.closesAt)}</dd></div><div><dt>ออเดอร์</dt><dd>{round.orderCount}</dd></div><div><dt>เฉลี่ยชำระแล้ว</dt><dd>{formatMoney(round.paidOrderCount ? round.sales / round.paidOrderCount : 0)}</dd></div></dl>
             {round.note && <p>{round.note}</p>}
-            {round.status === "เตรียมเปิด" && <button className="admin-open-round" type="button" disabled={saving !== null} onClick={() => void mutate("round.update", { id: round.id, round: { ...round, status: "เปิดรับ" } }, "เปิดรอบขายแล้ว")}>เปิดรอบขาย</button>}
+            {round.status === "เตรียมเปิด" && <button className="admin-open-round" type="button" disabled={saving !== null} onClick={() => setConfirm({ title: "เปิดรอบขายนี้?", description: `${round.label || round.id} จะเริ่มรับออเดอร์จากลูกค้าทันที`, confirmLabel: "เปิดรอบขาย", action: async () => { await mutate("round.update", { id: round.id, round: { ...round, status: "เปิดรับ" } }, "เปิดรอบขายแล้ว"); } })}>เปิดรอบขาย</button>}
             {round.status === "เปิดรับ" && <button className="admin-close-round" type="button" onClick={() => setConfirm({ title: "ปิดรอบขายนี้?", description: `${round.label || round.id} จะหยุดรับออเดอร์ใหม่ทันที แต่ออเดอร์เดิมยังอยู่ครบ`, confirmLabel: "ปิดรอบขาย", tone: "danger", action: async () => { await mutate("round.update", { id: round.id, round: { ...round, status: "ปิดรับ" } }, "ปิดรอบขายแล้ว"); } })}>ปิดรอบขาย</button>}
           </article>
         ))}</div>
@@ -405,8 +443,36 @@ function RoundForm({ title, value, disabled, lockDeliveryDate = false, onChange,
 function ProductsPanel({ products, saving, mutate, setNotice, onFormActive, onFormDirty }: { products: AdminProduct[]; saving: string | null; mutate: Mutation; setNotice: (value: string) => void; onFormActive: (active: boolean) => void; onFormDirty: (dirty: boolean) => void }) {
   const [draft, setDraft] = useState<ProductInput>(EMPTY_PRODUCT_INPUT); const [editing, setEditing] = useState<string | null>(null); const [creating, setCreating] = useState(false); const [uploading, setUploading] = useState(false); const [category, setCategory] = useState("ทั้งหมด"); const [view, setView] = useState<"list" | "grid">("list"); const [confirm, setConfirm] = useState<ConfirmState>(null);
   const [searchQuery, setSearchQuery] = useState("");
-  const [sortMode, setSortMode] = useState(false);
   const [showArchived, setShowArchived] = useState(false);
+  // Drag-to-reorder always works on every active product, independent of
+  // whatever category filter is selected elsewhere in the panel — sort_order
+  // is a single global sequence, so reordering a filtered subset in place
+  // would leave its relationship to everything outside that subset undefined.
+  // Dragging is therefore only offered on the unfiltered, list-view display.
+  // baseOrderIds is the server-driven order; dragOverride is the optimistic
+  // order shown mid-drag/save, cleared once the request settles (at which
+  // point baseOrderIds has already caught up, or reverted on failure).
+  const baseOrderIds = useMemo(() => products.filter((product) => product.status !== "ซ่อนสินค้า").map((product) => product.id), [products]);
+  const [dragOverride, setDragOverride] = useState<string[] | null>(null);
+  const sortIds = dragOverride ?? baseOrderIds;
+  const [activeDragId, setActiveDragId] = useState<string | null>(null);
+  const dragSensors = useSensors(useSensor(PointerSensor, { activationConstraint: { delay: 150, tolerance: 6 } }));
+
+  function handleDragStart(event: DragStartEvent) {
+    setActiveDragId(String(event.active.id));
+  }
+  async function handleDragEnd(event: DragEndEvent) {
+    setActiveDragId(null);
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
+    const oldIndex = sortIds.indexOf(String(active.id));
+    const newIndex = sortIds.indexOf(String(over.id));
+    if (oldIndex === -1 || newIndex === -1) return;
+    const next = arrayMove(sortIds, oldIndex, newIndex);
+    setDragOverride(next);
+    await mutate("product.reorder", { ids: next }, "เรียงสินค้าแล้ว");
+    setDragOverride(null);
+  }
 
   const categories = useMemo(() => ["ทั้งหมด", ...Array.from(new Set(products.map((product) => product.category || "อื่น ๆ")))], [products]);
   const visible = useMemo(() => {
@@ -425,6 +491,7 @@ function ProductsPanel({ products, saving, mutate, setNotice, onFormActive, onFo
   // section below, so the main list only ever shows what's actively managed.
   const activeVisible = useMemo(() => visible.filter((product) => product.status !== "ซ่อนสินค้า"), [visible]);
   const archivedVisible = useMemo(() => visible.filter((product) => product.status === "ซ่อนสินค้า"), [visible]);
+  const canReorder = view === "list" && category === "ทั้งหมด" && !searchQuery.trim();
 
   const activeProduct = useMemo(() => {
     if (editing) return products.find((p) => p.id === editing) ?? null;
@@ -488,36 +555,17 @@ function ProductsPanel({ products, saving, mutate, setNotice, onFormActive, onFo
     }
   }
 
-  function productCard(product: AdminProduct) {
-    const firstImage = product.imageUrl ? product.imageUrl.split(",")[0] : "";
-    return <article className={`admin-product-card ${product.status === "ซ่อนสินค้า" ? "is-archived" : ""}`} key={product.id}>
-      <div className="product-card-body">
-        <div className="product-card-image-wrap">
-          {firstImage ? <Image src={adminImageSrc(firstImage)} alt={`รูปสินค้า ${product.name}`} fill sizes="96px" unoptimized /> : <div className="product-card-no-image"><AdminIcon name="image" /></div>}
-        </div>
-        <div className="product-card-info">
-          <div className="product-card-title-row">
-            <span className="product-card-category">{product.category || "อื่น ๆ"}</span>
-            <div className="product-card-header-flex">
-              <h3>{product.name}</h3>
-              <span className={`product-card-status status-${product.status === "เปิดขาย" ? "open" : product.status === "ปิดชั่วคราว" ? "closed" : "waiting"}`}>
-                {productStatusLabels[product.status]}
-              </span>
-            </div>
-          </div>
-          <p className="product-card-meta">{product.unit} • {product.price === null ? "รอราคา" : `${product.price.toLocaleString("th-TH")} บาท`}</p>
-          {product.detail && <p className="product-card-desc">{product.detail}</p>}
+  function productHandlers(product: AdminProduct): ProductCardHandlers {
+    return {
+      onEdit: () => { setDraft({ id: product.id, name: product.name, unit: product.unit || "", detail: product.detail || "", price: product.price, status: product.status, imageUrl: product.imageUrl || "", category: product.category || "" }); setEditing(product.id); setCreating(false); },
+      onArchive: () => setConfirm({ title: `ปิดขาย ${product.name}?`, description: "สินค้าจะหายจากหน้าร้าน แต่ประวัติออเดอร์เก่าจะยังอยู่ครบและนำกลับมาได้", confirmLabel: "ปิดขายสินค้า", tone: "danger", action: async () => { await mutate("product.update", { product: { ...product, status: "ซ่อนสินค้า" } }, "ปิดขายสินค้าแล้ว"); } }),
+      onRestore: () => void mutate("product.update", { product: { ...product, status: "ปิดชั่วคราว" } }, "เปิดขายสินค้าอีกครั้ง"),
+    };
+  }
 
-          <div className="product-card-actions-row">
-            <button type="button" className="action-btn edit-btn" onClick={() => { setDraft({ id: product.id, name: product.name, unit: product.unit || "", detail: product.detail || "", price: product.price, status: product.status, imageUrl: product.imageUrl || "", category: product.category || "" }); setEditing(product.id); setCreating(false); }}><AdminIcon name="edit" /><span>แก้ไข</span></button>
-            {product.status !== "ซ่อนสินค้า" ? (
-              <button className="action-btn delete-btn" type="button" onClick={() => setConfirm({ title: `ปิดขาย ${product.name}?`, description: "สินค้าจะหายจากหน้าร้าน แต่ประวัติออเดอร์เก่าจะยังอยู่ครบและนำกลับมาได้", confirmLabel: "ปิดขายสินค้า", tone: "danger", action: async () => { await mutate("product.update", { product: { ...product, status: "ซ่อนสินค้า" } }, "ปิดขายสินค้าแล้ว"); } })}><AdminIcon name="hide" /><span>ปิดขาย</span></button>
-            ) : (
-              <button className="action-btn restore-btn" type="button" onClick={() => void mutate("product.update", { product: { ...product, status: "ปิดชั่วคราว" } }, "เปิดขายสินค้าอีกครั้ง")}><AdminIcon name="check" /><span>เปิดขาย</span></button>
-            )}
-          </div>
-        </div>
-      </div>
+  function productCard(product: AdminProduct) {
+    return <article className={`admin-product-card ${product.status === "ซ่อนสินค้า" ? "is-archived" : ""}`} key={product.id}>
+      {productCardBody(product, productHandlers(product))}
     </article>;
   }
 
@@ -560,7 +608,6 @@ function ProductsPanel({ products, saving, mutate, setNotice, onFormActive, onFo
             ))}
           </div>
           <div className="admin-view-toggle" aria-label="รูปแบบแสดงสินค้า">
-            <button className={`admin-sort-mode-btn ${sortMode ? "active" : ""}`} type="button" onClick={() => setSortMode(!sortMode)} title="โหมดจัดเรียงลำดับสินค้า"><AdminIcon name="sort" /></button>
             <button className={view === "list" ? "active" : ""} type="button" onClick={() => setView("list")} aria-label="แบบรายการ"><AdminIcon name="list" /></button>
             <button className={view === "grid" ? "active" : ""} type="button" onClick={() => setView("grid")} aria-label="แบบตาราง"><AdminIcon name="grid" /></button>
           </div>
@@ -570,48 +617,90 @@ function ProductsPanel({ products, saving, mutate, setNotice, onFormActive, onFo
           <AdminIcon name="plus" />เพิ่มสินค้าใหม่
         </button>
 
-        {sortMode ? (
-          <div className="admin-sort-list">
-            {activeVisible.map((product, index) => {
-              return (
-                <div key={product.id} className="admin-sort-item">
-                  <div className="sort-item-info">
-                    <strong>{product.name}</strong>
-                    <span>{product.id} · {product.category} · {formatMoney(product.price)}</span>
-                  </div>
-                  <div className="sort-item-actions">
-                    <button type="button" className="sort-arrow-btn" disabled={index === 0 || saving !== null} onClick={() => void mutate("product.move", { id: product.id, direction: "up", fingerprint: product.fingerprint }, "เรียงสินค้าแล้ว")}>▲ ขึ้น</button>
-                    <button type="button" className="sort-arrow-btn" disabled={index === activeVisible.length - 1 || saving !== null} onClick={() => void mutate("product.move", { id: product.id, direction: "down", fingerprint: product.fingerprint }, "เรียงสินค้าแล้ว")}>▼ ลง</button>
-                  </div>
+        {canReorder ? (
+          <>
+            {activeVisible.length > 1 && <p className="admin-sort-hint">กดค้างที่จุดจับ <AdminIcon name="grip" /> แล้วลากขึ้นลงเพื่อจัดเรียงลำดับสินค้าใหม่</p>}
+            <DndContext sensors={dragSensors} collisionDetection={closestCenter} onDragStart={handleDragStart} onDragEnd={handleDragEnd} onDragCancel={() => setActiveDragId(null)}>
+              <SortableContext items={sortIds} strategy={verticalListSortingStrategy}>
+                <div className="admin-card-list admin-product-list view-list">
+                  {sortIds.map((id) => {
+                    const product = products.find((item) => item.id === id);
+                    if (!product) return null;
+                    return <SortableProductCard key={id} product={product} isActiveDrag={activeDragId === id} handlers={productHandlers(product)} />;
+                  })}
                 </div>
-              );
-            })}
-          </div>
+              </SortableContext>
+            </DndContext>
+          </>
         ) : (
           <>
+            {(category !== "ทั้งหมด" || searchQuery.trim()) && <p className="admin-sort-hint">ล้างตัวกรองและคำค้นหาเพื่อจัดเรียงลำดับสินค้าใหม่</p>}
             <div className={`admin-card-list admin-product-list view-${view}`}>
               {activeVisible.map((product) => productCard(product))}
             </div>
-            {activeVisible.length === 0 && <p className="admin-empty-note">ไม่พบสินค้าที่ตรงกับตัวกรอง</p>}
-
-            <button type="button" className="admin-archived-toggle" onClick={() => setShowArchived((current) => !current)}>
-              <AdminIcon name={showArchived ? "up" : "down"} />
-              สินค้าที่ปิดขายแล้ว ({archivedVisible.length})
-            </button>
-            {showArchived && (
-              <div className={`admin-card-list admin-product-list view-${view} admin-archived-list`}>
-                {archivedVisible.length === 0
-                  ? <p className="admin-empty-note">ยังไม่มีสินค้าที่ปิดขาย</p>
-                  : archivedVisible.map((product) => productCard(product))}
-              </div>
-            )}
           </>
+        )}
+        {activeVisible.length === 0 && <p className="admin-empty-note">ไม่พบสินค้าที่ตรงกับตัวกรอง</p>}
+
+        <button type="button" className="admin-archived-toggle" onClick={() => setShowArchived((current) => !current)}>
+          <AdminIcon name={showArchived ? "up" : "down"} />
+          สินค้าที่ปิดขายแล้ว ({archivedVisible.length})
+        </button>
+        {showArchived && (
+          <div className={`admin-card-list admin-product-list view-${view} admin-archived-list`}>
+            {archivedVisible.length === 0
+              ? <p className="admin-empty-note">ยังไม่มีสินค้าที่ปิดขาย</p>
+              : archivedVisible.map((product) => productCard(product))}
+          </div>
         )}
       </>
     )}
 
     <ConfirmDialog open={Boolean(confirm)} title={confirm?.title ?? ""} description={confirm?.description ?? ""} confirmLabel={confirm?.confirmLabel ?? "ยืนยัน"} tone={confirm?.tone} busy={saving !== null} onCancel={() => setConfirm(null)} onConfirm={() => { const action = confirm?.action; setConfirm(null); if (action) void action(); }} />
   </section>;
+}
+
+type ProductCardHandlers = { onEdit: () => void; onArchive: () => void; onRestore: () => void };
+
+function productCardBody(product: AdminProduct, handlers: ProductCardHandlers, dragHandle?: React.ReactNode) {
+  const firstImage = product.imageUrl ? product.imageUrl.split(",")[0] : "";
+  return <div className="product-card-body">
+    {dragHandle}
+    <div className="product-card-image-wrap">
+      {firstImage ? <Image src={adminImageSrc(firstImage)} alt={`รูปสินค้า ${product.name}`} fill sizes="96px" unoptimized /> : <div className="product-card-no-image"><AdminIcon name="image" /></div>}
+    </div>
+    <div className="product-card-info">
+      <div className="product-card-title-row">
+        <span className="product-card-category">{product.category || "อื่น ๆ"}</span>
+        <div className="product-card-header-flex">
+          <h3>{product.name}</h3>
+          <span className={`product-card-status status-${product.status === "เปิดขาย" ? "open" : product.status === "ปิดชั่วคราว" ? "closed" : "waiting"}`}>
+            {productStatusLabels[product.status]}
+          </span>
+        </div>
+      </div>
+      <p className="product-card-meta">{product.unit} • {product.price === null ? "รอราคา" : `${product.price.toLocaleString("th-TH")} บาท`}</p>
+      {product.detail && <p className="product-card-desc">{product.detail}</p>}
+
+      <div className="product-card-actions-row">
+        <button type="button" className="action-btn edit-btn" onClick={handlers.onEdit}><AdminIcon name="edit" /><span>แก้ไข</span></button>
+        {product.status !== "ซ่อนสินค้า" ? (
+          <button className="action-btn delete-btn" type="button" onClick={handlers.onArchive}><AdminIcon name="hide" /><span>ปิดขาย</span></button>
+        ) : (
+          <button className="action-btn restore-btn" type="button" onClick={handlers.onRestore}><AdminIcon name="check" /><span>เปิดขาย</span></button>
+        )}
+      </div>
+    </div>
+  </div>;
+}
+
+function SortableProductCard({ product, isActiveDrag, handlers }: { product: AdminProduct; isActiveDrag: boolean; handlers: ProductCardHandlers }) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: product.id });
+  const style = { transform: CSS.Transform.toString(transform), transition };
+  const dragHandle = <button type="button" className="product-drag-handle" aria-label={`ลากเพื่อจัดเรียง ${product.name}`} {...attributes} {...listeners}><AdminIcon name="grip" /></button>;
+  return <article ref={setNodeRef} style={style} className={`admin-product-card${isDragging ? " is-dragging" : ""}${isActiveDrag ? " is-active-drag" : ""}`}>
+    {productCardBody(product, handlers, dragHandle)}
+  </article>;
 }
 
 function ProductForm({ title, value, disabled, uploading, lockId = false, onChange, onUpload, onCancel, onSubmit }: { title: string; value: ProductInput; disabled: boolean; uploading: boolean; lockId?: boolean; onChange: (value: ProductInput) => void; onUpload: (file: File) => void; onCancel: () => void; onSubmit: () => void }) {

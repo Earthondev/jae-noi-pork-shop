@@ -16,6 +16,7 @@ import {
   createAdminRound,
   getAdminCmsData,
   moveAdminProduct,
+  reorderAdminProducts,
   updateAdminProduct,
   updateAdminRound,
   updateAdminStorefrontSettings,
@@ -59,6 +60,9 @@ export async function POST(request: Request) {
       }
       case "product.move":
         result = await moveAdminProduct(requiredString(body.id, "รหัสสินค้า"), direction(body.direction), optionalString(body.fingerprint));
+        break;
+      case "product.reorder":
+        result = await reorderAdminProducts(stringArray(body.ids, "รายการรหัสสินค้า"));
         break;
       case "round.create":
         result = await createAdminRound(roundInput(body.round));
@@ -141,6 +145,11 @@ function settingsInput(value: unknown): Omit<AdminStorefrontSettings, "fingerpri
     storeCoverUrl: optionalString(settings.storeCoverUrl) ?? "",
     fingerprint: optionalString(settings.fingerprint),
   };
+}
+
+function stringArray(value: unknown, label: string): string[] {
+  if (!Array.isArray(value) || value.some((item) => typeof item !== "string" || !item.trim())) throw new AdminInputError(`${label}ไม่ถูกต้อง`);
+  return value as string[];
 }
 
 function direction(value: unknown): "up" | "down" {

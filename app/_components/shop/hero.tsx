@@ -93,7 +93,7 @@ export function Hero({ storeLoading, rounds, nextRound, content }: HeroProps) {
         </div>
       </section>
       <section className="preorder-status" aria-label="สถานะรอบพรีออเดอร์">
-        <div className={`round-callout${storeLoading ? " is-loading" : ""}`} role="status" aria-live="polite" aria-busy={storeLoading}>
+        <div className={`round-callout${storeLoading ? " is-loading" : ""}${!storeLoading && rounds[0] ? " round-callout--open" : ""}`} role="status" aria-live="polite" aria-busy={storeLoading}>
           <span className="round-status-icon" aria-hidden="true">
             {storeLoading ? (
               <svg viewBox="0 0 24 24" style={{ width: 20, height: 20, animation: "spin 1s linear infinite" }} fill="none" stroke="currentColor" strokeWidth="3">

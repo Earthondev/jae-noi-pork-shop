@@ -7,7 +7,6 @@ import { FormEvent, useCallback, useEffect, useMemo, useRef, useState } from "re
 import { BottomNav } from "./_components/shop/bottom-nav";
 import { CartDrawer, type OrderRecap } from "./_components/shop/cart-drawer";
 import { Hero } from "./_components/shop/hero";
-import { PhoneStrip } from "./_components/shop/phone-strip";
 import { ProductGrid } from "./_components/shop/product-grid";
 import { SiteHeader } from "./_components/shop/site-header";
 import { useCheckoutDraft } from "./_hooks/use-checkout-draft";
@@ -351,6 +350,12 @@ export function Shop() {
       <SiteHeader cartCount={cartCount} onOpenCart={() => setCartOpen(true)} storeName={storefront.content.storeName} storeLogoUrl={storefront.content.storeLogoUrl} />
       <Hero storeLoading={storefront.storeLoading} rounds={storefront.rounds} nextRound={storefront.nextRound} content={storefront.content} />
 
+      <section className="order-flow" id="how-to-order">
+        <div><span>1</span><h3>เลือกสินค้า</h3><p>เพิ่มจำนวนที่ต้องการลงตะกร้า</p></div>
+        <div><span>2</span><h3>กรอกที่อยู่</h3><p>แจ้งชื่อ เบอร์โทร และที่จัดส่ง</p></div>
+        <div><span>3</span><h3>ชำระเงิน</h3><p>สแกน QR พร้อมยอดออเดอร์ แล้วแนบสลิป</p></div>
+      </section>
+
       <ProductGrid
         storeLoading={storefront.storeLoading}
         products={filteredProducts}
@@ -360,13 +365,6 @@ export function Shop() {
         selectedCategory={selectedCategory}
         onSelectCategory={setSelectedCategory}
       />
-      <PhoneStrip phonePrimary={storefront.content.phonePrimary} phoneSecondary={storefront.content.phoneSecondary} />
-
-      <section className="order-flow" id="how-to-order">
-        <div><span>1</span><h3>เลือกสินค้า</h3><p>เพิ่มจำนวนที่ต้องการลงตะกร้า</p></div>
-        <div><span>2</span><h3>กรอกที่อยู่</h3><p>แจ้งชื่อ เบอร์โทร และที่จัดส่ง</p></div>
-        <div><span>3</span><h3>ชำระเงิน</h3><p>สแกน QR พร้อมยอดออเดอร์ แล้วแนบสลิป</p></div>
-      </section>
 
       <section className="story" id="story">
         <Image src="/images/products/jae-noi-presenting-pork-rinds-large-tubs.jpg" alt="เจ๊น้อยนำเสนอแคปหมูบรรจุกล่อง" width={760} height={960} />
