@@ -76,6 +76,6 @@ test("tracking page has accessible progress and paid-only receipt actions", asyn
   assert.doesNotMatch(tracker, /โดยไม่แสดงชื่อ ที่อยู่ หรือสลิป/);
   assert.match(shop, /href="\/track"/);
   assert.match(css, /\.tracking-skeleton/);
-  assert.match(css, /\.track-history-pagination/);
+  assert.match(css, /\.track-history-card/);
   assert.match(css, /@media print/);
 });
