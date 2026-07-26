@@ -24,7 +24,9 @@ const SECURITY_HEADERS = [
       // expose a per-request CSP nonce hook.
       "script-src 'self' 'unsafe-inline'",
       "style-src 'self' 'unsafe-inline'",
-      "img-src 'self' data:",
+      // Slip previews and downloadable receipt composition use short-lived
+      // in-browser Blob URLs. Keep blob: scoped to images only.
+      "img-src 'self' data: blob:",
       "font-src 'self'",
       "connect-src 'self'",
       "frame-src 'self'",

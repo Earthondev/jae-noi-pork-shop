@@ -37,6 +37,18 @@ test("browser permission policy denies unnecessary hardware and location access"
   assert.doesNotMatch(PERMISSIONS_POLICY, /clipboard-write|web-share/);
 });
 
+test("CSP permits local slip previews without allowing blob scripts or frames", async () => {
+  const [worker, nextConfig] = await Promise.all([
+    projectFile("worker/index.ts"),
+    projectFile("next.config.ts"),
+  ]);
+  for (const policySource of [worker, nextConfig]) {
+    assert.match(policySource, /img-src 'self' data: blob:/);
+    assert.doesNotMatch(policySource, /script-src[^"\n]*blob:/);
+    assert.doesNotMatch(policySource, /frame-src[^"\n]*blob:/);
+  }
+});
+
 test("public order route rate limits and bounds the body before multipart parsing", async () => {
   const route = await projectFile("app/api/orders/route.ts");
   assert.match(route, /ORDER_IP_MAX_PER_WINDOW = 6/);
