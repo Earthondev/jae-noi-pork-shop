@@ -77,7 +77,10 @@ export type CartDrawerProps = Readonly<{
 export function CartDrawer({ drawerRef, onClose, cart, checkout, storefront, order }: CartDrawerProps) {
   const [copiedId, setCopiedId] = useState(false);
   const [copiedAmount, setCopiedAmount] = useState(false);
+  const [orderCopyStatus, setOrderCopyStatus] = useState<"idle" | "copied" | "error">("idle");
   const [qrSaveStatus, setQrSaveStatus] = useState<"idle" | "saving" | "saved" | "error">("idle");
+  const [receiptSaveStatus, setReceiptSaveStatus] = useState<"idle" | "saving" | "saved" | "error">("idle");
+  const [receiptError, setReceiptError] = useState<string | null>(null);
   const qrCanvasRef = useRef<HTMLCanvasElement | null>(null);
   const slipInputRef = useRef<HTMLInputElement | null>(null);
   const noticeRef = useRef<HTMLParagraphElement | null>(null);
@@ -88,14 +91,17 @@ export function CartDrawer({ drawerRef, onClose, cart, checkout, storefront, ord
   const [prevOrderId, setPrevOrderId] = useState(order.id);
   const successCardRef = useRef<HTMLDivElement | null>(null);
 
-  // Reset the attached slip once an order has just been placed successfully,
-  // following React's documented pattern for adjusting state when a prop
-  // changes (done during render, not in an effect, to avoid an extra render).
+  // Keep the customer's locally selected slip after a successful submission
+  // so it can be placed into the downloadable confirmation image. It is
+  // cleared as soon as the success state is reset and is never persisted.
   if (order.id !== prevOrderId) {
     setPrevOrderId(order.id);
-    if (order.id) {
+    if (!order.id) {
       setSlipFile(null);
       setSlipPreviewUrl(null);
+      setOrderCopyStatus("idle");
+      setReceiptSaveStatus("idle");
+      setReceiptError(null);
     }
   }
 
@@ -158,18 +164,67 @@ export function CartDrawer({ drawerRef, onClose, cart, checkout, storefront, ord
     order.onSubmit(event);
   }
 
-  const copyToClipboard = async (text: string, type: "id" | "amount") => {
-    try {
-      await navigator.clipboard.writeText(text);
-      if (type === "id") {
-        setCopiedId(true);
-        setTimeout(() => setCopiedId(false), 2000);
-      } else {
-        setCopiedAmount(true);
-        setTimeout(() => setCopiedAmount(false), 2000);
+  const copyToClipboard = async (text: string, type: "id" | "amount" | "order") => {
+    const copied = await writeClipboardText(text);
+    if (!copied) {
+      if (type === "order") {
+        setOrderCopyStatus("error");
+        setTimeout(() => setOrderCopyStatus("idle"), 4000);
       }
-    } catch {
-      // fallback
+      return;
+    }
+    if (type === "id") {
+      setCopiedId(true);
+      setTimeout(() => setCopiedId(false), 2000);
+    } else if (type === "amount") {
+      setCopiedAmount(true);
+      setTimeout(() => setCopiedAmount(false), 2000);
+    } else {
+      setOrderCopyStatus("copied");
+      setTimeout(() => setOrderCopyStatus("idle"), 2500);
+    }
+  };
+
+  const saveOrderConfirmation = async () => {
+    if (!order.id || !order.recap || !slipFile) {
+      setReceiptSaveStatus("error");
+      setReceiptError("ยังสร้างใบยืนยันไม่ได้ กรุณาเก็บเลขออเดอร์ไว้และติดต่อร้านหากต้องการความช่วยเหลือ");
+      return;
+    }
+    setReceiptSaveStatus("saving");
+    setReceiptError(null);
+    try {
+      const blob = await createOrderConfirmationPng({
+        storeName: storefront.storeName,
+        orderId: order.id,
+        paymentStatus: order.paymentStatus,
+        recap: order.recap,
+        slipFile,
+      });
+      const filename = `jae-noi-order-${order.id}.png`;
+      const shareFiles = { files: [new File([blob], filename, { type: "image/png" })] };
+      if (navigator.share && navigator.canShare?.(shareFiles)) {
+        try {
+          await navigator.share({
+            ...shareFiles,
+            title: `${confirmationContent(order.paymentStatus).documentTitle} ${order.id}`,
+            text: `เลขออเดอร์ ${order.id}`,
+          });
+        } catch (shareError) {
+          if (shareError instanceof DOMException && shareError.name === "AbortError") {
+            setReceiptSaveStatus("idle");
+            return;
+          }
+          downloadBlob(blob, filename);
+        }
+      } else {
+        downloadBlob(blob, filename);
+      }
+      setReceiptSaveStatus("saved");
+      window.setTimeout(() => setReceiptSaveStatus("idle"), 3000);
+    } catch (saveError) {
+      setReceiptSaveStatus("error");
+      setReceiptError(saveError instanceof Error ? saveError.message : "บันทึกใบยืนยันไม่สำเร็จ กรุณาลองใหม่");
     }
   };
 
@@ -304,6 +359,8 @@ export function CartDrawer({ drawerRef, onClose, cart, checkout, storefront, ord
     }
   };
 
+  const successContent = confirmationContent(order.paymentStatus);
+
   return (
     <div className="drawer-backdrop" role="presentation" onMouseDown={(event) => event.target === event.currentTarget && onClose()}>
       <aside ref={drawerRef} className="cart-drawer" role="dialog" aria-modal="true" aria-labelledby="cart-title">
@@ -320,16 +377,28 @@ export function CartDrawer({ drawerRef, onClose, cart, checkout, storefront, ord
           <div ref={successCardRef} tabIndex={-1} className={`success-card${order.paymentStatus === "invalid" ? " invalid" : ""}`} role={order.paymentStatus === "invalid" ? "alert" : "status"}>
             <span>{order.paymentStatus === "invalid" ? "!" : "✓"}</span>
             <h3>{order.paymentStatus === "invalid" ? "บันทึกคำสั่งซื้อแล้ว" : "รับคำสั่งซื้อแล้ว"}</h3>
-            <p>เลขที่ออเดอร์</p>
-            <strong>{order.id}</strong>
-            <p>
-              {order.paymentStatus === "verified"
-                ? "ตรวจสลิปและยอดชำระเรียบร้อยแล้ว ร้านจะเริ่มเตรียมสินค้า"
-                : order.paymentStatus === "review"
-                  ? "สลิปอยู่ระหว่างตรวจสอบ ร้านจะยืนยันอีกครั้งก่อนเตรียมสินค้า"
-                  : order.paymentStatus === "invalid"
-                    ? "ยังยืนยันสลิปไม่ได้ ร้านเก็บออเดอร์ไว้แล้วและจะตรวจสอบหรือติดต่อกลับ กรุณาอย่าโอนซ้ำจนกว่าร้านจะแจ้ง"
-                    : "ยังไม่ได้แนบสลิป ออเดอร์อยู่ในสถานะรอชำระเงิน"}
+            <p className="success-payment-state">{successContent.message}</p>
+            <div className="success-reminder" role="note">
+              <strong>เก็บเลขออเดอร์นี้ไว้</strong>
+              <span>ใช้คู่กับเบอร์โทร 4 ตัวท้ายเพื่อติดตามสินค้า หากปิดหน้านี้แล้วร้านจะไม่สามารถแสดงเลขให้คุณเห็นจากข้อมูลส่วนตัวเพียงอย่างเดียว</span>
+            </div>
+            <div className="success-order-id" aria-label={`เลขออเดอร์ ${order.id}`}>
+              <span>เลขออเดอร์</span>
+              <strong>{order.id}</strong>
+              <button type="button" onClick={() => void copyToClipboard(order.id!, "order")}>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                  <rect x="9" y="9" width="11" height="11" rx="2" />
+                  <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
+                </svg>
+                {orderCopyStatus === "copied" ? "คัดลอกแล้ว" : "คัดลอกรหัส"}
+              </button>
+            </div>
+            <p className={orderCopyStatus === "error" ? "copy-order-error" : "sr-only"} aria-live="polite">
+              {orderCopyStatus === "copied"
+                ? `คัดลอกเลขออเดอร์ ${order.id} แล้ว`
+                : orderCopyStatus === "error"
+                  ? "คัดลอกอัตโนมัติไม่สำเร็จ กรุณากดค้างที่เลขออเดอร์แล้วเลือกคัดลอก"
+                  : ""}
             </p>
             {order.recap && order.recap.items.length > 0 && (
               <div className="success-recap" aria-label="สรุปรายการที่สั่ง">
@@ -352,6 +421,29 @@ export function CartDrawer({ drawerRef, onClose, cart, checkout, storefront, ord
                 </div>
               </div>
             )}
+            {slipPreviewUrl && (
+              <div className="success-slip">
+                <div>
+                  <strong>สลิปที่แนบมากับออเดอร์</strong>
+                  <small>รูปนี้อยู่ชั่วคราวในหน้านี้และจะไม่ถูกเก็บในอุปกรณ์</small>
+                </div>
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={slipPreviewUrl} alt="สลิปที่แนบกับออเดอร์นี้" />
+              </div>
+            )}
+            <button className="save-confirmation-button" type="button" onClick={() => void saveOrderConfirmation()} disabled={receiptSaveStatus === "saving"}>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                <path d="M12 3v12m0 0 4-4m-4 4-4-4" />
+                <path d="M5 19h14" />
+              </svg>
+              {receiptSaveStatus === "saving"
+                ? "กำลังสร้างใบยืนยัน..."
+                : receiptSaveStatus === "saved"
+                  ? "เปิดเมนูบันทึกแล้ว"
+                  : "บันทึกใบยืนยันพร้อมสลิป"}
+            </button>
+            <p className="receipt-save-help">ใบยืนยันจะมีเลขออเดอร์ รายการ ยอด สถานะล่าสุด และรูปสลิปที่คุณแนบ</p>
+            {receiptError && <p className="form-notice" role="alert">{receiptError}</p>}
             <Link className="track-order-link" href={`/track?order=${encodeURIComponent(order.id)}`}>ติดตามออเดอร์นี้</Link>
             <button type="button" onClick={order.onReset}>กลับหน้าร้าน</button>
           </div>
@@ -626,6 +718,234 @@ export function CartDrawer({ drawerRef, onClose, cart, checkout, storefront, ord
       </aside>
     </div>
   );
+}
+
+type ConfirmationContent = Readonly<{
+  documentTitle: string;
+  statusLabel: string;
+  message: string;
+  statusColor: string;
+  statusBackground: string;
+}>;
+
+type OrderConfirmationInput = Readonly<{
+  storeName: string;
+  orderId: string;
+  paymentStatus: ClientPaymentStatus;
+  recap: OrderRecap;
+  slipFile: File;
+}>;
+
+function confirmationContent(status: ClientPaymentStatus): ConfirmationContent {
+  if (status === "verified") {
+    return {
+      documentTitle: "ใบยืนยันการชำระเงิน",
+      statusLabel: "ตรวจสลิปแล้ว · ชำระเรียบร้อย",
+      message: "ตรวจสลิปและยอดชำระเรียบร้อยแล้ว ร้านจะเริ่มเตรียมสินค้า",
+      statusColor: "#237343",
+      statusBackground: "#E3F3E8",
+    };
+  }
+  if (status === "invalid") {
+    return {
+      documentTitle: "ใบยืนยันคำสั่งซื้อ",
+      statusLabel: "รอร้านตรวจสอบสลิป",
+      message: "ยังยืนยันสลิปไม่ได้ ร้านเก็บออเดอร์ไว้แล้ว กรุณาอย่าโอนซ้ำจนกว่าร้านจะแจ้ง",
+      statusColor: "#8D1014",
+      statusBackground: "#FCE4E2",
+    };
+  }
+  if (status === "review") {
+    return {
+      documentTitle: "ใบยืนยันคำสั่งซื้อและรับสลิป",
+      statusLabel: "รับสลิปแล้ว · รอตรวจสอบ",
+      message: "รับสลิปแล้วและอยู่ระหว่างตรวจสอบ ร้านจะยืนยันอีกครั้งก่อนเตรียมสินค้า",
+      statusColor: "#7C5800",
+      statusBackground: "#FFF1BF",
+    };
+  }
+  return {
+    documentTitle: "ใบยืนยันคำสั่งซื้อ",
+    statusLabel: "รอการยืนยันชำระเงิน",
+    message: "ร้านบันทึกออเดอร์ไว้แล้วและกำลังตรวจสอบการชำระเงิน",
+    statusColor: "#7C5800",
+    statusBackground: "#FFF1BF",
+  };
+}
+
+async function createOrderConfirmationPng(input: OrderConfirmationInput): Promise<Blob> {
+  await document.fonts.ready;
+  const content = confirmationContent(input.paymentStatus);
+  const canvas = document.createElement("canvas");
+  const itemRowHeight = 60;
+  const itemsTop = 570;
+  const totalTop = itemsTop + input.recap.items.length * itemRowHeight + 34;
+  const slipTop = totalTop + 150;
+  canvas.width = 1080;
+  canvas.height = slipTop + 690;
+  canvas.style.position = "fixed";
+  canvas.style.left = "-9999px";
+  canvas.style.top = "0";
+  document.body.appendChild(canvas);
+
+  try {
+    const context = canvas.getContext("2d");
+    if (!context) throw new Error("อุปกรณ์นี้ยังไม่รองรับการสร้างใบยืนยัน");
+    context.direction = "ltr";
+    context.textAlign = "left";
+    context.textBaseline = "alphabetic";
+
+    context.fillStyle = "#FFF9EE";
+    context.fillRect(0, 0, canvas.width, canvas.height);
+    context.fillStyle = "#7A1F1F";
+    context.fillRect(0, 0, canvas.width, 190);
+    context.fillStyle = "#D4A017";
+    context.fillRect(0, 190, canvas.width, 12);
+
+    context.fillStyle = "#FFFFFF";
+    fitFontSize(context, input.storeName, 920, 800, 56, 30);
+    fillTextCentered(context, input.storeName, canvas.width / 2, 88);
+    context.fillStyle = "#F5E8C7";
+    fitFontSize(context, content.documentTitle, 900, 700, 34, 24);
+    fillTextCentered(context, content.documentTitle, canvas.width / 2, 148);
+
+    context.fillStyle = "#FFFFFF";
+    fillRoundedRect(context, 64, 250, 952, 230, 30);
+    context.strokeStyle = "#EAD6B5";
+    context.lineWidth = 3;
+    strokeRoundedRect(context, 64, 250, 952, 230, 30);
+    context.fillStyle = "#765D56";
+    context.font = '700 25px "Noto Sans Thai", sans-serif';
+    context.fillText("เลขออเดอร์", 108, 310);
+    context.fillStyle = "#281616";
+    fitFontSize(context, input.orderId, 860, 800, 46, 28);
+    context.fillText(input.orderId, 108, 370);
+
+    context.fillStyle = content.statusBackground;
+    const statusWidth = Math.min(840, Math.max(360, measureTextAtFont(context, content.statusLabel, 700, 26) + 60));
+    fillRoundedRect(context, 108, 400, statusWidth, 52, 26);
+    context.fillStyle = content.statusColor;
+    context.font = '700 26px "Noto Sans Thai", sans-serif';
+    context.fillText(content.statusLabel, 138, 435);
+
+    context.fillStyle = "#281616";
+    context.font = '800 30px "Noto Sans Thai", sans-serif';
+    context.fillText("รายการสินค้า", 78, 535);
+    input.recap.items.forEach((item, index) => {
+      const y = itemsTop + index * itemRowHeight;
+      const itemText = `${item.name} × ${item.quantity}`;
+      const amountText = `${item.lineTotal.toLocaleString("th-TH")} บาท`;
+      context.fillStyle = "#281616";
+      fitFontSize(context, itemText, 650, 600, 27, 18);
+      context.fillText(itemText, 78, y);
+      context.fillStyle = "#765D56";
+      fitFontSize(context, amountText, 260, 700, 27, 18);
+      context.fillText(amountText, 1002 - context.measureText(amountText).width, y);
+    });
+    if (input.recap.shippingCost > 0) {
+      context.fillStyle = "#765D56";
+      context.font = '600 24px "Noto Sans Thai", sans-serif';
+      context.fillText(`รวมค่าจัดส่ง ${input.recap.shippingCost.toLocaleString("th-TH")} บาท`, 78, totalTop - 24);
+    }
+    context.strokeStyle = "#EAD6B5";
+    context.lineWidth = 3;
+    context.beginPath();
+    context.moveTo(78, totalTop);
+    context.lineTo(1002, totalTop);
+    context.stroke();
+    const totalText = `ยอดชำระทั้งหมด  ${input.recap.total.toLocaleString("th-TH")} บาท`;
+    context.fillStyle = "#8D1014";
+    fitFontSize(context, totalText, 924, 800, 40, 24);
+    context.fillText(totalText, 78, totalTop + 66);
+
+    context.fillStyle = "#281616";
+    context.font = '800 30px "Noto Sans Thai", sans-serif';
+    context.fillText("สลิปที่แนบมากับออเดอร์", 78, slipTop);
+    context.fillStyle = "#765D56";
+    context.font = '500 22px "Noto Sans Thai", sans-serif';
+    context.fillText("สำเนาจากไฟล์ที่ลูกค้าเลือกบนอุปกรณ์นี้", 78, slipTop + 40);
+
+    const slipImage = await loadLocalImage(input.slipFile);
+    const frame = { x: 78, y: slipTop + 72, width: 924, height: 470 };
+    context.fillStyle = "#FFFFFF";
+    fillRoundedRect(context, frame.x, frame.y, frame.width, frame.height, 24);
+    context.strokeStyle = "#EAD6B5";
+    context.lineWidth = 3;
+    strokeRoundedRect(context, frame.x, frame.y, frame.width, frame.height, 24);
+    drawImageContained(context, slipImage, frame.x + 18, frame.y + 18, frame.width - 36, frame.height - 36);
+
+    context.fillStyle = "#765D56";
+    context.font = '600 22px "Noto Sans Thai", sans-serif';
+    const issuedText = `สร้างเมื่อ ${new Date().toLocaleString("th-TH")} · กรุณาเก็บเลขออเดอร์ไว้ติดตามสินค้า`;
+    fitFontSize(context, issuedText, 924, 600, 22, 16);
+    context.fillText(issuedText, 78, slipTop + 600);
+
+    return await new Promise<Blob>((resolve, reject) => {
+      canvas.toBlob((blob) => {
+        if (blob) resolve(blob);
+        else reject(new Error("สร้างรูปใบยืนยันไม่สำเร็จ กรุณาลองใหม่"));
+      }, "image/png");
+    });
+  } finally {
+    canvas.remove();
+  }
+}
+
+function measureTextAtFont(context: CanvasRenderingContext2D, text: string, weight: number, size: number): number {
+  context.font = `${weight} ${size}px "Noto Sans Thai", sans-serif`;
+  return context.measureText(text).width;
+}
+
+async function loadLocalImage(file: File): Promise<HTMLImageElement> {
+  const url = URL.createObjectURL(file);
+  try {
+    const image = new window.Image();
+    await new Promise<void>((resolve, reject) => {
+      image.onload = () => resolve();
+      image.onerror = () => reject(new Error("รูปสลิปที่แนบไม่สามารถนำมาสร้างใบยืนยันได้"));
+      image.src = url;
+    });
+    return image;
+  } finally {
+    URL.revokeObjectURL(url);
+  }
+}
+
+function drawImageContained(
+  context: CanvasRenderingContext2D,
+  image: HTMLImageElement,
+  x: number,
+  y: number,
+  width: number,
+  height: number,
+) {
+  const scale = Math.min(width / image.naturalWidth, height / image.naturalHeight);
+  const drawWidth = image.naturalWidth * scale;
+  const drawHeight = image.naturalHeight * scale;
+  context.drawImage(image, x + (width - drawWidth) / 2, y + (height - drawHeight) / 2, drawWidth, drawHeight);
+}
+
+async function writeClipboardText(text: string): Promise<boolean> {
+  try {
+    await navigator.clipboard.writeText(text);
+    return true;
+  } catch {
+    const textarea = document.createElement("textarea");
+    textarea.value = text;
+    textarea.readOnly = true;
+    textarea.style.position = "fixed";
+    textarea.style.opacity = "0";
+    textarea.style.pointerEvents = "none";
+    document.body.appendChild(textarea);
+    textarea.select();
+    try {
+      return document.execCommand("copy");
+    } catch {
+      return false;
+    } finally {
+      textarea.remove();
+    }
+  }
 }
 
 function roundedRectPath(

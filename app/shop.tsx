@@ -23,6 +23,7 @@ import {
   readRememberedCustomer,
   saveRememberedCustomer,
 } from "../lib/remembered-customer";
+import { browserRecentOrderStorage, saveRecentOrder } from "../lib/recent-order";
 import { formatThaiAddress } from "../lib/thai-address";
 
 type ClientPaymentStatus = "waiting" | "verified" | "review" | "invalid";
@@ -318,6 +319,7 @@ export function Shop() {
         throw new CustomerFacingError(safeClientApiMessage(response.status, result, "ORDER_UNAVAILABLE"));
       }
       setOrderId(result.orderId);
+      saveRecentOrder(browserRecentOrderStorage(), result.orderId);
       setOrderPaymentStatus(result.paymentStatus ?? "waiting");
       // Snapshot what was ordered before the cart is cleared, so the success
       // screen can show the customer a recap of their order.

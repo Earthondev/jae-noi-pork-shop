@@ -15,6 +15,11 @@ import {
   safeClientApiMessage,
 } from "../../lib/public-errors";
 import { fitFontSize } from "../../lib/qr-image";
+import {
+  browserRecentOrderStorage,
+  clearRecentOrder,
+  readRecentOrder,
+} from "../../lib/recent-order";
 
 const paymentLabels: Record<PublicOrderTracking["paymentStatus"], string> = {
   waiting_for_payment: "รอชำระเงิน",
@@ -202,6 +207,7 @@ function OrderHistoryCard({ order, expanded, onToggle, storeName, phoneLast4, on
 
 export function OrderTracker({ storeName, phonePrimary, phoneSecondary, initialOrderId }: { storeName: string; phonePrimary: string; phoneSecondary: string; initialOrderId: string }) {
   const [orderId, setOrderId] = useState(initialOrderId);
+  const [restoredRecentOrder, setRestoredRecentOrder] = useState(false);
   const [phoneLast4, setPhoneLast4] = useState("");
   const [orders, setOrders] = useState<PublicOrderTracking[]>([]);
   const [expandedOrderId, setExpandedOrderId] = useState<string | null>(null);
@@ -219,6 +225,23 @@ export function OrderTracker({ storeName, phonePrimary, phoneSecondary, initialO
   useEffect(() => {
     if (orders.length > 0) resultHeadingRef.current?.focus();
   }, [orders]);
+
+  useEffect(() => {
+    if (initialOrderId) return;
+    const timeout = window.setTimeout(() => {
+      const recentOrder = readRecentOrder(browserRecentOrderStorage());
+      if (!recentOrder) return;
+      setOrderId(recentOrder.orderId);
+      setRestoredRecentOrder(true);
+    }, 0);
+    return () => window.clearTimeout(timeout);
+  }, [initialOrderId]);
+
+  function forgetRecentOrder() {
+    clearRecentOrder(browserRecentOrderStorage());
+    setOrderId("");
+    setRestoredRecentOrder(false);
+  }
 
   function handleOrderConfirmed(orderId: string) {
     setOrders((current) => current.map((order) => order.orderId === orderId ? { ...order, orderStatus: "completed" } : order));
@@ -269,7 +292,16 @@ export function OrderTracker({ storeName, phonePrimary, phoneSecondary, initialO
         <h1>ติดตามสถานะออเดอร์</h1>
         <p>ใช้เลขออเดอร์และเบอร์โทร 4 ตัวท้าย เพื่อปกป้องข้อมูลการสั่งซื้อของคุณ</p>
         <form className="track-form" onSubmit={lookupOrder}>
-          <label>เลขออเดอร์<input value={orderId} onChange={(event) => setOrderId(event.target.value.toUpperCase().replace(/[^A-Z0-9-]/g, "").slice(0, 22))} autoComplete="off" pattern="JN-[0-9]{8}-[23456789ABCDEFGHJKLMNPQRSTUVWXYZ]{10}" maxLength={22} placeholder="เช่น JN-20260726-7G4K2P9ABC" required /></label>
+          <label>
+            เลขออเดอร์
+            <input value={orderId} onChange={(event) => { setOrderId(event.target.value.toUpperCase().replace(/[^A-Z0-9-]/g, "").slice(0, 22)); setRestoredRecentOrder(false); }} autoComplete="off" pattern="JN-[0-9]{8}-[23456789ABCDEFGHJKLMNPQRSTUVWXYZ]{10}" maxLength={22} placeholder="เช่น JN-20260726-7G4K2P9ABC" required />
+            {restoredRecentOrder && (
+              <span className="recent-order-hint" role="status">
+                เติมเลขออเดอร์ล่าสุดจากอุปกรณ์นี้แล้ว
+                <button type="button" onClick={forgetRecentOrder}>ลบเลขที่จำไว้</button>
+              </span>
+            )}
+          </label>
           <label>เบอร์โทร 4 ตัวท้าย<input value={phoneLast4} onChange={(event) => setPhoneLast4(event.target.value.replace(/\D/g, "").slice(0, 4))} inputMode="numeric" autoComplete="tel" pattern="[0-9]{4}" maxLength={4} placeholder="เช่น 7892" required /></label>
           <button type="submit" disabled={loading}>{loading ? "กำลังค้นหา..." : "ติดตามสถานะ"}</button>
         </form>

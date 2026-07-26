@@ -159,6 +159,74 @@ test("catches a round that closes in the final pre-submit refresh", async ({ pag
   await expect(page.locator(".cart-line .increase-button")).toBeDisabled();
 });
 
+test("keeps the order id and attached slip in the downloadable success confirmation", async ({ page }) => {
+  const viewport = page.viewportSize();
+  test.skip(!viewport || viewport.width !== 390, "single mobile confirmation coverage");
+  const orderId = "JN-20260726-7G4K2P9ABC";
+  await page.evaluate(() => {
+    Object.defineProperty(navigator, "clipboard", {
+      configurable: true,
+      value: {
+        writeText: async (value: string) => localStorage.setItem("e2e_clipboard", value),
+        readText: async () => localStorage.getItem("e2e_clipboard") ?? "",
+      },
+    });
+    Object.defineProperty(navigator, "canShare", { configurable: true, value: () => true });
+    Object.defineProperty(navigator, "share", {
+      configurable: true,
+      value: async () => { throw new Error("native share sheet is unavailable in headless mode"); },
+    });
+  });
+  await page.route("**/api/orders", (route) => route.fulfill({
+    status: 201,
+    contentType: "application/json",
+    body: JSON.stringify({ orderId, paymentStatus: "review" }),
+  }));
+  await addFirstProductToCart(page);
+  await fillPostalCheckout(page);
+  await page.locator('input[name="slip"]').setInputFiles({
+    name: "slip.png",
+    mimeType: "image/png",
+    buffer: Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=", "base64"),
+  });
+  await page.getByRole("button", { name: "ยืนยันคำสั่งซื้อ" }).click();
+
+  await expect(page.getByRole("heading", { name: "รับคำสั่งซื้อแล้ว" })).toBeVisible();
+  await expect(page.locator(".success-order-id")).toContainText(orderId);
+  await expect(page.getByAltText("สลิปที่แนบกับออเดอร์นี้")).toBeVisible();
+  await expect(page.getByRole("button", { name: "บันทึกใบยืนยันพร้อมสลิป" })).toBeVisible();
+
+  await page.getByRole("button", { name: "คัดลอกรหัส" }).click();
+  await expect(page.getByRole("button", { name: "คัดลอกแล้ว" })).toBeVisible();
+  expect(await page.evaluate(() => localStorage.getItem("e2e_clipboard"))).toBe(orderId);
+
+  const stored = await page.evaluate(() => localStorage.getItem("jae_noi_recent_order_v1"));
+  expect(stored).toContain(orderId);
+  expect(stored).not.toMatch(/name|phone|address|slip|items|payment/i);
+
+  const download = page.waitForEvent("download");
+  await page.getByRole("button", { name: "บันทึกใบยืนยันพร้อมสลิป" }).click();
+  expect((await download).suggestedFilename()).toBe(`jae-noi-order-${orderId}.png`);
+});
+
+test("prefills the latest locally remembered order on the tracking page", async ({ page }) => {
+  const viewport = page.viewportSize();
+  test.skip(!viewport || viewport.width !== 390, "single mobile recent-order coverage");
+  const orderId = "JN-20260726-7G4K2P9ABC";
+  await page.evaluate((value) => {
+    localStorage.setItem("jae_noi_recent_order_v1", JSON.stringify({
+      version: 1,
+      orderId: value,
+      savedAt: Date.now(),
+      expiresAt: Date.now() + 30 * 24 * 60 * 60 * 1000,
+    }));
+  }, orderId);
+  await page.goto("/track");
+
+  await expect(page.getByLabel("เลขออเดอร์")).toHaveValue(orderId);
+  await expect(page.getByText("เติมเลขออเดอร์ล่าสุดจากอุปกรณ์นี้แล้ว")).toBeVisible();
+});
+
 test("keeps hero and category navigation responsive at the configured breakpoint", async ({ page }) => {
   await mockStorefront(page, (payload) => ({ ...payload, rounds: [OPEN_ROUND], nextRound: null }));
   const viewport = page.viewportSize();
