@@ -8,10 +8,12 @@ export type ProductCardProps = Readonly<{
   quantity: number;
   index: number;
   onUpdateQuantity: (productId: string, delta: number) => void;
+  orderingOpen: boolean;
 }>;
 
-export function ProductCard({ product, quantity, index, onUpdateQuantity }: ProductCardProps) {
-  const isPurchasable = product.status === "เปิดขาย" && product.price !== null;
+export function ProductCard({ product, quantity, index, onUpdateQuantity, orderingOpen }: ProductCardProps) {
+  const productReady = product.status === "เปิดขาย" && product.price !== null;
+  const isPurchasable = orderingOpen && productReady;
   const badge = product.status === "ปิดชั่วคราว" ? "ปิดรับชั่วคราว" : product.status === "รอข้อมูล" ? "รอข้อมูล" : product.unit;
   const statusClass = product.status === "เปิดขาย" ? "open" : product.status === "ปิดชั่วคราว" ? "closed" : "waiting";
   const [imageSrc, setImageSrc] = useState(product.image);
@@ -52,8 +54,8 @@ export function ProductCard({ product, quantity, index, onUpdateQuantity }: Prod
                 </svg>
               </button>
             ) : (
-              <span className={`product-unavailable${product.status === "ปิดชั่วคราว" ? " closed" : ""}`}>
-                {product.status === "ปิดชั่วคราว" ? "ปิดรับ" : "รอข้อมูล"}
+              <span className={`product-unavailable${!orderingOpen && productReady ? " round-closed" : product.status === "ปิดชั่วคราว" ? " closed" : ""}`}>
+                {!orderingOpen && productReady ? "รอเปิดรอบ" : product.status === "ปิดชั่วคราว" ? "ปิดรับ" : "รอข้อมูล"}
               </span>
             )}
           </div>
@@ -67,7 +69,13 @@ export function ProductCard({ product, quantity, index, onUpdateQuantity }: Prod
                 </svg>
               </button>
               <output key={quantity} aria-live="polite">{quantity}</output>
-              <button className="increase-button" type="button" onClick={() => onUpdateQuantity(product.id, 1)} aria-label={`เพิ่มจำนวน ${product.name}`}>
+              <button
+                className="increase-button"
+                type="button"
+                onClick={() => onUpdateQuantity(product.id, 1)}
+                aria-label={orderingOpen ? `เพิ่มจำนวน ${product.name}` : `ยังเพิ่ม ${product.name} ไม่ได้จนกว่าจะเปิดรอบ`}
+                disabled={!orderingOpen}
+              >
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" style={{ width: 14, height: 14 }}>
                   <line x1="12" y1="5" x2="12" y2="19"></line>
                   <line x1="5" y1="12" x2="19" y2="12"></line>

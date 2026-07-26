@@ -252,6 +252,7 @@ export function Shop() {
 
   async function submitOrder(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    const formElement = event.currentTarget;
     if (cartItems.length === 0) {
       storefront.setNotice("กรุณาเลือกสินค้าอย่างน้อย 1 รายการ");
       return;
@@ -260,39 +261,57 @@ export function Shop() {
       storefront.setNotice(`${unavailableProduct.name} ไม่พร้อมขาย จึงยังยืนยันออเดอร์รายการนี้ไม่ได้`);
       return;
     }
-    if (!storefront.selectedRound) { storefront.setNotice("ขณะนี้ยังไม่มีรอบพรีออเดอร์ที่เปิดรับ"); return; }
+    if (!storefront.selectedRound) {
+      storefront.setNotice("ขณะนี้ยังไม่เปิดรับออเดอร์ กรุณาติดตามรอบถัดไป");
+      return;
+    }
     if (storefront.fulfilment === "postal" && storefront.shippingFee === null) { storefront.setNotice("ค่าจัดส่งไปรษณีย์ยังรอข้อมูล"); return; }
     if (!storefront.secureWriteReady) { storefront.setNotice("โหมดดูตัวอย่าง: การบันทึกออเดอร์อย่างปลอดภัยกำลังรอเชื่อมบัญชีระบบ Google"); return; }
 
     setSubmitting(true);
     storefront.setNotice(null);
-    const form = new FormData(event.currentTarget);
-    form.set(
-      "items",
-      JSON.stringify(
-        cartItems.map((product) => ({
-          productId: product.id,
-          name: product.name,
-          quantity: quantities[product.id],
-          unitPrice: product.price,
-        })),
-      ),
-    );
-    form.set("roundId", storefront.selectedRound);
-    form.set("fulfilment", storefront.fulfilment);
-    if (storefront.fulfilment === "postal") {
-      form.set("address", formatThaiAddress({
-        addressLine: String(form.get("addressLine") ?? ""),
-        subdistrict: String(form.get("subdistrict") ?? ""),
-        district: String(form.get("district") ?? ""),
-        province: String(form.get("province") ?? ""),
-        postalCode: String(form.get("postalCode") ?? ""),
-      }));
-    }
-    idempotencyKeyRef.current ??= crypto.randomUUID();
-    form.set("idempotencyKey", idempotencyKeyRef.current);
+    const selectedRoundAtSubmit = storefront.selectedRound;
 
     try {
+      // A round can close while a customer leaves this tab open. Polling and
+      // visibility refresh keep the page current, and this final read closes
+      // the last race window immediately before any order data is uploaded.
+      const latestStorefront = await storefront.refreshStorefront();
+      if (!latestStorefront) {
+        storefront.setNotice("ยังตรวจสอบสถานะรอบล่าสุดไม่ได้ ข้อมูลที่กรอกไว้ยังอยู่ กรุณาลองอีกครั้ง");
+        return;
+      }
+      if (!latestStorefront.rounds.some((round) => round.id === selectedRoundAtSubmit)) {
+        storefront.setNotice("รอบปิดพอดีระหว่างที่คุณกำลังสั่งซื้อ ข้อมูลและสินค้าในตะกร้ายังอยู่ กรุณาติดตามรอบถัดไป");
+        return;
+      }
+
+      const form = new FormData(formElement);
+      form.set(
+        "items",
+        JSON.stringify(
+          cartItems.map((product) => ({
+            productId: product.id,
+            name: product.name,
+            quantity: quantities[product.id],
+            unitPrice: product.price,
+          })),
+        ),
+      );
+      form.set("roundId", selectedRoundAtSubmit);
+      form.set("fulfilment", storefront.fulfilment);
+      if (storefront.fulfilment === "postal") {
+        form.set("address", formatThaiAddress({
+          addressLine: String(form.get("addressLine") ?? ""),
+          subdistrict: String(form.get("subdistrict") ?? ""),
+          district: String(form.get("district") ?? ""),
+          province: String(form.get("province") ?? ""),
+          postalCode: String(form.get("postalCode") ?? ""),
+        }));
+      }
+      idempotencyKeyRef.current ??= crypto.randomUUID();
+      form.set("idempotencyKey", idempotencyKeyRef.current);
+
       const response = await fetch("/api/orders", { method: "POST", body: form });
       const result = (await response.json().catch(() => null)) as { orderId?: string; paymentStatus?: ClientPaymentStatus; error?: string } | null;
       if (!response.ok || !result?.orderId) {
@@ -347,8 +366,22 @@ export function Shop() {
 
   return (
     <main id="top">
-      <SiteHeader cartCount={cartCount} onOpenCart={() => setCartOpen(true)} storeName={storefront.content.storeName} storeLogoUrl={storefront.content.storeLogoUrl} />
-      <Hero storeLoading={storefront.storeLoading} rounds={storefront.rounds} nextRound={storefront.nextRound} content={storefront.content} />
+      <SiteHeader
+        cartCount={cartCount}
+        onOpenCart={() => setCartOpen(true)}
+        storeName={storefront.content.storeName}
+        storeLogoUrl={storefront.content.storeLogoUrl}
+        categories={categories}
+        selectedCategory={selectedCategory}
+        onSelectCategory={setSelectedCategory}
+      />
+      <Hero
+        storeLoading={storefront.storeLoading}
+        orderingOpen={storefront.orderingOpen}
+        rounds={storefront.rounds}
+        nextRound={storefront.nextRound}
+        content={storefront.content}
+      />
 
       <section className="order-flow" id="how-to-order">
         <div><span>1</span><h3>เลือกสินค้า</h3><p>เพิ่มจำนวนที่ต้องการลงตะกร้า</p></div>
@@ -364,6 +397,7 @@ export function Shop() {
         categories={categories}
         selectedCategory={selectedCategory}
         onSelectCategory={setSelectedCategory}
+        orderingOpen={storefront.orderingOpen}
       />
 
       <section className="story" id="story">
@@ -450,6 +484,7 @@ export function Shop() {
           }}
           storefront={{
             storeName: storefront.content.storeName,
+            orderingOpen: storefront.orderingOpen,
             rounds: storefront.rounds,
             nextRound: storefront.nextRound,
             selectedRound: storefront.selectedRound,

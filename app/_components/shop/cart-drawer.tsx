@@ -44,6 +44,7 @@ export type CartDrawerProps = Readonly<{
   }>;
   storefront: Readonly<{
     storeName: string;
+    orderingOpen: boolean;
     rounds: readonly PreorderRound[];
     nextRound: PreorderRound | null;
     selectedRound: string;
@@ -369,7 +370,13 @@ export function CartDrawer({ drawerRef, onClose, cart, checkout, storefront, ord
                     <div className="stepper compact">
                       <button className="decrease-button" type="button" onClick={() => cart.onUpdateQuantity(product.id, -1)} aria-label={`ลด ${product.name}`}>−</button>
                       <output>{cart.quantities[product.id]}</output>
-                      <button className="increase-button" type="button" onClick={() => cart.onUpdateQuantity(product.id, 1)} aria-label={`เพิ่ม ${product.name}`}>+</button>
+                      <button
+                        className="increase-button"
+                        type="button"
+                        onClick={() => cart.onUpdateQuantity(product.id, 1)}
+                        aria-label={storefront.orderingOpen ? `เพิ่ม ${product.name}` : `ยังเพิ่ม ${product.name} ไม่ได้จนกว่าจะเปิดรอบ`}
+                        disabled={!storefront.orderingOpen}
+                      >+</button>
                     </div>
                   </div>
                 ))
@@ -400,7 +407,7 @@ export function CartDrawer({ drawerRef, onClose, cart, checkout, storefront, ord
               </div>
             )}
 
-            {storefront.rounds.length === 0 ? (
+            {!storefront.orderingOpen ? (
               <section className="closed-round-cart" role="status" aria-labelledby="closed-round-title">
                 <span className="closed-round-mark" aria-hidden="true">ปิด</span>
                 <p className="eyebrow">ขณะนี้ยังไม่เปิดรับออเดอร์</p>

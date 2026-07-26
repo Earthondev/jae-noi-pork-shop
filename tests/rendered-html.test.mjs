@@ -42,11 +42,17 @@ test("keeps the Thai mobile shop content and accessibility contract", async () =
   assert.match(shop, /0 บาท \(ฟรี\)/);
   assert.match(shop, /เปิดแผนที่ \/ นำทาง/);
   assert.match(shop, /rel="noopener noreferrer"/);
-  assert.match(shop, /rounds\.length === 0/);
+  assert.match(shop, /!storefront\.orderingOpen/);
+  assert.match(shop, /const orderingOpen = !storeLoading && rounds\.length > 0/);
+  assert.match(shop, /aria-live="polite"/);
+  assert.match(shop, /รอเปิดรอบ/);
+  assert.match(shop, /disabled={!orderingOpen}/);
   assert.match(shop, /className="closed-round-cart"/);
   assert.match(shop, /สินค้าในตะกร้ายังไม่ถูกจองและยังไม่ต้องชำระเงิน/);
   assert.match(shop, /กลับไปเลือกสินค้า/);
   assert.match(shop, /setInterval\(\(\) => void refreshStorefront\(\), 30_000\)/);
+  assert.match(shop, /const latestStorefront = await storefront\.refreshStorefront\(\)/);
+  assert.match(shop, /รอบปิดพอดีระหว่างที่คุณกำลังสั่งซื้อ/);
   assert.match(shop, /ปิดรับชั่วคราว/);
   assert.match(shop, /product-card-skeleton/);
   assert.doesNotMatch(shop, /fallbackProducts/);
@@ -57,6 +63,9 @@ test("keeps the Thai mobile shop content and accessibility contract", async () =
   assert.match(css, /\.floating-cart/);
   assert.match(css, /\.closed-round-cart/);
   assert.match(css, /\.pickup-map-link/);
+  assert.match(css, /object-position: 50% 33%/);
+  assert.match(css, /align-items: start/);
+  assert.match(css, /@media \(min-width: 960px\)/);
 });
 
 test("uses the shop logo for browser and Apple icons", async () => {

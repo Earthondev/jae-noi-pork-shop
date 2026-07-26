@@ -132,7 +132,12 @@ export async function POST(request: Request) {
     operation = "order.load_storefront";
     const storefront = await getStorefrontData();
     const selectedRound = storefront.rounds.find((round) => round.id === roundId);
-    if (!selectedRound) return NextResponse.json({ error: "รอบพรีออเดอร์นี้ยังไม่เปิดรับหรือปิดรับแล้ว" }, { status: 400 });
+    if (!selectedRound) {
+      return NextResponse.json(
+        { error: "รอบปิดพอดีระหว่างที่คุณกำลังสั่งซื้อ ข้อมูลที่กรอกไว้ยังอยู่ กรุณาติดตามรอบถัดไป" },
+        { status: 409 },
+      );
+    }
     if (fulfilment === "postal" && storefront.shippingFee === null) return NextResponse.json({ error: "ค่าจัดส่งไปรษณีย์ยังรอข้อมูล" }, { status: 400 });
     if (fulfilment === "pickup" && !storefront.pickupAddress) {
       return NextResponse.json({ error: "ไม่สามารถรับเองหน้าร้านได้จนกว่าจะมีที่อยู่ร้าน" }, { status: 400 });

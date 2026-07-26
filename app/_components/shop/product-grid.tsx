@@ -10,6 +10,7 @@ export type ProductGridProps = Readonly<{
   categories: readonly string[];
   selectedCategory: string;
   onSelectCategory: (category: string) => void;
+  orderingOpen: boolean;
 }>;
 
 export function ProductGrid({
@@ -20,6 +21,7 @@ export function ProductGrid({
   categories,
   selectedCategory,
   onSelectCategory,
+  orderingOpen,
 }: ProductGridProps) {
   return (
     <section className="products-section" id="products">
@@ -27,7 +29,11 @@ export function ProductGrid({
         <div>
           <h2>สินค้าของเจ๊น้อย</h2>
         </div>
-        <p>กดเพิ่มลงตะกร้าได้ทันที รายการที่ข้อมูลยังไม่ครบจะแสดง “รอข้อมูล” อย่างชัดเจน</p>
+        <p>
+          {orderingOpen
+            ? "กดเพิ่มลงตะกร้าได้ทันที รายการที่ข้อมูลยังไม่ครบจะแสดง “รอข้อมูล” อย่างชัดเจน"
+            : "ชมสินค้าไว้ก่อนได้ ปุ่มเพิ่มจะเปิดพร้อมรอบพรีออเดอร์ถัดไป"}
+        </p>
       </div>
       {categories.length > 1 && (
         <div className="categories-container" role="tablist" aria-label="หมวดหมู่สินค้า">
@@ -66,6 +72,7 @@ export function ProductGrid({
                   quantity={quantities[product.id] ?? 0}
                   index={index}
                   onUpdateQuantity={onUpdateQuantity}
+                  orderingOpen={orderingOpen}
                 />
               ))
             )}

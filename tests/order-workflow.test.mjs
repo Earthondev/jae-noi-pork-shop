@@ -53,6 +53,22 @@ test("shows the next opening and blocks pickup until an address exists", async (
   assert.match(orderRoute, /ไม่สามารถรับเองหน้าร้านได้จนกว่าจะมีที่อยู่ร้าน/);
 });
 
+test("rechecks the selected round immediately before submit and returns a friendly race message", async () => {
+  const [shop, orderRoute, storefrontHook] = await Promise.all([
+    projectFile("app/shop.tsx"),
+    projectFile("app/api/orders/route.ts"),
+    projectFile("app/_hooks/use-storefront.ts"),
+  ]);
+
+  assert.match(storefrontHook, /setInterval\(\(\) => void refreshStorefront\(\), 30_000\)/);
+  assert.match(storefrontHook, /visibilitychange/);
+  assert.match(shop, /const latestStorefront = await storefront\.refreshStorefront\(\)/);
+  assert.match(shop, /latestStorefront\.rounds\.some/);
+  assert.match(shop, /รอบปิดพอดีระหว่างที่คุณกำลังสั่งซื้อ/);
+  assert.match(orderRoute, /รอบปิดพอดีระหว่างที่คุณกำลังสั่งซื้อ/);
+  assert.match(orderRoute, /status: 409/);
+});
+
 test("builds the order number from the selected delivery round", async () => {
   assert.equal(deliveryDateKeyFromRoundId("RD-20260716"), "20260716");
   assert.throws(() => deliveryDateKeyFromRoundId("RD-2026-07-16"), /รหัสรอบจัดส่ง/);

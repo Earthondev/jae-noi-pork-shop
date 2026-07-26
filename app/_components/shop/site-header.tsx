@@ -2,15 +2,36 @@
 
 import Image from "next/image";
 import Link from "next/link";
+import { useRef } from "react";
 
 export type SiteHeaderProps = Readonly<{
   cartCount: number;
   onOpenCart: () => void;
   storeName: string;
   storeLogoUrl: string;
+  categories: readonly string[];
+  selectedCategory: string;
+  onSelectCategory: (category: string) => void;
 }>; 
 
-export function SiteHeader({ cartCount, onOpenCart, storeName, storeLogoUrl }: SiteHeaderProps) {
+export function SiteHeader({
+  cartCount,
+  onOpenCart,
+  storeName,
+  storeLogoUrl,
+  categories,
+  selectedCategory,
+  onSelectCategory,
+}: SiteHeaderProps) {
+  const categoryMenuRef = useRef<HTMLDetailsElement>(null);
+  const hasCategoryMenu = categories.length >= 3;
+
+  function selectCategory(category: string) {
+    onSelectCategory(category);
+    categoryMenuRef.current?.removeAttribute("open");
+    window.requestAnimationFrame(() => document.getElementById("products")?.scrollIntoView({ behavior: "smooth" }));
+  }
+
   return (
     <header className="site-header">
       <a className="brand" href="#top" aria-label="กลับไปด้านบน">
@@ -19,8 +40,32 @@ export function SiteHeader({ cartCount, onOpenCart, storeName, storeLogoUrl }: S
         </span>
         <span className="brand-name">{storeName}</span>
       </a>
-      <nav aria-label="เมนูหลัก">
-        <a href="#products">สินค้า</a>
+      <nav className={hasCategoryMenu ? "has-category-menu" : undefined} aria-label="เมนูหลัก">
+        <a className="products-nav-link" href="#products">สินค้า</a>
+        {hasCategoryMenu && (
+          <details className="category-menu" ref={categoryMenuRef}>
+            <summary aria-label="เปิดเมนูหมวดสินค้า">
+              สินค้า
+              <svg viewBox="0 0 20 20" aria-hidden="true">
+                <path d="m5 7 5 5 5-5" />
+              </svg>
+            </summary>
+            <div className="category-menu-popover" role="menu" aria-label="เลือกหมวดสินค้า">
+              {categories.map((category) => (
+                <button
+                  key={category}
+                  type="button"
+                  role="menuitemradio"
+                  aria-checked={selectedCategory === category}
+                  onClick={() => selectCategory(category)}
+                >
+                  <span>{category}</span>
+                  {selectedCategory === category && <span aria-hidden="true">✓</span>}
+                </button>
+              ))}
+            </div>
+          </details>
+        )}
         <Link href="/track">ติดตามออเดอร์</Link>
       </nav>
       <button className="cart-button" type="button" onClick={onOpenCart} aria-label={`เปิดตะกร้า มีสินค้า ${cartCount} ชิ้น`}>

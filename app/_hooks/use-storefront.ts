@@ -31,7 +31,7 @@ export type StorefrontContent = {
   storeCoverUrl: string;
 };
 
-type StorefrontResponse = {
+export type StorefrontResponse = {
   products: Product[];
   rounds: PreorderRound[];
   nextRound: PreorderRound | null;
@@ -74,9 +74,10 @@ export type UseStorefrontResult = Readonly<{
   content: StorefrontContent;
   secureWriteReady: boolean;
   storeLoading: boolean;
+  orderingOpen: boolean;
   notice: string | null;
   setNotice: (notice: string | null) => void;
-  refreshStorefront: () => Promise<void>;
+  refreshStorefront: () => Promise<StorefrontResponse | null>;
 }>;
 
 export function useStorefront({
@@ -113,7 +114,7 @@ export function useStorefront({
   const [notice, setNotice] = useState<string | null>(null);
   const hasLoadedProductsRef = useRef(false);
   const mountedRef = useRef(true);
-  const refreshInFlightRef = useRef<Promise<void> | null>(null);
+  const refreshInFlightRef = useRef<Promise<StorefrontResponse | null> | null>(null);
   const selectedRoundRef = useRef(selectedRound);
   const fulfilmentRef = useRef(fulfilment);
 
@@ -123,12 +124,12 @@ export function useStorefront({
   const refreshStorefront = useCallback(async () => {
     if (refreshInFlightRef.current) return refreshInFlightRef.current;
 
-    const refreshPromise = (async () => {
+    const refreshPromise: Promise<StorefrontResponse | null> = (async () => {
       try {
         const response = await fetch("/api/storefront", { cache: "no-store" });
         const data = (await response.json()) as StorefrontResponse;
         if (!response.ok) throw new Error(PUBLIC_ERROR_MESSAGES.STORE_UNAVAILABLE);
-        if (!mountedRef.current) return;
+        if (!mountedRef.current) return null;
 
         const removedProductNames = pruneUnavailable(data.products);
         if (removedProductNames.length > 0) {
@@ -152,10 +153,12 @@ export function useStorefront({
         setPromptPayName(data.promptPayName);
         setContent(data.content);
         setSecureWriteReady(data.secureWriteReady);
+        return data;
       } catch {
         if (mountedRef.current && !hasLoadedProductsRef.current) {
           setNotice(PUBLIC_ERROR_MESSAGES.STORE_UNAVAILABLE);
         }
+        return null;
       } finally {
         if (mountedRef.current) setStoreLoading(false);
       }
@@ -163,7 +166,7 @@ export function useStorefront({
 
     refreshInFlightRef.current = refreshPromise;
     try {
-      await refreshPromise;
+      return await refreshPromise;
     } finally {
       refreshInFlightRef.current = null;
     }
@@ -206,6 +209,8 @@ export function useStorefront({
     if (cartOpen) void refreshStorefront();
   }, [cartOpen, refreshStorefront]);
 
+  const orderingOpen = !storeLoading && rounds.length > 0;
+
   return {
     products,
     rounds,
@@ -222,6 +227,7 @@ export function useStorefront({
     content,
     secureWriteReady,
     storeLoading,
+    orderingOpen,
     notice,
     setNotice,
     refreshStorefront,
