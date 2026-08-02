@@ -7,6 +7,10 @@ import { isValidOrderId } from "../../lib/order-tracking";
 export const metadata: Metadata = {
   title: "ติดตามออเดอร์ | เจ๊น้อย เขียงหมูตะคร้อ",
   description: "ตรวจสอบสถานะชำระเงิน การเตรียมสินค้า และเลขพัสดุของออเดอร์ร้านเจ๊น้อย",
+  // Answers only for someone who already has an order number, and the answer
+  // contains a customer's name and address. Nothing here belongs in a search
+  // index or in an AI assistant's training set.
+  robots: { index: false, follow: false, nocache: true },
 };
 
 export default async function TrackOrderPage({ searchParams }: { searchParams: Promise<{ order?: string | string[] }> }) {

@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { headers } from "next/headers";
 import { Noto_Sans_Thai, Noto_Serif_Thai } from "next/font/google";
 import "./globals.css";
+import { KEYWORDS, SITE_DESCRIPTION, SITE_TITLE, SITE_URL, shopJsonLd } from "../lib/seo";
 
 const bodyFont = Noto_Sans_Thai({ variable: "--font-body", subsets: ["thai", "latin"], weight: ["400", "500", "600", "700", "800"] });
 const displayFont = Noto_Serif_Thai({ variable: "--font-display", subsets: ["thai", "latin"], weight: ["600", "700", "800"] });
@@ -11,12 +12,17 @@ export async function generateMetadata(): Promise<Metadata> {
   const host = requestHeaders.get("x-forwarded-host") ?? requestHeaders.get("host") ?? "localhost";
   const protocol = requestHeaders.get("x-forwarded-proto") ?? (host.includes("localhost") ? "http" : "https");
   const metadataBase = new URL(`${protocol}://${host}`);
-  const title = "เจ๊น้อย เขียงหมูตะคร้อ | สั่งสินค้าออนไลน์";
-  const description = "สั่งแหนมหมู ไส้กรอกอีสาน และแคปหมูจากร้านเจ๊น้อย เขียงหมูตะคร้อ";
+  const title = SITE_TITLE;
+  const description = SITE_DESCRIPTION;
   return {
     metadataBase,
     title,
     description,
+    keywords: [...KEYWORDS],
+    // www and the apex both serve the site, so every page has to name the one
+    // URL search engines should keep.
+    alternates: { canonical: SITE_URL },
+    robots: { index: true, follow: true, googleBot: { index: true, follow: true, "max-image-preview": "large", "max-snippet": -1 } },
     icons: {
       icon: [
         { url: "/favicon-shop-v2.ico", sizes: "48x48", type: "image/x-icon" },
@@ -33,5 +39,14 @@ export async function generateMetadata(): Promise<Metadata> {
 export const viewport: Viewport = { themeColor: "#b51519", colorScheme: "light" };
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
-  return <html lang="th"><body className={`${bodyFont.variable} ${displayFont.variable}`}>{children}</body></html>;
+  return (
+    <html lang="th">
+      <body className={`${bodyFont.variable} ${displayFont.variable}`}>
+        {children}
+        {/* Server-rendered so assistants that do not run JavaScript still get
+            the shop's name, address, phone and what it sells. */}
+        <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: shopJsonLd() }} />
+      </body>
+    </html>
+  );
 }

@@ -1,9 +1,17 @@
+import type { Metadata } from "next";
 import { requireAdminUser } from "../admin-auth";
 import { getAdminOrders } from "../../db/order-repository";
 import { getAdminCmsData } from "../../db/cms-repository";
 import { AdminDashboard } from "./dashboard";
 
 export const dynamic = "force-dynamic";
+
+// Behind a login, but a stray link should not put the shop's back office into
+// a search index either.
+export const metadata: Metadata = {
+  title: "หลังร้าน | เจ๊น้อย เขียงหมูตะคร้อ",
+  robots: { index: false, follow: false, nocache: true },
+};
 
 type AdminTab = "orders" | "stickers" | "rounds" | "products" | "storefront";
 

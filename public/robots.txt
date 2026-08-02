@@ -1,0 +1,17 @@
+# ร้านเจ๊น้อย เขียงหมูตะคร้อ — https://jaenoishop.com
+# Search engines and AI assistants are welcome to index and quote this shop.
+# Only the pages that hold customer data are closed off.
+
+User-agent: *
+Allow: /
+Disallow: /admin
+Disallow: /admin/
+Disallow: /api/
+Disallow: /track
+
+# Content signals (Cloudflare's format): indexing and grounding AI answers in
+# this page are both allowed, because the point is for customers to find the
+# shop. Training on it is neither granted nor refused.
+# content-signal: search=yes, ai-input=yes
+
+Sitemap: https://jaenoishop.com/sitemap.xml
