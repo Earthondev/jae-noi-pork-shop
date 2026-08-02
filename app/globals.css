@@ -1901,6 +1901,13 @@ footer .footer-phone-links a:active { background: rgba(255, 255, 255, 0.1); }
   border-radius: 6px;
   cursor: pointer;
   transition: all 0.18s cubic-bezier(0.16, 1, 0.3, 1);
+}
+/* The icons carry no intrinsic size, so without this they stretch to fill
+   whatever height the button happens to get. */
+.admin-print-sticker-btn svg {
+  width: 16px;
+  height: 16px;
+  flex: 0 0 auto;
   text-decoration: none;
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
 }
@@ -1916,6 +1923,20 @@ footer .footer-phone-links a:active { background: rgba(255, 255, 255, 0.1); }
   box-shadow: none;
 }
 
+/* Dedicated label-printing tab: one card per delivery round. */
+.admin-sticker-scope { display: flex; gap: 11px; align-items: flex-start; margin-bottom: 14px; padding: 13px; border: 1px solid var(--admin-line); border-radius: 14px; background: var(--admin-surface); cursor: pointer; }
+.admin-sticker-scope input { width: 20px; min-width: 20px; height: 20px; margin-top: 2px; accent-color: #b51519; }
+.admin-sticker-scope strong { display: block; color: var(--admin-ink); font-size: .82rem; font-weight: 800; }
+.admin-sticker-scope small { display: block; margin-top: 3px; color: var(--admin-muted); font-size: .7rem; line-height: 1.5; }
+.admin-sticker-rounds { display: grid; gap: 11px; }
+.admin-sticker-round { padding: 15px; border: 1px solid var(--admin-line); border-radius: 16px; background: var(--admin-surface); box-shadow: 0 6px 18px rgb(75 36 27 / 5%); }
+.admin-sticker-round-head { display: flex; gap: 10px; align-items: baseline; justify-content: space-between; flex-wrap: wrap; }
+.admin-sticker-round-head h3 { margin: 0; color: var(--admin-red-dark); font-family: var(--font-display), serif; font-size: 1.05rem; }
+.admin-sticker-round-id { color: var(--admin-muted); font-size: .68rem; font-weight: 800; }
+.admin-sticker-actions { margin-top: 13px; display: flex; gap: 8px; flex-wrap: wrap; }
+.admin-sticker-actions .admin-print-sticker-btn { flex: 1 1 160px; justify-content: center; min-height: 46px; font-size: .82rem; }
+.admin-sticker-actions button:disabled { opacity: .55; cursor: wait; }
+.admin-sticker-none { margin: 13px 0 0; color: var(--admin-muted); font-size: .74rem; font-weight: 700; }
 .admin-round-card-tag {
   display: inline-flex;
   flex-direction: column;

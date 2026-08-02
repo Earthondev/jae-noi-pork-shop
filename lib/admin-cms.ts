@@ -120,6 +120,28 @@ export function formatRoundLabel(deliveryDate: string): string {
   }
 }
 
+export const THAI_MONTHS_FULL = [
+  "มกราคม", "กุมภาพันธ์", "มีนาคม", "เมษายน", "พฤษภาคม", "มิถุนายน",
+  "กรกฎาคม", "สิงหาคม", "กันยายน", "ตุลาคม", "พฤศจิกายน", "ธันวาคม",
+];
+
+/**
+ * "RD-20260804" → "รอบจัดส่ง 4 สิงหาคม 2569".
+ *
+ * Orders only carry the round id, not the delivery date, so the label the
+ * shop reads while printing has to be rebuilt from the id. Falls back to the
+ * raw id for anything that is not a real round, so an odd value shows up as
+ * itself rather than as a wrong date.
+ */
+export function roundLabelFromRoundId(roundId: string): string {
+  const match = /^RD-(\d{4})(\d{2})(\d{2})$/.exec(roundId);
+  if (!match) return roundId || "ไม่ระบุรอบ";
+  const [, year, month, day] = match;
+  const monthName = THAI_MONTHS_FULL[Number(month) - 1];
+  if (!monthName) return roundId;
+  return `รอบจัดส่ง ${Number(day)} ${monthName} ${Number(year) + 543}`;
+}
+
 export function roundIdFromDeliveryDate(deliveryDate: string): string {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(deliveryDate)) throw new AdminCmsValidationError("วันจัดส่งไม่ถูกต้อง");
   return `RD-${deliveryDate.replaceAll("-", "")}`;

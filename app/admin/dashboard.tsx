@@ -10,6 +10,7 @@ import type { AdminOrder, OrderStatus, PaymentStatus } from "../../db/orders";
 import {
   PRODUCT_STATUSES,
   ROUND_STATUSES,
+  roundLabelFromRoundId,
   type AdminCmsData,
   type AdminProduct,
   type AdminRound,
@@ -25,7 +26,7 @@ import { ConfirmDialog } from "./confirm-dialog";
 import { AdminIcon, type AdminIconName } from "./icons";
 import { TrackingImportPanel } from "./tracking-import-panel";
 
-type AdminTab = "orders" | "rounds" | "products" | "storefront";
+type AdminTab = "orders" | "stickers" | "rounds" | "products" | "storefront";
 type OrderRange = "today" | "7days" | "all";
 type OrderFilter = "all" | "attention" | "pending_slip" | "paid" | "shipped";
 type Mutation = (action: string, payload: Record<string, unknown>, successMessage: string) => Promise<boolean | void>;
@@ -57,6 +58,7 @@ const productStatusLabels: Record<(typeof PRODUCT_STATUSES)[number], string> = {
 };
 const tabs: Array<{ id: AdminTab; icon: AdminIconName; label: string }> = [
   { id: "orders", icon: "orders", label: "ออเดอร์" },
+  { id: "stickers", icon: "printer", label: "พิมพ์สติ๊กเกอร์" },
   { id: "rounds", icon: "calendar", label: "รอบขาย" },
   { id: "products", icon: "products", label: "สินค้า" },
   { id: "storefront", icon: "store", label: "หน้าร้าน" },
@@ -239,6 +241,7 @@ export function AdminDashboard({ initialOrders, initialCms, userName, serverNow,
 
     <p className={`admin-save-notice${notice ? " has-message" : ""}`} aria-live="polite" role="status">{notice}</p>
     {activeTab === "orders" && <OrdersPanel orders={orders} setOrders={setOrders} saving={saving} setSaving={setSaving} setNotice={setNotice} />}
+    {activeTab === "stickers" && <StickerPanel orders={orders} />}
     {activeTab === "rounds" && <RoundsPanel rounds={cms.rounds} products={cms.products} saving={saving} mutate={mutate} onFormActive={setFormActive} onFormDirty={setFormDirty} />}
     {activeTab === "products" && <ProductsPanel products={cms.products} categoryOrder={cms.categoryOrder} saving={saving} mutate={mutate} setNotice={setNotice} onFormActive={setFormActive} onFormDirty={setFormDirty} />}
     {activeTab === "storefront" && <StorefrontPanel key={cms.settings.fingerprint} settings={cms.settings} saving={saving} mutate={mutate} setNotice={setNotice} onFormActive={setFormActive} onFormDirty={setFormDirty} />}
@@ -366,6 +369,112 @@ function ShippingStickerPrintArea({ orders }: { orders: AdminOrder[] }) {
       ))}
     </div>
   );
+}
+
+// Printing lives on its own tab because it is a different job from working
+// through orders: the shop sits at the label printer and runs a whole delivery
+// round at once, rather than picking orders out of a filtered list.
+function StickerPanel({ orders }: { orders: AdminOrder[] }) {
+  const [postalOnly, setPostalOnly] = useState(true);
+  const [printTargetOrders, setPrintTargetOrders] = useState<AdminOrder[]>([]);
+  const [busyRound, setBusyRound] = useState<string | null>(null);
+
+  const rounds = useMemo(() => {
+    const grouped = new Map<string, AdminOrder[]>();
+    for (const order of orders) {
+      if (order.order_status === "cancelled") continue;
+      const key = order.round_id || "ไม่ระบุรอบ";
+      const bucket = grouped.get(key);
+      if (bucket) bucket.push(order); else grouped.set(key, [order]);
+    }
+    return Array.from(grouped, ([roundId, roundOrders]) => ({
+      roundId,
+      label: roundLabelFromRoundId(roundId),
+      orders: roundOrders,
+      postal: roundOrders.filter((order) => order.fulfilment === "postal"),
+    })).sort((left, right) => right.roundId.localeCompare(left.roundId));
+  }, [orders]);
+
+  function printableOrders(round: { orders: AdminOrder[]; postal: AdminOrder[] }) {
+    return postalOnly ? round.postal : round.orders;
+  }
+
+  function printRound(roundId: string, targets: AdminOrder[]) {
+    if (targets.length === 0) return;
+    setPrintTargetOrders(targets);
+    document.body.classList.add("print-shipping-label");
+    // The print area has to exist in the DOM before the dialog opens, so the
+    // state update above needs a frame to land first.
+    setTimeout(() => {
+      window.print();
+      document.body.classList.remove("print-shipping-label");
+    }, 150);
+    void roundId;
+  }
+
+  async function exportRound(roundId: string, targets: AdminOrder[]) {
+    if (targets.length === 0) return;
+    setBusyRound(roundId);
+    handleDownloadBatchImages(targets);
+    // Downloads are staggered by 250ms each inside the helper; keep the button
+    // disabled for that whole stretch so a second click cannot double-fire.
+    setTimeout(() => setBusyRound(null), targets.length * 250 + 200);
+  }
+
+  return <section className="admin-panel">
+    <div className="admin-section-heading">
+      <div>
+        <p className="eyebrow">สติ๊กเกอร์ 77 × 30 มม. สำหรับแปะหน้ากล่อง</p>
+        <h2>พิมพ์สติ๊กเกอร์ตามรอบ</h2>
+      </div>
+    </div>
+
+    <label className="admin-sticker-scope">
+      <input type="checkbox" checked={postalOnly} onChange={(event) => setPostalOnly(event.target.checked)} />
+      <span>
+        <strong>เฉพาะออเดอร์ที่ต้องจัดส่ง</strong>
+        <small>ออเดอร์รับเองหน้าร้านไม่ต้องแปะสติ๊กเกอร์ ติ๊กออกถ้าอยากพิมพ์ทุกออเดอร์ในรอบ</small>
+      </span>
+    </label>
+
+    {rounds.length === 0 ? (
+      <div className="admin-empty"><AdminIcon name="printer" /><h3>ยังไม่มีออเดอร์ให้พิมพ์</h3><p>เมื่อมีออเดอร์เข้ามา รอบจัดส่งจะขึ้นที่นี่</p></div>
+    ) : (
+      <div className="admin-sticker-rounds">
+        {rounds.map((round) => {
+          const targets = printableOrders(round);
+          const pickupCount = round.orders.length - round.postal.length;
+          return (
+            <article className="admin-sticker-round" key={round.roundId}>
+              <div className="admin-sticker-round-head">
+                <h3>{round.label}</h3>
+                <span className="admin-sticker-round-id">{round.roundId}</span>
+              </div>
+              <dl className="admin-mini-stats">
+                <div><dt>ออเดอร์ทั้งรอบ</dt><dd>{round.orders.length}</dd></div>
+                <div><dt>ต้องจัดส่ง</dt><dd>{round.postal.length}</dd></div>
+                <div><dt>รับหน้าร้าน</dt><dd>{pickupCount}</dd></div>
+                <div><dt>จะพิมพ์</dt><dd>{targets.length} ดวง</dd></div>
+              </dl>
+              {targets.length === 0 ? (
+                <p className="admin-sticker-none">{postalOnly ? "รอบนี้ไม่มีออเดอร์ที่ต้องจัดส่ง" : "รอบนี้ยังไม่มีออเดอร์"}</p>
+              ) : (
+                <div className="admin-sticker-actions">
+                  <button type="button" className="admin-print-sticker-btn" onClick={() => printRound(round.roundId, targets)}>
+                    <AdminIcon name="printer" /> พิมพ์ทั้งรอบ ({targets.length})
+                  </button>
+                  <button type="button" className="admin-print-sticker-btn" disabled={busyRound === round.roundId} onClick={() => void exportRound(round.roundId, targets)}>
+                    <AdminIcon name="download" /> {busyRound === round.roundId ? "กำลังบันทึก…" : `บันทึก PNG (${targets.length})`}
+                  </button>
+                </div>
+              )}
+            </article>
+          );
+        })}
+      </div>
+    )}
+    <ShippingStickerPrintArea orders={printTargetOrders} />
+  </section>;
 }
 
 function OrdersPanel({ orders, setOrders, saving, setSaving, setNotice }: { orders: AdminOrder[]; setOrders: React.Dispatch<React.SetStateAction<AdminOrder[]>>; saving: string | null; setSaving: (value: string | null) => void; setNotice: (value: string) => void }) {
@@ -565,7 +674,7 @@ function OrdersPanel({ orders, setOrders, saving, setSaving, setNotice }: { orde
     {byRound.length > 0 && (
       <div className="admin-round-summary">
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "8px" }}>
-          <h3>ยอดและพิมพ์สติ๊กเกอร์ตามรอบจัดส่ง</h3>
+          <h3>ยอดตามรอบจัดส่ง · กดเพื่อกรอง</h3>
           {selectedRound !== "all" && (
             <button type="button" className="admin-status-discard-btn" style={{ fontSize: "0.8125rem", padding: "4px 10px" }} onClick={() => setSelectedRound("all")}>
               ✕ แสดงทุกรอบจัดส่ง
@@ -574,41 +683,17 @@ function OrdersPanel({ orders, setOrders, saving, setSaving, setNotice }: { orde
         </div>
         <div style={{ display: "flex", flexWrap: "wrap", gap: "8px" }}>
           {byRound.map(([roundId, data]) => {
-            const roundOrders = orders.filter((o) => (o.round_id || "ไม่ระบุรอบ") === roundId);
             const isSelected = selectedRound === roundId;
             return (
-              <div
+              <button
+                type="button"
                 key={roundId}
                 className={`admin-round-card-tag${isSelected ? " active" : ""}`}
+                onClick={() => setSelectedRound(isSelected ? "all" : roundId)}
               >
-                <div
-                  style={{ cursor: "pointer", display: "flex", alignItems: "center", gap: "6px" }}
-                  onClick={() => setSelectedRound(isSelected ? "all" : roundId)}
-                >
-                  <b style={{ color: isSelected ? "#b51519" : "inherit" }}>{roundId}</b>
-                  <small style={{ color: "#64748b" }}>({data.count} ออเดอร์ · {formatMoney(data.sales)})</small>
-                </div>
-                <div style={{ display: "flex", gap: "6px" }}>
-                  <button
-                    type="button"
-                    className="admin-print-sticker-btn"
-                    style={{ fontSize: "0.75rem", padding: "3px 8px" }}
-                    onClick={() => handlePrintStickers(roundOrders)}
-                    title={`พิมพ์/บันทึก PDF สติ๊กเกอร์ทั้งหมดในรอบ ${roundId}`}
-                  >
-                    <AdminIcon name="printer" /> พิมพ์/PDF
-                  </button>
-                  <button
-                    type="button"
-                    className="admin-print-sticker-btn"
-                    style={{ fontSize: "0.75rem", padding: "3px 8px" }}
-                    onClick={() => handleDownloadBatchImages(roundOrders)}
-                    title={`ดาวน์โหลดรูป PNG สติ๊กเกอร์ทั้งหมดในรอบ ${roundId}`}
-                  >
-                    <AdminIcon name="download" /> รูป PNG
-                  </button>
-                </div>
-              </div>
+                <b style={{ color: isSelected ? "#b51519" : "inherit" }}>{roundLabelFromRoundId(roundId)}</b>
+                <small style={{ color: "#64748b" }}>({data.count} ออเดอร์ · {formatMoney(data.sales)})</small>
+              </button>
             );
           })}
         </div>
@@ -1409,7 +1494,7 @@ function FormActions({ disabled, onCancel }: { disabled: boolean; onCancel: () =
 function redirectToLogin() { window.location.assign(`/admin/login?returnTo=${encodeURIComponent(`${window.location.pathname}${window.location.search}`)}`); }
 function adminTabFromUrl(): AdminTab {
   const value = new URL(window.location.href).searchParams.get("tab");
-  return value === "rounds" || value === "products" || value === "storefront" ? value : "orders";
+  return value === "stickers" || value === "rounds" || value === "products" || value === "storefront" ? value : "orders";
 }
 function phoneHref(value: string) { return value.replace(/[^\d+]/g, ""); }
 function safeThaiDateTime(value: string) { const date = new Date(value); return Number.isNaN(date.getTime()) ? value : new Intl.DateTimeFormat("th-TH", { dateStyle: "medium", timeStyle: "short", timeZone: "Asia/Bangkok" }).format(date); }

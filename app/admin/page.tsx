@@ -5,7 +5,7 @@ import { AdminDashboard } from "./dashboard";
 
 export const dynamic = "force-dynamic";
 
-type AdminTab = "orders" | "rounds" | "products" | "storefront";
+type AdminTab = "orders" | "stickers" | "rounds" | "products" | "storefront";
 
 export default async function AdminPage({ searchParams }: { searchParams: Promise<{ tab?: string | string[] }> }) {
   const requestedTab = (await searchParams).tab;
@@ -26,7 +26,7 @@ export default async function AdminPage({ searchParams }: { searchParams: Promis
 }
 
 function adminTab(value: string | undefined): AdminTab {
-  return value === "rounds" || value === "products" || value === "storefront" ? value : "orders";
+  return value === "stickers" || value === "rounds" || value === "products" || value === "storefront" ? value : "orders";
 }
 
 function formatBangkokHeader(date: Date): string {
