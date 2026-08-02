@@ -129,11 +129,14 @@ async function saveReceiptPng(order: PublicOrderTracking, storeName: string): Pr
   URL.revokeObjectURL(url);
 }
 
-function OrderHistoryCard({ order, expanded, onToggle, storeName, phoneLast4, onConfirmed }: { order: PublicOrderTracking; expanded: boolean; onToggle: () => void; storeName: string; phoneLast4: string; onConfirmed: (orderId: string) => void }) {
+function OrderHistoryCard({ order, expanded, onToggle, storeName, phoneLast4, phonePrimary, phoneSecondary, onConfirmed, onSlipReplaced }: { order: PublicOrderTracking; expanded: boolean; onToggle: () => void; storeName: string; phoneLast4: string; phonePrimary: string; phoneSecondary: string; onConfirmed: (orderId: string) => void; onSlipReplaced: (orderId: string, paymentStatus: PublicOrderTracking["paymentStatus"]) => void }) {
   const [receiptError, setReceiptError] = useState<string | null>(null);
   const [confirming, setConfirming] = useState(false);
   const [confirmError, setConfirmError] = useState<string | null>(null);
   const [trackingCopied, setTrackingCopied] = useState(false);
+  const [slipFile, setSlipFile] = useState<File | null>(null);
+  const [slipSending, setSlipSending] = useState(false);
+  const [slipError, setSlipError] = useState<string | null>(null);
   const currentStep = trackingStepIndex(order.orderStatus, order.fulfilment);
   const steps = order.fulfilment === "pickup"
     ? ["รับออเดอร์แล้ว", "กำลังเตรียม", "พร้อมรับหน้าร้าน", "สำเร็จ"]
@@ -156,6 +159,30 @@ function OrderHistoryCard({ order, expanded, onToggle, storeName, phoneLast4, on
       setConfirmError(confirmActionError instanceof CustomerFacingError ? confirmActionError.message : PUBLIC_ERROR_MESSAGES.TRACKING_UNAVAILABLE);
     } finally {
       setConfirming(false);
+    }
+  }
+
+  async function handleSlipReupload() {
+    if (!slipFile) {
+      setSlipError("กรุณาเลือกรูปสลิปก่อน");
+      return;
+    }
+    setSlipSending(true);
+    setSlipError(null);
+    try {
+      const body = new FormData();
+      body.set("orderId", order.orderId);
+      body.set("phoneLast4", phoneLast4);
+      body.set("slip", slipFile);
+      const response = await fetch("/api/orders/track/slip", { method: "POST", body });
+      const result = await response.json().catch(() => null) as { paymentStatus?: PublicOrderTracking["paymentStatus"]; error?: string } | null;
+      if (!response.ok || !result?.paymentStatus) throw new CustomerFacingError(safeClientApiMessage(response.status, result, "TRACKING_UNAVAILABLE"));
+      onSlipReplaced(order.orderId, result.paymentStatus);
+      setSlipFile(null);
+    } catch (reuploadError) {
+      setSlipError(reuploadError instanceof CustomerFacingError ? reuploadError.message : PUBLIC_ERROR_MESSAGES.TRACKING_UNAVAILABLE);
+    } finally {
+      setSlipSending(false);
     }
   }
 
@@ -187,6 +214,33 @@ function OrderHistoryCard({ order, expanded, onToggle, storeName, phoneLast4, on
                 </li>
               ))}
             </ol>
+          )}
+          {order.canReuploadSlip && (
+            <section className="track-slip-retry" aria-labelledby={`slip-retry-${order.orderId}`}>
+              <p className="eyebrow">สลิปไม่ผ่านการตรวจสอบ</p>
+              <h3 id={`slip-retry-${order.orderId}`}>แนบสลิปใหม่ได้อีก 1 ครั้ง</h3>
+              <p>ตรวจให้แน่ใจว่าเป็นสลิปของออเดอร์นี้ ยอด <strong>{order.total.toLocaleString("th-TH")} บาท</strong> และเห็นเลขอ้างอิงชัดเจน</p>
+              <label className="track-slip-file">
+                <input type="file" accept="image/jpeg,image/png,image/webp" disabled={slipSending} onChange={(event) => { setSlipFile(event.target.files?.[0] ?? null); setSlipError(null); }} />
+                <span>{slipFile ? slipFile.name : "เลือกรูปสลิป (JPG, PNG หรือ WebP ไม่เกิน 5 MB)"}</span>
+              </label>
+              <button type="button" onClick={() => void handleSlipReupload()} disabled={slipSending || !slipFile}>
+                {slipSending ? "กำลังส่งสลิป..." : "ส่งสลิปใหม่"}
+              </button>
+              <p className="track-slip-warning">ส่งได้ครั้งเดียว หากยังไม่ผ่านต้องติดต่อร้านโดยตรง</p>
+              {slipError && <p className="track-error" role="alert">{slipError}</p>}
+            </section>
+          )}
+          {order.mustContactShop && (
+            <section className="track-slip-locked" role="status" aria-labelledby={`slip-locked-${order.orderId}`}>
+              <p className="eyebrow">ตรวจสลิปอัตโนมัติไม่ผ่าน</p>
+              <h3 id={`slip-locked-${order.orderId}`}>กรุณาติดต่อร้านโดยตรง</h3>
+              <p>ออเดอร์นี้ใช้สิทธิ์แนบสลิปใหม่ครบแล้ว ทางร้านจะช่วยตรวจสอบให้ กรุณาแจ้งเลขออเดอร์ <strong>{order.orderId}</strong></p>
+              <div className="track-slip-phones">
+                <a href={`tel:${phonePrimary.replace(/[^\d+]/g, "")}`}>☎ {phonePrimary}</a>
+                <a href={`tel:${phoneSecondary.replace(/[^\d+]/g, "")}`}>☎ {phoneSecondary}</a>
+              </div>
+            </section>
           )}
           {canConfirmReceived && (
             <div className="track-confirm-received">
@@ -258,6 +312,14 @@ export function OrderTracker({ storeName, phonePrimary, phoneSecondary, initialO
 
   function handleOrderConfirmed(orderId: string) {
     setOrders((current) => current.map((order) => order.orderId === orderId ? { ...order, orderStatus: "completed" } : order));
+  }
+
+  // The retry is spent by the request that just succeeded, so the card flips
+  // straight to its new payment status with no re-upload offer left.
+  function handleSlipReplaced(orderId: string, paymentStatus: PublicOrderTracking["paymentStatus"]) {
+    setOrders((current) => current.map((order) => order.orderId === orderId
+      ? { ...order, paymentStatus, canReuploadSlip: false, mustContactShop: paymentStatus === "invalid_slip" }
+      : order));
   }
 
   async function lookupOrder(event: FormEvent<HTMLFormElement>) {
@@ -333,7 +395,10 @@ export function OrderTracker({ storeName, phonePrimary, phoneSecondary, initialO
                 order={order}
                 storeName={storeName}
                 phoneLast4={phoneLast4}
+                phonePrimary={phonePrimary}
+                phoneSecondary={phoneSecondary}
                 onConfirmed={handleOrderConfirmed}
+                onSlipReplaced={handleSlipReplaced}
                 expanded={expandedOrderId === order.orderId}
                 onToggle={() => setExpandedOrderId((current) => current === order.orderId ? null : order.orderId)}
               />

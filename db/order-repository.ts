@@ -2,6 +2,7 @@ import { env } from "cloudflare:workers";
 import type { AdminOrder, OrderStatus, PaymentStatus } from "./orders";
 import { maskPhone, matchesPhoneLast4, normalizePhone, type PublicOrderTracking } from "../lib/order-tracking";
 import { carrierLabel, carrierTrackingUrl, isCarrierCode, type CarrierCode } from "../lib/carriers";
+import { canReuploadSlip, MAX_SLIP_RETRIES, mustContactShop } from "../lib/slip-retry";
 
 const AUTO_COMPLETE_AFTER_MS = 7 * 24 * 60 * 60 * 1000;
 
@@ -55,6 +56,7 @@ type OrderRow = {
   shipping_fee: number;
   total: number;
   slip_key: string | null;
+  slip_retries_used: number;
   payment_status: PaymentStatus;
   order_status: OrderStatus;
   created_at: string;
@@ -176,7 +178,7 @@ export async function getPublicOrderByIdAndPhoneLast4(
   const cutoff = new Date(now.getTime() - days * 86_400_000).toISOString();
   const futureLimit = new Date(now.getTime() + 5 * 60_000).toISOString();
   const row = await db.prepare(`SELECT id, round_id, customer_name, phone, address, note, admin_note,
-    subtotal, shipping_fee, total, slip_key, payment_status, order_status, created_at, updated_at,
+    subtotal, shipping_fee, total, slip_key, slip_retries_used, payment_status, order_status, created_at, updated_at,
     fulfilment, tracking_number, carrier_code, delivery_date
     FROM orders WHERE id = ? AND created_at >= ? AND created_at <= ? LIMIT 1`)
     .bind(orderId, cutoff, futureLimit).first<OrderRow>();
@@ -231,6 +233,42 @@ export async function confirmOrderReceivedByPhoneLast4(orderId: string, phoneLas
   return "updated";
 }
 
+export type SlipReuploadTarget = { orderId: string; total: number; slipKey: string | null };
+export type SlipReuploadLookup = SlipReuploadTarget | "not_found" | "not_eligible";
+
+/**
+ * Reads the order a customer is trying to re-attach a slip to. The eligibility
+ * answer here is advisory — the retry is only really claimed by
+ * `applySlipReupload`, whose WHERE clause re-checks the same conditions so two
+ * uploads racing each other cannot both spend the single attempt.
+ */
+export async function findOrderForSlipReupload(orderId: string, phoneLast4: string): Promise<SlipReuploadLookup> {
+  const row = await database().prepare(
+    `SELECT phone, total, slip_key AS slipKey, payment_status AS paymentStatus, slip_retries_used AS slipRetriesUsed
+     FROM orders WHERE id = ? LIMIT 1`,
+  ).bind(orderId).first<{ phone: string; total: number; slipKey: string | null; paymentStatus: PaymentStatus; slipRetriesUsed: number }>();
+  if (!row || !matchesPhoneLast4(row.phone, phoneLast4)) return "not_found";
+  if (!canReuploadSlip({ paymentStatus: row.paymentStatus, slipRetriesUsed: row.slipRetriesUsed })) return "not_eligible";
+  return { orderId, total: row.total, slipKey: row.slipKey };
+}
+
+/**
+ * Spends the retry and records the new verification outcome in one statement.
+ * Returns false when the guard no longer holds — the order was paid, reviewed,
+ * or already retried between the lookup and here.
+ */
+export async function applySlipReupload(
+  orderId: string,
+  update: { slipKey: string; paymentStatus: PaymentStatus; adminNote: string },
+): Promise<boolean> {
+  const result = await database().prepare(
+    `UPDATE orders
+     SET slip_key = ?, payment_status = ?, admin_note = ?, slip_retries_used = slip_retries_used + 1, updated_at = ?
+     WHERE id = ? AND payment_status = 'invalid_slip' AND slip_retries_used < ?`,
+  ).bind(update.slipKey, update.paymentStatus, update.adminNote, new Date().toISOString(), orderId, MAX_SLIP_RETRIES).run();
+  return (result.meta?.changes ?? 0) > 0;
+}
+
 export async function getOrderSlipKey(id: string): Promise<string | null> {
   const result = await database().prepare("SELECT slip_key AS slipKey FROM orders WHERE id = ? LIMIT 1")
     .bind(id).first<{ slipKey: string | null }>();
@@ -257,6 +295,8 @@ function toPublicOrder(row: OrderRow, items: ItemRow[]): PublicOrderTracking {
     total: row.total,
     paymentStatus: row.payment_status,
     orderStatus: row.order_status,
+    canReuploadSlip: canReuploadSlip({ paymentStatus: row.payment_status, slipRetriesUsed: row.slip_retries_used }),
+    mustContactShop: mustContactShop({ paymentStatus: row.payment_status, slipRetriesUsed: row.slip_retries_used }),
     trackingNumber: row.tracking_number,
     carrierCode: isCarrierCode(row.carrier_code) ? row.carrier_code : null,
     carrierLabel: isCarrierCode(row.carrier_code) ? carrierLabel(row.carrier_code) : null,

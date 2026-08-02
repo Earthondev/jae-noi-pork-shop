@@ -1721,6 +1721,22 @@ footer .footer-phone-links a:active { background: rgba(255, 255, 255, 0.1); }
 .tracking-steps li.done > span { border-color: var(--red-700); background: var(--red-700); color: white; box-shadow: 0 2px 8px rgba(181, 21, 25, 0.25); }
 .tracking-steps strong { display: block; margin-top: 4px; }
 
+/* Rejected-slip recovery: one self-service retry, then a hand-off to the shop. */
+.track-slip-retry, .track-slip-locked { margin: 4px 0 24px; padding: 18px; display: grid; gap: 9px; border-radius: var(--radius-sm); }
+.track-slip-retry { border: 1px solid rgba(181, 21, 25, 0.28); background: #fff6f4; }
+.track-slip-locked { border: 1px solid rgba(138, 109, 0, 0.28); background: #fffbe6; }
+.track-slip-retry .eyebrow, .track-slip-locked .eyebrow { margin: 0; color: var(--red-700); font-size: .7rem; font-weight: 900; letter-spacing: .04em; }
+.track-slip-locked .eyebrow { color: #8a6d00; }
+.track-slip-retry h3, .track-slip-locked h3 { margin: 0; font-family: var(--font-display), serif; font-size: 1.1rem; color: var(--ink); }
+.track-slip-retry p, .track-slip-locked p { margin: 0; font-size: .84rem; line-height: 1.55; color: var(--muted); }
+.track-slip-file { display: block; position: relative; min-height: 52px; padding: 14px 16px; border: 1px dashed rgba(181, 21, 25, 0.4); border-radius: 12px; background: var(--white); cursor: pointer; }
+.track-slip-file input { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; cursor: pointer; }
+.track-slip-file span { display: block; font-size: .82rem; font-weight: 700; color: var(--red-800); overflow-wrap: anywhere; }
+.track-slip-retry > button { min-height: 46px; padding: 0 20px; border: 0; border-radius: 99px; background: var(--red-700); color: white; font-weight: 800; font-size: .88rem; box-shadow: 0 4px 12px rgba(181, 21, 25, 0.15); }
+.track-slip-retry > button:disabled { opacity: .55; box-shadow: none; }
+.track-slip-warning { font-size: .76rem !important; font-weight: 700 !important; color: var(--red-700) !important; }
+.track-slip-phones { display: flex; gap: 8px; flex-wrap: wrap; }
+.track-slip-phones a { flex: 1 1 140px; min-height: 46px; display: inline-flex; align-items: center; justify-content: center; border-radius: 99px; background: var(--red-700); color: white; font-weight: 800; font-size: .86rem; text-decoration: none; }
 .track-confirm-received { margin: 4px 0 24px; display: grid; gap: 8px; }
 .track-confirm-received button { min-height: 46px; padding: 0 20px; border: 0; border-radius: 99px; background: var(--red-700); color: white; font-weight: 800; font-size: 0.88rem; box-shadow: 0 4px 12px rgba(181, 21, 25, 0.15); }
 .track-confirm-received button:disabled { opacity: 0.6; }

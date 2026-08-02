@@ -23,6 +23,10 @@ export type PublicOrderTracking = {
   total: number;
   paymentStatus: PaymentStatus;
   orderStatus: OrderStatus;
+  /** True while the customer may still replace a rejected slip themselves. */
+  canReuploadSlip: boolean;
+  /** True once the rejected slip can only be sorted out by contacting the shop. */
+  mustContactShop: boolean;
   trackingNumber: string | null;
   carrierCode: CarrierCode | null;
   carrierLabel: string | null;

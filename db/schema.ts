@@ -71,6 +71,8 @@ export const orders = sqliteTable("orders", {
   shippingFee: integer("shipping_fee").notNull().default(0),
   total: integer("total").notNull(),
   slipKey: text("slip_key"),
+  // Customer-facing re-uploads spent on this order; see lib/slip-retry.ts.
+  slipRetriesUsed: integer("slip_retries_used").notNull().default(0),
   paymentStatus: text("payment_status").notNull().default("waiting_for_payment"),
   orderStatus: text("order_status").notNull().default("received"),
   trackingNumber: text("tracking_number"),
