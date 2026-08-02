@@ -2,7 +2,9 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { FormEvent, useEffect, useRef, useState } from "react";
+import generatePromptPayPayload from "promptpay-qr";
+import { QRCodeCanvas } from "qrcode.react";
+import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
 import { BottomNav } from "../_components/shop/bottom-nav";
 import { useCheckoutDraft } from "../_hooks/use-checkout-draft";
 import {
@@ -129,7 +131,7 @@ async function saveReceiptPng(order: PublicOrderTracking, storeName: string): Pr
   URL.revokeObjectURL(url);
 }
 
-function OrderHistoryCard({ order, expanded, onToggle, storeName, phoneLast4, phonePrimary, phoneSecondary, onConfirmed, onSlipReplaced }: { order: PublicOrderTracking; expanded: boolean; onToggle: () => void; storeName: string; phoneLast4: string; phonePrimary: string; phoneSecondary: string; onConfirmed: (orderId: string) => void; onSlipReplaced: (orderId: string, paymentStatus: PublicOrderTracking["paymentStatus"]) => void }) {
+function OrderHistoryCard({ order, expanded, onToggle, storeName, phoneLast4, phonePrimary, phoneSecondary, promptPayId, promptPayName, onConfirmed, onSlipReplaced }: { order: PublicOrderTracking; expanded: boolean; onToggle: () => void; storeName: string; phoneLast4: string; phonePrimary: string; phoneSecondary: string; promptPayId: string | null; promptPayName: string | null; onConfirmed: (orderId: string) => void; onSlipReplaced: (orderId: string, paymentStatus: PublicOrderTracking["paymentStatus"]) => void }) {
   const [receiptError, setReceiptError] = useState<string | null>(null);
   const [confirming, setConfirming] = useState(false);
   const [confirmError, setConfirmError] = useState<string | null>(null);
@@ -137,6 +139,17 @@ function OrderHistoryCard({ order, expanded, onToggle, storeName, phoneLast4, ph
   const [slipFile, setSlipFile] = useState<File | null>(null);
   const [slipSending, setSlipSending] = useState(false);
   const [slipError, setSlipError] = useState<string | null>(null);
+  const [amountCopied, setAmountCopied] = useState(false);
+  // Rebuilt from the order's own total, so the QR a customer re-scans can
+  // never carry a different amount than the one the slip is checked against.
+  const promptPayPayload = useMemo(() => {
+    if (!promptPayId || !order.canReuploadSlip || order.total <= 0) return null;
+    try {
+      return generatePromptPayPayload(promptPayId, { amount: order.total });
+    } catch {
+      return null;
+    }
+  }, [promptPayId, order.canReuploadSlip, order.total]);
   const currentStep = trackingStepIndex(order.orderStatus, order.fulfilment);
   const steps = order.fulfilment === "pickup"
     ? ["รับออเดอร์แล้ว", "กำลังเตรียม", "พร้อมรับหน้าร้าน", "สำเร็จ"]
@@ -220,6 +233,29 @@ function OrderHistoryCard({ order, expanded, onToggle, storeName, phoneLast4, ph
               <p className="eyebrow">สลิปไม่ผ่านการตรวจสอบ</p>
               <h3 id={`slip-retry-${order.orderId}`}>แนบสลิปใหม่ได้อีก 1 ครั้ง</h3>
               <p>ตรวจให้แน่ใจว่าเป็นสลิปของออเดอร์นี้ ยอด <strong>{order.total.toLocaleString("th-TH")} บาท</strong> และเห็นเลขอ้างอิงชัดเจน</p>
+              {promptPayPayload && (
+                <div className="track-slip-qr">
+                  <p className="track-slip-qr-title">สแกนจ่ายใหม่ได้เลย</p>
+                  <div className="track-slip-qr-frame">
+                    <QRCodeCanvas
+                      value={promptPayPayload}
+                      size={1024}
+                      level="M"
+                      marginSize={4}
+                      style={{ width: "100%", height: "100%", display: "block" }}
+                      title={`QR พร้อมเพย์ ${promptPayName ?? storeName} ยอด ${order.total} บาท`}
+                    />
+                  </div>
+                  {promptPayName && <p className="track-slip-qr-name">{promptPayName}</p>}
+                  <p className="track-slip-qr-amount">
+                    ยอดใน QR <strong>{order.total.toLocaleString("th-TH")} บาท</strong>
+                    <button type="button" onClick={() => { void navigator.clipboard.writeText(String(order.total)).then(() => { setAmountCopied(true); window.setTimeout(() => setAmountCopied(false), 2_000); }).catch(() => setAmountCopied(false)); }}>
+                      {amountCopied ? "คัดลอกแล้ว" : "คัดลอกยอด"}
+                    </button>
+                  </p>
+                  <p className="track-slip-qr-check">ตรวจชื่อผู้รับและยอดเงินในแอปธนาคารก่อนกดยืนยันทุกครั้ง</p>
+                </div>
+              )}
               <label className="track-slip-file">
                 <input type="file" accept="image/jpeg,image/png,image/webp" disabled={slipSending} onChange={(event) => { setSlipFile(event.target.files?.[0] ?? null); setSlipError(null); }} />
                 <span>{slipFile ? slipFile.name : "เลือกรูปสลิป (JPG, PNG หรือ WebP ไม่เกิน 5 MB)"}</span>
@@ -272,7 +308,7 @@ function OrderHistoryCard({ order, expanded, onToggle, storeName, phoneLast4, ph
   );
 }
 
-export function OrderTracker({ storeName, phonePrimary, phoneSecondary, initialOrderId }: { storeName: string; phonePrimary: string; phoneSecondary: string; initialOrderId: string }) {
+export function OrderTracker({ storeName, phonePrimary, phoneSecondary, promptPayId, promptPayName, initialOrderId }: { storeName: string; phonePrimary: string; phoneSecondary: string; promptPayId: string | null; promptPayName: string | null; initialOrderId: string }) {
   const [orderId, setOrderId] = useState(initialOrderId);
   const [restoredRecentOrder, setRestoredRecentOrder] = useState(false);
   const [phoneLast4, setPhoneLast4] = useState("");
@@ -397,6 +433,8 @@ export function OrderTracker({ storeName, phonePrimary, phoneSecondary, initialO
                 phoneLast4={phoneLast4}
                 phonePrimary={phonePrimary}
                 phoneSecondary={phoneSecondary}
+                promptPayId={promptPayId}
+                promptPayName={promptPayName}
                 onConfirmed={handleOrderConfirmed}
                 onSlipReplaced={handleSlipReplaced}
                 expanded={expandedOrderId === order.orderId}
