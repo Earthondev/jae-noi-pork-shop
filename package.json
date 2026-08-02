@@ -18,7 +18,6 @@
     "test": "npm run build && node --import tsx --test tests/*.test.mjs",
     "test:e2e": "playwright test",
     "lint": "eslint . --ignore-pattern dist --ignore-pattern .next --ignore-pattern .wrangler --ignore-pattern .vinext --ignore-pattern .agents",
-    "admin:hash-password": "node scripts/hash-admin-password.mjs",
     "db:generate": "drizzle-kit generate",
     "db:export-sheet-orders": "node --env-file=.dev.vars scripts/export-sheet-orders-to-d1-sql.mjs"
   },

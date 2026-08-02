@@ -230,9 +230,10 @@ export function AdminDashboard({ initialOrders, initialCms, userName, serverNow,
             </div>
             <div className="admin-drawer-actions">
               <Link href="/" target="_blank" className="admin-drawer-link"><AdminIcon name="external" /><span>ดูหน้าร้าน</span></Link>
-              <form action="/api/admin/logout" method="post" className="admin-drawer-logout-form">
-                <button type="submit" className="admin-drawer-logout-btn"><AdminIcon name="logout" /><span>ออกจากระบบ</span></button>
-              </form>
+              {/* Signing out belongs to Cloudflare Access now that it owns the
+                  session. Clearing anything on our side would leave the Access
+                  cookie intact and log the admin straight back in. */}
+              <a href="/cdn-cgi/access/logout" className="admin-drawer-logout-btn"><AdminIcon name="logout" /><span>ออกจากระบบ</span></a>
             </div>
           </div>
         </aside>
@@ -1491,7 +1492,11 @@ function BrandAsset({ label, value, ratio, uploading, onUpload }: { label: strin
 
 function Kpi({ icon, label, value, accent = false }: { icon: AdminIconName; label: string; value: string; accent?: boolean }) { return <div className={accent ? "accent" : ""}><span><AdminIcon name={icon} />{label}</span><strong>{value}</strong></div>; }
 function FormActions({ disabled, onCancel }: { disabled: boolean; onCancel: () => void }) { return <div className="admin-form-actions"><button type="button" onClick={onCancel}>ยกเลิก</button><button className="admin-save-button" type="submit" disabled={disabled}>{disabled ? "กำลังบันทึก…" : "บันทึก"}</button></div>; }
-function redirectToLogin() { window.location.assign(`/admin/login?returnTo=${encodeURIComponent(`${window.location.pathname}${window.location.search}`)}`); }
+// A 401 now means the Cloudflare Access session expired mid-session. Reloading
+// the current URL hands the request back to Access, which re-authenticates and
+// returns the admin to the page they were on — there is no login page of our
+// own to send them to any more.
+function redirectToLogin() { window.location.reload(); }
 function adminTabFromUrl(): AdminTab {
   const value = new URL(window.location.href).searchParams.get("tab");
   return value === "stickers" || value === "rounds" || value === "products" || value === "storefront" ? value : "orders";

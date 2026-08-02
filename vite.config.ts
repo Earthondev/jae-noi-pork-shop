@@ -54,11 +54,7 @@ export default defineConfig(async ({ command }) => {
   const runtimeVars: Record<string, string> = isLocalDevelopment
     ? {
         ADMIN_USERNAME: process.env.ADMIN_USERNAME ?? "admin",
-        ADMIN_PASSWORD_HASH: process.env.ADMIN_PASSWORD_HASH ?? "",
-        ADMIN_AUTH_SECRET: process.env.ADMIN_AUTH_SECRET ?? "",
         ADMIN_ALLOWED_EMAILS: process.env.ADMIN_ALLOWED_EMAILS ?? "",
-        ADMIN_PASSWORD_FALLBACK_ENABLED:
-          process.env.ADMIN_PASSWORD_FALLBACK_ENABLED ?? "true",
         ALLOW_DEV_WRITES: process.env.ALLOW_DEV_WRITES ?? "false",
         APP_ENV: process.env.APP_ENV ?? "development",
         CLOUDFLARE_ACCESS_AUD: process.env.CLOUDFLARE_ACCESS_AUD ?? "",

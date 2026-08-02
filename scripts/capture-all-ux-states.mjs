@@ -174,20 +174,12 @@ async function main() {
     await mobileContext.close();
 
     // -- FLOW 4: หน้าจอแอดมินหลังบ้าน (Admin Dashboard) --
-    console.log("📸 9. หน้าล็อกอินหลังบ้านบน Desktop...");
+    // ไม่มีหน้าล็อกอินของเราแล้ว — production อยู่หลัง Cloudflare Access
+    // ส่วน local dev เข้าได้ทันทีผ่าน APP_ENV === "development"
+    console.log("📸 9-10. แผงควบคุมแอดมิน - แท็บออเดอร์...");
     const adminContext = await browser.newContext({ viewport: { width: 1280, height: 800 } });
     const adminPage = await adminContext.newPage();
-    await adminPage.goto(`${BASE_URL}/admin/login`);
-    await adminPage.waitForTimeout(1000);
-    await adminPage.screenshot({ path: join(OUTPUT_DIR, "09-admin-login-desktop.png") });
-
-    console.log("📸 10. แผงควบคุมแอดมิน - แท็บออเดอร์...");
-    await adminPage.fill('input[name="username"]', "admin");
-    await adminPage.fill('input[name="password"]', "admin123");
-    await adminPage.locator('.admin-login-form button[type="submit"]').click();
-    
-    // รอเข้าหลังบ้าน
-    await adminPage.waitForURL((url) => url.pathname === "/admin", { timeout: 10000 });
+    await adminPage.goto(`${BASE_URL}/admin`);
     await adminPage.waitForTimeout(2000);
     await adminPage.screenshot({ path: join(OUTPUT_DIR, "10-admin-orders-desktop.png") });
 

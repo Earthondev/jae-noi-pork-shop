@@ -52,7 +52,9 @@ export function TrackingImportPanel({ onImported }: { onImported: (updates: Impo
         form.set("selections", JSON.stringify(Object.entries(selections).flatMap(([sourceRow, orderId]) => orderId ? [{ sourceRow: Number(sourceRow), orderId }] : [])));
       }
       const response = await fetch("/api/admin/tracking-imports", { method: "POST", body: form });
-      if (response.status === 401) { window.location.href = "/admin/login?returnTo=%2Fadmin%3Ftab%3Dorders"; return; }
+      // Reloading hands the request back to Cloudflare Access, which
+      // re-authenticates and returns here; there is no login page of our own.
+      if (response.status === 401) { window.location.reload(); return; }
       const result = await response.json().catch(() => null) as (TrackingImportPreview & TrackingImportCommitResult & { error?: string }) | null;
       if (!response.ok || !result) throw new CustomerFacingError(safeClientApiMessage(response.status, result, "ADMIN_UNAVAILABLE"));
       if (action === "preview") {

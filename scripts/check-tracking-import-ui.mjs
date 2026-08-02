@@ -3,7 +3,6 @@ import { join } from "node:path";
 import { chromium } from "playwright";
 
 const baseUrl = process.env.BASE_URL || "http://localhost:3000";
-const password = process.env.ADMIN_SMOKE_PASSWORD || "admin123";
 const pickupList = process.env.TRACKING_IMPORT_FIXTURE || "/Users/earthondev/Downloads/Pickuplist-2026-07-25.xls";
 const outputDir = join(process.cwd(), "output/playwright/tracking-import");
 
@@ -18,17 +17,10 @@ page.on("console", (message) => {
 });
 
 try {
-  await page.goto(`${baseUrl}/admin/login`);
-  await page.waitForTimeout(1_000);
-  await page.locator('input[name="username"]').fill("admin");
-  await page.locator('input[name="password"]').fill(password);
-  const [loginResponse] = await Promise.all([
-    page.waitForResponse((response) => response.url().endsWith("/api/admin/login")),
-    page.locator('.admin-login-form button[type="submit"]').click(),
-  ]);
-  if (!loginResponse.ok()) throw new Error(`admin login failed with status ${loginResponse.status()}`);
-  // Navigate explicitly after the session cookie is set. This keeps the smoke
-  // check independent from client-router timing in different dev runtimes.
+  // There is no sign-in step any more. Production is behind Cloudflare Access,
+  // and a local dev server admits the APP_ENV === "development" user straight
+  // away. Point BASE_URL somewhere else and this lands on the Access login,
+  // which is the correct failure rather than a bug in this script.
   await page.goto(`${baseUrl}/admin`);
   try {
     await page.getByRole("heading", { name: "นำเข้าเลขพัสดุ" }).waitFor();

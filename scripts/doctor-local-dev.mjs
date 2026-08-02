@@ -12,12 +12,10 @@ import {
 } from "./local-remote-d1.mjs";
 
 const values = await readEnvFile(LOCAL_ENV_PATH);
-requireNonEmpty(values, [
-  "APP_ENV",
-  "ADMIN_USERNAME",
-  "ADMIN_PASSWORD_HASH",
-  "ADMIN_AUTH_SECRET",
-]);
+// The admin password was removed on 2026-08-03. Local dev reaches /admin through
+// the APP_ENV === "development" branch in lib/admin-auth.ts, so there is no hash
+// or session secret left to require.
+requireNonEmpty(values, ["APP_ENV", "ADMIN_USERNAME"]);
 
 if (values.APP_ENV !== "development") throw new Error("APP_ENV ของ local ต้องเป็น development");
 if (values.ALLOW_DEV_WRITES !== "false" && values.ALLOW_DEV_WRITES !== "true") {
