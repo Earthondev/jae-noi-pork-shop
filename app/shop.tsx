@@ -27,6 +27,7 @@ import { browserRecentOrderStorage, saveRecentOrder } from "../lib/recent-order"
 import { openRoundProductIdSet, roundIncludesProduct, roundProductIdSet } from "../lib/round-products";
 import { formatThaiAddress } from "../lib/thai-address";
 import { postalShippingCost } from "../lib/shipping";
+import { categoryNamesFromProducts, orderCategoryNames } from "../lib/category-order";
 
 type ClientPaymentStatus = "waiting" | "verified" | "review" | "invalid";
 
@@ -220,11 +221,8 @@ export function Shop() {
   }, [cartOpen]);
 
   const categories = useMemo(() => {
-    const list = new Set<string>();
-    list.add("ทั้งหมด");
-    storefront.products.forEach((product) => list.add(product.category || "อื่น ๆ"));
-    return Array.from(list);
-  }, [storefront.products]);
+    return ["ทั้งหมด", ...orderCategoryNames(categoryNamesFromProducts(storefront.products), storefront.categoryOrder)];
+  }, [storefront.categoryOrder, storefront.products]);
 
   const filteredProducts = useMemo(() => {
     if (selectedCategory === "ทั้งหมด") return storefront.products;

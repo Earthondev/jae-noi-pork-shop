@@ -43,6 +43,7 @@ export type StorefrontContent = {
 
 export type StorefrontResponse = {
   products: Product[];
+  categoryOrder: string[];
   rounds: PreorderRound[];
   nextRound: PreorderRound | null;
   shippingFee: number | null;
@@ -71,6 +72,7 @@ type UseStorefrontOptions = Readonly<{
 
 export type UseStorefrontResult = Readonly<{
   products: Product[];
+  categoryOrder: string[];
   rounds: PreorderRound[];
   nextRound: PreorderRound | null;
   selectedRound: string;
@@ -101,6 +103,7 @@ export function useStorefront({
   setFulfilment,
 }: UseStorefrontOptions): UseStorefrontResult {
   const [products, setProducts] = useState<Product[]>([]);
+  const [categoryOrder, setCategoryOrder] = useState<string[]>([]);
   const [rounds, setRounds] = useState<PreorderRound[]>([]);
   const [nextRound, setNextRound] = useState<PreorderRound | null>(null);
   const [shippingFee, setShippingFee] = useState<number | null>(null);
@@ -151,6 +154,7 @@ export function useStorefront({
 
         hasLoadedProductsRef.current = data.products.length > 0;
         setProducts(data.products);
+        setCategoryOrder(data.categoryOrder ?? []);
         setRounds(data.rounds);
         setNextRound(data.nextRound);
         const currentRound = selectedRoundRef.current;
@@ -227,6 +231,7 @@ export function useStorefront({
 
   return {
     products,
+    categoryOrder,
     rounds,
     nextRound,
     selectedRound,

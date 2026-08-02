@@ -14,6 +14,7 @@ import {
   type ProductInput,
   type RoundInput,
 } from "../lib/admin-cms";
+import { categoryNamesFromProducts, orderCategoryNames, parseCategoryOrder, serializeCategoryOrder } from "../lib/category-order";
 import { PRODUCT_IMAGE_PLACEHOLDER, safeProductImageUrl } from "../lib/product-catalog";
 import { normalizeRoundProductScope } from "../lib/round-products";
 
@@ -90,7 +91,8 @@ export async function getAdminCmsData(): Promise<AdminCmsData> {
     storeLogoUrl: value("store_logo_url"), storeCoverUrl: value("store_cover_url"),
     fingerprint: settingsFingerprint(settingRows),
   };
-  return { products, rounds, settings, refreshedAt: new Date().toISOString() };
+  const categoryOrder = orderCategoryNames(categoryNamesFromProducts(products), parseCategoryOrder(value("category_order")));
+  return { products, categoryOrder, rounds, settings, refreshedAt: new Date().toISOString() };
 }
 
 export async function createAdminProduct(input: ProductInput): Promise<CmsMutationResult> {
@@ -158,6 +160,19 @@ export async function reorderAdminProducts(orderedIds: string[]): Promise<CmsMut
     ...finalOrder.map((id, index) => db.prepare("UPDATE products SET sort_order=?,version=version+1,updated_at=? WHERE id=?").bind(-(index + 1), now, id)),
     ...finalOrder.map((id, index) => db.prepare("UPDATE products SET sort_order=?,updated_at=? WHERE id=?").bind(index + 1, now, id)),
   ]);
+  return "updated";
+}
+
+export async function reorderAdminCategories(categories: string[]): Promise<CmsMutationResult> {
+  const { db } = bindings();
+  const result = await db.prepare("SELECT category FROM products ORDER BY sort_order").all<{ category: string }>();
+  const current = categoryNamesFromProducts(result.results);
+  const ordered = orderCategoryNames(current, categories);
+  const now = new Date().toISOString();
+  await db.prepare(`INSERT INTO storefront_settings (key,value,purpose,status,version,updated_at)
+    VALUES ('category_order',?,'','พร้อมใช้',1,?)
+    ON CONFLICT(key) DO UPDATE SET value=excluded.value,version=version+1,updated_at=excluded.updated_at`)
+    .bind(serializeCategoryOrder(ordered), now).run();
   return "updated";
 }
 

@@ -62,6 +62,7 @@ export type AdminStorefrontSettings = {
 
 export type AdminCmsData = {
   products: AdminProduct[];
+  categoryOrder: string[];
   rounds: AdminRound[];
   settings: AdminStorefrontSettings;
   refreshedAt: string;

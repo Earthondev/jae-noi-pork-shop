@@ -74,6 +74,7 @@ export const orders = sqliteTable("orders", {
   paymentStatus: text("payment_status").notNull().default("waiting_for_payment"),
   orderStatus: text("order_status").notNull().default("received"),
   trackingNumber: text("tracking_number"),
+  carrierCode: text("carrier_code"),
   shippedAt: text("shipped_at"),
   idempotencyKey: text("idempotency_key").notNull().unique(),
   createdAt: text("created_at").notNull(),
@@ -82,6 +83,7 @@ export const orders = sqliteTable("orders", {
   index("orders_phone_created_at_idx").on(table.phoneNormalized, table.createdAt),
   index("orders_created_at_idx").on(table.createdAt),
   index("orders_round_id_idx").on(table.roundId),
+  uniqueIndex("orders_carrier_tracking_idx").on(table.carrierCode, table.trackingNumber),
 ]);
 
 export const orderItems = sqliteTable("order_items", {
@@ -93,4 +95,29 @@ export const orderItems = sqliteTable("order_items", {
   unitPrice: integer("unit_price").notNull(),
 }, (table) => [
   index("order_items_order_id_idx").on(table.orderId),
+]);
+
+export const trackingImports = sqliteTable("tracking_imports", {
+  id: text("id").primaryKey(),
+  carrierCode: text("carrier_code").notNull(),
+  fileHash: text("file_hash").notNull().unique(),
+  originalFilename: text("original_filename").notNull(),
+  sourceRowCount: integer("source_row_count").notNull(),
+  importedRowCount: integer("imported_row_count").notNull(),
+  importedBy: text("imported_by").notNull(),
+  createdAt: text("created_at").notNull(),
+}, (table) => [
+  index("tracking_imports_created_at_idx").on(table.createdAt),
+]);
+
+export const trackingImportRows = sqliteTable("tracking_import_rows", {
+  importId: text("import_id").notNull().references(() => trackingImports.id, { onDelete: "cascade" }),
+  sourceRow: integer("source_row").notNull(),
+  orderId: text("order_id").notNull().references(() => orders.id),
+  carrierCode: text("carrier_code").notNull(),
+  trackingNumber: text("tracking_number").notNull(),
+}, (table) => [
+  primaryKey({ columns: [table.importId, table.sourceRow] }),
+  uniqueIndex("tracking_import_rows_carrier_tracking_idx").on(table.carrierCode, table.trackingNumber),
+  index("tracking_import_rows_order_id_idx").on(table.orderId),
 ]);

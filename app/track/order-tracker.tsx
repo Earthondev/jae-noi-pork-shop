@@ -133,6 +133,7 @@ function OrderHistoryCard({ order, expanded, onToggle, storeName, phoneLast4, on
   const [receiptError, setReceiptError] = useState<string | null>(null);
   const [confirming, setConfirming] = useState(false);
   const [confirmError, setConfirmError] = useState<string | null>(null);
+  const [trackingCopied, setTrackingCopied] = useState(false);
   const currentStep = trackingStepIndex(order.orderStatus, order.fulfilment);
   const steps = order.fulfilment === "pickup"
     ? ["รับออเดอร์แล้ว", "กำลังเตรียม", "พร้อมรับหน้าร้าน", "สำเร็จ"]
@@ -155,6 +156,17 @@ function OrderHistoryCard({ order, expanded, onToggle, storeName, phoneLast4, on
       setConfirmError(confirmActionError instanceof CustomerFacingError ? confirmActionError.message : PUBLIC_ERROR_MESSAGES.TRACKING_UNAVAILABLE);
     } finally {
       setConfirming(false);
+    }
+  }
+
+  async function copyTrackingNumber() {
+    if (!order.trackingNumber) return;
+    try {
+      await navigator.clipboard.writeText(order.trackingNumber);
+      setTrackingCopied(true);
+      window.setTimeout(() => setTrackingCopied(false), 2_000);
+    } catch {
+      setTrackingCopied(false);
     }
   }
 
@@ -187,7 +199,8 @@ function OrderHistoryCard({ order, expanded, onToggle, storeName, phoneLast4, on
           <div className="tracking-details">
             <div><span>รอบจัดส่ง</span><strong>{order.deliveryDate || "รอข้อมูล"}</strong></div>
             <div><span>วิธีรับสินค้า</span><strong>{order.fulfilmentLabel}</strong></div>
-            <div><span>เลขพัสดุ</span><strong>{order.trackingNumber ?? "ยังไม่มีเลขพัสดุ"}</strong></div>
+            <div><span>บริษัทขนส่ง</span><strong>{order.carrierLabel ?? (order.trackingNumber ? "บริษัทขนส่ง" : "รอข้อมูล")}</strong></div>
+            <div className="tracking-number-detail"><span>เลขพัสดุ</span><strong>{order.trackingNumber ?? "ยังไม่มีเลขพัสดุ"}</strong>{order.trackingNumber && <div className="tracking-customer-actions"><button type="button" onClick={() => void copyTrackingNumber()}>{trackingCopied ? "คัดลอกแล้ว" : "คัดลอกเลขพัสดุ"}</button>{order.trackingUrl && <a href={order.trackingUrl} target="_blank" rel="noopener noreferrer">ติดตามกับ {order.carrierLabel ?? "ขนส่ง"}</a>}</div>}<span className="sr-only" aria-live="polite">{trackingCopied ? `คัดลอกเลขพัสดุ ${order.trackingNumber} แล้ว` : ""}</span></div>
           </div>
           <div className="tracking-items"><h3>รายการสินค้า</h3>{order.items.map((item, index) => <div key={`${item.name}-${index}`}><span>{item.name} × {item.quantity}</span><strong>{item.lineTotal.toLocaleString("th-TH")} บาท</strong></div>)}<div className="tracking-total"><span>ยอดรวม</span><strong>{order.total.toLocaleString("th-TH")} บาท</strong></div></div>
           {order.paymentStatus === "paid" && (

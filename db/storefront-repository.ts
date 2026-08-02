@@ -10,6 +10,7 @@ import {
 import { DEFAULT_STOREFRONT_CONTENT, formatRoundLabel } from "../lib/admin-cms";
 import { normalizeRoundProductScope, type RoundProductScope } from "../lib/round-products";
 import { safePickupMapUrl } from "../lib/storefront-settings";
+import { categoryNamesFromProducts, orderCategoryNames, parseCategoryOrder } from "../lib/category-order";
 
 export type StorefrontRound = {
   id: string;
@@ -25,6 +26,7 @@ export type StorefrontRound = {
 
 export type StorefrontData = {
   products: CatalogProduct[];
+  categoryOrder: string[];
   rounds: StorefrontRound[];
   nextRound: StorefrontRound | null;
   shippingFee: number | null;
@@ -136,13 +138,15 @@ export async function getD1StorefrontData(now = new Date()): Promise<StorefrontD
   const readyValue = (key: string) => settings.get(key)?.status === "พร้อมใช้" ? value(key) : "";
   const shippingFee = readyValue("postal_shipping_fee") === "" ? null : Number(readyValue("postal_shipping_fee"));
   const freeShippingMinimum = readyValue("free_shipping_minimum") === "" ? null : Number(readyValue("free_shipping_minimum"));
+  const categoryOrder = orderCategoryNames(categoryNamesFromProducts(products), parseCategoryOrder(value("category_order")));
 
   return {
     products,
+    categoryOrder,
     rounds: activeRounds.map(toRound),
     nextRound: nextRoundRow ? toRound(nextRoundRow) : null,
     shippingFee: Number.isFinite(shippingFee) ? shippingFee : null,
-    freeShippingMinimum: Number.isFinite(freeShippingMinimum) && freeShippingMinimum > 0 ? freeShippingMinimum : null,
+    freeShippingMinimum: freeShippingMinimum !== null && Number.isFinite(freeShippingMinimum) && freeShippingMinimum > 0 ? freeShippingMinimum : null,
     pickupAddress: readyValue("pickup_address") || null,
     pickupMapUrl: safePickupMapUrl(readyValue("pickup_map_url")),
     promptPayId: value("promptpay_id") || null,

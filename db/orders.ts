@@ -19,4 +19,5 @@ export type AdminOrder = {
   items: string;
   fulfilment: "pickup" | "postal";
   tracking_number: string | null;
+  carrier_code: "flash" | null;
 };

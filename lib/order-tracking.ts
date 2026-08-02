@@ -1,4 +1,5 @@
 import type { OrderStatus, PaymentStatus } from "../db/orders";
+import type { CarrierCode } from "./carriers";
 
 const ORDER_ID_PATTERN = /^JN-\d{8}-[23456789ABCDEFGHJKLMNPQRSTUVWXYZ]{10}$/;
 
@@ -23,6 +24,9 @@ export type PublicOrderTracking = {
   paymentStatus: PaymentStatus;
   orderStatus: OrderStatus;
   trackingNumber: string | null;
+  carrierCode: CarrierCode | null;
+  carrierLabel: string | null;
+  trackingUrl: string | null;
   items: PublicOrderItem[];
 };
 

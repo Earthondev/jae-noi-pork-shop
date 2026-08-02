@@ -1,7 +1,7 @@
 "use client";
 
 import { DndContext, DragOverlay, KeyboardSensor, MouseSensor, TouchSensor, closestCenter, useSensor, useSensors, type DragEndEvent, type DragStartEvent } from "@dnd-kit/core";
-import { SortableContext, arrayMove, sortableKeyboardCoordinates, useSortable, verticalListSortingStrategy } from "@dnd-kit/sortable";
+import { SortableContext, arrayMove, horizontalListSortingStrategy, sortableKeyboardCoordinates, useSortable, verticalListSortingStrategy } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import Image from "next/image";
 import Link from "next/link";
@@ -18,8 +18,11 @@ import {
   type RoundInput,
 } from "../../lib/admin-cms";
 import { CustomerFacingError, PUBLIC_ERROR_MESSAGES, safeClientApiMessage } from "../../lib/public-errors";
+import { categoryNamesFromProducts, orderCategoryNames } from "../../lib/category-order";
+import type { CarrierCode } from "../../lib/carriers";
 import { ConfirmDialog } from "./confirm-dialog";
 import { AdminIcon, type AdminIconName } from "./icons";
+import { TrackingImportPanel } from "./tracking-import-panel";
 
 type AdminTab = "orders" | "rounds" | "products" | "storefront";
 type OrderRange = "today" | "7days" | "all";
@@ -236,7 +239,7 @@ export function AdminDashboard({ initialOrders, initialCms, userName, serverNow,
     <p className={`admin-save-notice${notice ? " has-message" : ""}`} aria-live="polite" role="status">{notice}</p>
     {activeTab === "orders" && <OrdersPanel orders={orders} setOrders={setOrders} saving={saving} setSaving={setSaving} setNotice={setNotice} />}
     {activeTab === "rounds" && <RoundsPanel rounds={cms.rounds} products={cms.products} saving={saving} mutate={mutate} onFormActive={setFormActive} onFormDirty={setFormDirty} />}
-    {activeTab === "products" && <ProductsPanel products={cms.products} saving={saving} mutate={mutate} setNotice={setNotice} onFormActive={setFormActive} onFormDirty={setFormDirty} />}
+    {activeTab === "products" && <ProductsPanel products={cms.products} categoryOrder={cms.categoryOrder} saving={saving} mutate={mutate} setNotice={setNotice} onFormActive={setFormActive} onFormDirty={setFormDirty} />}
     {activeTab === "storefront" && <StorefrontPanel key={cms.settings.fingerprint} settings={cms.settings} saving={saving} mutate={mutate} setNotice={setNotice} onFormActive={setFormActive} onFormDirty={setFormDirty} />}
 
     <ConfirmDialog open={Boolean(confirm)} title={confirm?.title ?? ""} description={confirm?.description ?? ""} confirmLabel={confirm?.confirmLabel ?? "ยืนยัน"} tone={confirm?.tone} busy={saving !== null} onCancel={() => setConfirm(null)} onConfirm={() => { const action = confirm?.action; setConfirm(null); if (action) void action(); }} />
@@ -251,6 +254,7 @@ function OrdersPanel({ orders, setOrders, saving, setSaving, setNotice }: { orde
   const [filter, setFilter] = useState<OrderFilter>("all");
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
   const [trackingDrafts, setTrackingDrafts] = useState<Record<string, string>>(() => Object.fromEntries(orders.map((order) => [order.id, order.tracking_number ?? ""])));
+  const [carrierDrafts, setCarrierDrafts] = useState<Record<string, CarrierCode>>(() => Object.fromEntries(orders.map((order) => [order.id, order.carrier_code ?? "flash"])));
   // Status dropdowns used to write straight to the server on every change.
   // They now stage into this per-order draft instead, so nothing persists
   // until the admin presses "บันทึกสถานะ" — matching how every other panel
@@ -294,14 +298,14 @@ function OrdersPanel({ orders, setOrders, saving, setSaving, setNotice }: { orde
     map.set(key, current); return map;
   }, new Map<string, { count: number; sales: number }>()).entries()), [filtered]);
 
-  async function updateOrder(id: string, patch: { orderStatus?: OrderStatus; paymentStatus?: PaymentStatus; trackingNumber?: string }, success: string) {
+  async function updateOrder(id: string, patch: { orderStatus?: OrderStatus; paymentStatus?: PaymentStatus; trackingNumber?: string; carrierCode?: CarrierCode | null }, success: string) {
     setSaving(`order:${id}`); setNotice("");
     try {
       const response = await fetch(`/api/admin/orders/${encodeURIComponent(id)}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify(patch) });
       if (response.status === 401) return redirectToLogin();
       const result = await response.json().catch(() => null) as { error?: string } | null;
       if (!response.ok) throw new CustomerFacingError(safeClientApiMessage(response.status, result, "ADMIN_UNAVAILABLE"));
-      setOrders((current) => current.map((order) => order.id === id ? { ...order, ...(patch.orderStatus ? { order_status: patch.orderStatus } : {}), ...(patch.paymentStatus ? { payment_status: patch.paymentStatus } : {}), ...(patch.trackingNumber !== undefined ? { tracking_number: patch.trackingNumber || null } : {}) } : order));
+      setOrders((current) => current.map((order) => order.id === id ? { ...order, ...(patch.orderStatus ? { order_status: patch.orderStatus } : {}), ...(patch.paymentStatus ? { payment_status: patch.paymentStatus } : {}), ...(patch.trackingNumber !== undefined ? { tracking_number: patch.trackingNumber || null } : {}), ...(patch.carrierCode !== undefined ? { carrier_code: patch.carrierCode } : {}) } : order));
       setNotice(success);
     } catch (error) { setNotice(error instanceof CustomerFacingError ? error.message : PUBLIC_ERROR_MESSAGES.ADMIN_UNAVAILABLE); }
     finally { setSaving(null); }
@@ -337,6 +341,14 @@ function OrdersPanel({ orders, setOrders, saving, setSaving, setNotice }: { orde
 
   return <section className="admin-panel admin-orders-panel">
     <div className="admin-section-heading"><div><p className="eyebrow">จัดการงานประจำวัน</p><h2>ออเดอร์</h2></div><span className="admin-result-count">{filtered.length} รายการ</span></div>
+    <TrackingImportPanel onImported={(updates) => {
+      const byOrder = new Map(updates.map((update) => [update.orderId, update]));
+      setOrders((current) => current.map((order) => {
+        const update = byOrder.get(order.id);
+        return update ? { ...order, tracking_number: update.trackingNumber, carrier_code: update.carrierCode, order_status: "shipped" } : order;
+      }));
+      setTrackingDrafts((current) => ({ ...current, ...Object.fromEntries(updates.map((update) => [update.orderId, update.trackingNumber])) }));
+    }} />
     <div className="admin-filter-stack">
       <div className="admin-segmented" aria-label="ช่วงเวลา">{(["today", "7days", "all"] as OrderRange[]).map((value) => <button key={value} type="button" className={range === value ? "active" : ""} onClick={() => setRange(value)}>{value === "today" ? "วันนี้" : value === "7days" ? "7 วัน" : "ทั้งหมด"}</button>)}</div>
       <label className="admin-search"><span className="sr-only">ค้นหาออเดอร์</span><AdminIcon name="search" /><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="ค้นหาเลขออเดอร์ ชื่อ หรือเบอร์โทร" /></label>
@@ -376,7 +388,7 @@ function OrdersPanel({ orders, setOrders, saving, setSaving, setNotice }: { orde
               <label><span>สถานะชำระเงิน</span><select disabled={isSaving} value={draft.paymentStatus} onChange={(event) => setDraftField(order, { paymentStatus: event.target.value as PaymentStatus })}>{Object.entries(paymentStatusLabels).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label>
               <label><span>สถานะออเดอร์</span><select disabled={isSaving} value={draft.orderStatus} onChange={(event) => setDraftField(order, { orderStatus: event.target.value as OrderStatus })}>{Object.entries(statusLabels).map(([value, label]) => <option key={value} value={value} disabled={(order.payment_status !== "paid" && !["received", "cancelled"].includes(value)) || (order.fulfilment === "pickup" && value === "shipped") || (order.fulfilment === "postal" && value === "ready_for_pickup")}>{label}</option>)}</select>{order.payment_status !== "paid" && <small className="status-select-hint">ต้องยืนยัน &quot;ชำระแล้ว&quot; ก่อน จึงจะเลือกสถานะเตรียม/จัดส่งได้</small>}</label>
               {statusDirty && <div className="admin-status-save-bar"><span>มีการแก้ไขสถานะที่ยังไม่ได้บันทึก</span><button type="button" className="admin-status-discard-btn" disabled={isSaving} onClick={() => clearDraft(order.id)}>ยกเลิก</button><button type="button" className="admin-status-save-btn" disabled={isSaving} onClick={() => saveOrderStatus(order)}>{isSaving ? "กำลังบันทึก…" : "บันทึกสถานะ"}</button></div>}
-              {order.fulfilment === "postal" && <label className="admin-tracking-control"><span>เลขพัสดุ</span><span><input maxLength={100} value={trackingDrafts[order.id] ?? ""} onChange={(event) => setTrackingDrafts((current) => ({ ...current, [order.id]: event.target.value }))} placeholder="กรอกหลังส่งสินค้า" /><button type="button" disabled={saving === `order:${order.id}` || order.payment_status !== "paid"} onClick={() => void updateOrder(order.id, { trackingNumber: trackingDrafts[order.id] ?? "", orderStatus: "shipped" }, `บันทึกเลขพัสดุและอัปเดตเป็นจัดส่งแล้ว ${order.id}`)}>บันทึกและจัดส่งแล้ว</button></span><small className="status-select-hint">บันทึกแล้วลูกค้าเช็คสถานะเองได้ที่หน้าติดตามพัสดุ ไม่ต้องแจ้งซ้ำ</small></label>}
+              {order.fulfilment === "postal" && <div className="admin-tracking-control"><label><span>บริษัทขนส่ง</span><select disabled={isSaving} value={carrierDrafts[order.id] ?? "flash"} onChange={(event) => setCarrierDrafts((current) => ({ ...current, [order.id]: event.target.value as CarrierCode }))}><option value="flash">Flash Express</option></select></label><label><span>เลขพัสดุ</span><span><input maxLength={100} value={trackingDrafts[order.id] ?? ""} onChange={(event) => setTrackingDrafts((current) => ({ ...current, [order.id]: event.target.value }))} placeholder="กรอกหลังส่งสินค้า" /><button type="button" disabled={saving === `order:${order.id}` || order.payment_status !== "paid"} onClick={() => void updateOrder(order.id, { trackingNumber: trackingDrafts[order.id] ?? "", carrierCode: carrierDrafts[order.id] ?? "flash", orderStatus: "shipped" }, `บันทึกเลขพัสดุและอัปเดตเป็นจัดส่งแล้ว ${order.id}`)}>บันทึกและจัดส่งแล้ว</button></span></label><small className="status-select-hint">บันทึกแล้วลูกค้าจะเห็นบริษัทขนส่ง ปุ่มคัดลอก และลิงก์ติดตาม</small></div>}
             </div>
           </div>}
         </article>;
@@ -558,10 +570,12 @@ function roundProductNames(round: AdminRound, products: AdminProduct[]): string 
   return listed.length > 3 ? `${listed.slice(0, 3).join(", ")} และอีก ${listed.length - 3} รายการ` : listed.join(", ");
 }
 
-function ProductsPanel({ products, saving, mutate, setNotice, onFormActive, onFormDirty }: { products: AdminProduct[]; saving: string | null; mutate: Mutation; setNotice: (value: string) => void; onFormActive: (active: boolean) => void; onFormDirty: (dirty: boolean) => void }) {
+function ProductsPanel({ products, categoryOrder, saving, mutate, setNotice, onFormActive, onFormDirty }: { products: AdminProduct[]; categoryOrder: string[]; saving: string | null; mutate: Mutation; setNotice: (value: string) => void; onFormActive: (active: boolean) => void; onFormDirty: (dirty: boolean) => void }) {
   const [draft, setDraft] = useState<ProductInput>(EMPTY_PRODUCT_INPUT); const [editing, setEditing] = useState<string | null>(null); const [creating, setCreating] = useState(false); const [uploading, setUploading] = useState(false); const [category, setCategory] = useState("ทั้งหมด"); const [view, setView] = useState<"list" | "grid">("list"); const [confirm, setConfirm] = useState<ConfirmState>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [showArchived, setShowArchived] = useState(false);
+  const [categoryOrderOverride, setCategoryOrderOverride] = useState<string[] | null>(null);
+  const [activeCategoryDrag, setActiveCategoryDrag] = useState<string | null>(null);
   // Drag-to-reorder always works on every active product, independent of
   // whatever category filter is selected elsewhere in the panel — sort_order
   // is a single global sequence, so reordering a filtered subset in place
@@ -579,6 +593,20 @@ function ProductsPanel({ products, saving, mutate, setNotice, onFormActive, onFo
     useSensor(TouchSensor, { activationConstraint: { delay: 200, tolerance: 8 } }),
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
   );
+  const categoryDragSensors = useSensors(
+    useSensor(MouseSensor, { activationConstraint: { delay: 150, tolerance: 5 } }),
+    useSensor(TouchSensor, { activationConstraint: { delay: 220, tolerance: 8 } }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
+  );
+  const categoryNames = useMemo(
+    () => orderCategoryNames(categoryNamesFromProducts(products), categoryOrderOverride ?? categoryOrder),
+    [categoryOrder, categoryOrderOverride, products],
+  );
+  // Deleting or renaming the last product of a category makes the selected
+  // filter vanish from the list. Falling back while reading keeps the panel
+  // showing everything instead of an empty result for a category that is no
+  // longer there, without a render pass that stores a filter nothing matches.
+  const activeCategory = categoryNames.includes(category) ? category : "ทั้งหมด";
 
   function handleDragStart(event: DragStartEvent) {
     setActiveDragId(String(event.active.id));
@@ -596,10 +624,26 @@ function ProductsPanel({ products, saving, mutate, setNotice, onFormActive, onFo
     setDragOverride(null);
   }
 
-  const categories = useMemo(() => ["ทั้งหมด", ...Array.from(new Set(products.map((product) => product.category || "อื่น ๆ")))], [products]);
+  function handleCategoryDragStart(event: DragStartEvent) {
+    setActiveCategoryDrag(String(event.active.id));
+  }
+
+  async function handleCategoryDragEnd(event: DragEndEvent) {
+    setActiveCategoryDrag(null);
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
+    const oldIndex = categoryNames.indexOf(String(active.id));
+    const newIndex = categoryNames.indexOf(String(over.id));
+    if (oldIndex === -1 || newIndex === -1) return;
+    const next = arrayMove(categoryNames, oldIndex, newIndex);
+    setCategoryOrderOverride(next);
+    await mutate("category.reorder", { categories: next }, "จัดเรียงหมวดหมู่แล้ว");
+    setCategoryOrderOverride(null);
+  }
+
   const visible = useMemo(() => {
     return products.filter((product) => {
-      const matchesCategory = category === "ทั้งหมด" || (product.category || "อื่น ๆ") === category;
+      const matchesCategory = activeCategory === "ทั้งหมด" || (product.category || "อื่น ๆ") === activeCategory;
       const normalizedQuery = searchQuery.trim().toLowerCase();
       const matchesSearch = !normalizedQuery ||
         product.name.toLowerCase().includes(normalizedQuery) ||
@@ -607,14 +651,15 @@ function ProductsPanel({ products, saving, mutate, setNotice, onFormActive, onFo
         (product.category || "").toLowerCase().includes(normalizedQuery);
       return matchesCategory && matchesSearch;
     });
-  }, [products, category, searchQuery]);
+  }, [products, activeCategory, searchQuery]);
   // Products still in rotation (on sale, paused, or waiting for info) show up
   // front. Ones the admin closed on purpose move to a separate collapsed
   // section below, so the main list only ever shows what's actively managed.
   const activeVisible = useMemo(() => visible.filter((product) => product.status !== "ซ่อนสินค้า"), [visible]);
   const archivedVisible = useMemo(() => visible.filter((product) => product.status === "ซ่อนสินค้า"), [visible]);
-  const canReorder = view === "list" && category === "ทั้งหมด" && !searchQuery.trim();
+  const canReorder = view === "list" && activeCategory === "ทั้งหมด" && !searchQuery.trim();
   const isReordering = saving === "product.reorder";
+  const isCategoryReordering = saving === "category.reorder";
 
   const activeProduct = useMemo(() => {
     if (editing) return products.find((p) => p.id === editing) ?? null;
@@ -723,22 +768,22 @@ function ProductsPanel({ products, saving, mutate, setNotice, onFormActive, onFo
 
         <div className="admin-product-toolbar">
           <div className="admin-category-chips-row">
-            {categories.map((value) => (
-              <button
-                key={value}
-                type="button"
-                className={`admin-category-chip-btn ${category === value ? "active" : ""}`}
-                onClick={() => setCategory(value)}
-              >
-                {value}
-              </button>
-            ))}
+            <button type="button" className={`admin-category-chip-btn ${activeCategory === "ทั้งหมด" ? "active" : ""}`} onClick={() => setCategory("ทั้งหมด")}>ทั้งหมด</button>
+            <DndContext sensors={categoryDragSensors} collisionDetection={closestCenter} onDragStart={handleCategoryDragStart} onDragEnd={handleCategoryDragEnd} onDragCancel={() => setActiveCategoryDrag(null)}>
+              <SortableContext items={categoryNames} strategy={horizontalListSortingStrategy}>
+                {categoryNames.map((value) => <SortableCategoryChip key={value} category={value} active={activeCategory === value} disabled={isCategoryReordering} onSelect={() => setCategory(value)} />)}
+              </SortableContext>
+              <DragOverlay dropAnimation={{ duration: 160, easing: "cubic-bezier(0.2, 0.8, 0.2, 1)" }}>
+                {activeCategoryDrag ? <div className="admin-category-sort-item admin-category-drag-overlay"><span>{activeCategoryDrag}</span><AdminIcon name="grip" /></div> : null}
+              </DragOverlay>
+            </DndContext>
           </div>
           <div className="admin-view-toggle" aria-label="รูปแบบแสดงสินค้า">
             <button className={view === "list" ? "active" : ""} type="button" onClick={() => setView("list")} aria-label="แบบรายการ"><AdminIcon name="list" /></button>
             <button className={view === "grid" ? "active" : ""} type="button" onClick={() => setView("grid")} aria-label="แบบตาราง"><AdminIcon name="grid" /></button>
           </div>
         </div>
+        {categoryNames.length > 1 && <p className="admin-category-sort-hint">กดค้างที่จุดจับ <AdminIcon name="grip" /> แล้วลากเพื่อจัดเรียงหมวดหมู่</p>}
 
         <button className="admin-primary-button add-product-mobile-btn" type="button" onClick={() => { setDraft({ ...EMPTY_PRODUCT_INPUT, id: nextProductId(products) }); setCreating(true); setEditing(null); }}>
           <AdminIcon name="plus" />เพิ่มสินค้าใหม่
@@ -849,6 +894,15 @@ function SortableProductCard({ product, isActiveDrag, disabled, busy, handlers }
   return <article ref={setNodeRef} style={style} className={`admin-product-card${isDragging ? " is-dragging" : ""}${isActiveDrag ? " is-active-drag" : ""}`}>
     {productCardBody(product, handlers, dragHandle, busy)}
   </article>;
+}
+
+function SortableCategoryChip({ category, active, disabled, onSelect }: { category: string; active: boolean; disabled: boolean; onSelect: () => void }) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: category, disabled });
+  const style = { transform: CSS.Transform.toString(transform), transition };
+  return <div ref={setNodeRef} style={style} className={`admin-category-sort-item${active ? " is-active" : ""}${isDragging ? " is-dragging" : ""}`}>
+    <button type="button" className="admin-category-chip-btn" onClick={onSelect}>{category}</button>
+    <button type="button" className="category-drag-handle" disabled={disabled} aria-label={`ลากเพื่อจัดเรียงหมวดหมู่ ${category}`} {...attributes} {...listeners}><AdminIcon name="grip" /></button>
+  </div>;
 }
 
 function ProductForm({ title, value, disabled, uploading, lockId = false, onChange, onUpload, onCancel, onSubmit }: { title: string; value: ProductInput; disabled: boolean; uploading: boolean; lockId?: boolean; onChange: (value: ProductInput) => void; onUpload: (file: File) => void; onCancel: () => void; onSubmit: () => void }) {

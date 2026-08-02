@@ -17,6 +17,7 @@ import {
   createAdminRound,
   getAdminCmsData,
   moveAdminProduct,
+  reorderAdminCategories,
   reorderAdminProducts,
   updateAdminProduct,
   updateAdminRound,
@@ -75,6 +76,9 @@ export async function POST(request: Request) {
         break;
       case "product.reorder":
         result = await reorderAdminProducts(stringArray(body.ids, "รายการรหัสสินค้า"));
+        break;
+      case "category.reorder":
+        result = await reorderAdminCategories(stringArray(body.categories, "รายการหมวดหมู่"));
         break;
       case "round.create":
         result = await createAdminRound(roundInput(body.round));

@@ -1,6 +1,7 @@
 import { env } from "cloudflare:workers";
 import type { AdminOrder, OrderStatus, PaymentStatus } from "./orders";
 import { maskPhone, matchesPhoneLast4, normalizePhone, type PublicOrderTracking } from "../lib/order-tracking";
+import { carrierLabel, carrierTrackingUrl, isCarrierCode, type CarrierCode } from "../lib/carriers";
 
 const AUTO_COMPLETE_AFTER_MS = 7 * 24 * 60 * 60 * 1000;
 
@@ -36,6 +37,7 @@ export type AdminOrderPatch = {
   paymentStatus?: PaymentStatus;
   orderStatus?: OrderStatus;
   trackingNumber?: string;
+  carrierCode?: CarrierCode | null;
 };
 
 export type UpdateOrderStatusResult = "updated" | "not_found" | "payment_required";
@@ -59,6 +61,7 @@ type OrderRow = {
   updated_at: string;
   fulfilment: "pickup" | "postal";
   tracking_number: string | null;
+  carrier_code: string | null;
   delivery_date: string;
 };
 
@@ -123,7 +126,7 @@ export async function getAdminOrders(): Promise<AdminOrder[]> {
   const db = database();
   const [ordersResult, itemsResult] = await db.batch([
     db.prepare(`SELECT id, round_id, customer_name, phone, address, note, admin_note, subtotal,
-      shipping_fee, total, slip_key, payment_status, order_status, created_at, fulfilment, tracking_number
+      shipping_fee, total, slip_key, payment_status, order_status, created_at, fulfilment, tracking_number, carrier_code
       FROM orders ORDER BY created_at DESC LIMIT 500`),
     db.prepare(`SELECT oi.order_id, oi.name, oi.quantity, oi.unit_price
       FROM order_items oi
@@ -148,6 +151,7 @@ export async function getAdminOrders(): Promise<AdminOrder[]> {
     created_at: row.created_at,
     fulfilment: row.fulfilment,
     tracking_number: row.tracking_number,
+    carrier_code: isCarrierCode(row.carrier_code) ? row.carrier_code : null,
     items: (itemsByOrder.get(row.id) ?? []).map((item) => `${item.name} × ${item.quantity}`).join(", "),
   }));
 }
@@ -173,7 +177,7 @@ export async function getPublicOrderByIdAndPhoneLast4(
   const futureLimit = new Date(now.getTime() + 5 * 60_000).toISOString();
   const row = await db.prepare(`SELECT id, round_id, customer_name, phone, address, note, admin_note,
     subtotal, shipping_fee, total, slip_key, payment_status, order_status, created_at, updated_at,
-    fulfilment, tracking_number, delivery_date
+    fulfilment, tracking_number, carrier_code, delivery_date
     FROM orders WHERE id = ? AND created_at >= ? AND created_at <= ? LIMIT 1`)
     .bind(orderId, cutoff, futureLimit).first<OrderRow>();
   if (!row || !matchesPhoneLast4(row.phone, phoneLast4)) return null;
@@ -207,6 +211,7 @@ export async function updateAdminOrder(id: string, patch: AdminOrderPatch): Prom
     }
   }
   if (patch.trackingNumber !== undefined) { assignments.push("tracking_number = ?"); values.push(patch.trackingNumber.trim() || null); }
+  if (patch.carrierCode !== undefined) { assignments.push("carrier_code = ?"); values.push(patch.carrierCode); }
   if (assignments.length === 0) return "updated";
   assignments.push("updated_at = ?");
   values.push(new Date().toISOString(), id);
@@ -253,6 +258,9 @@ function toPublicOrder(row: OrderRow, items: ItemRow[]): PublicOrderTracking {
     paymentStatus: row.payment_status,
     orderStatus: row.order_status,
     trackingNumber: row.tracking_number,
+    carrierCode: isCarrierCode(row.carrier_code) ? row.carrier_code : null,
+    carrierLabel: isCarrierCode(row.carrier_code) ? carrierLabel(row.carrier_code) : null,
+    trackingUrl: isCarrierCode(row.carrier_code) ? carrierTrackingUrl(row.carrier_code, row.tracking_number) : null,
     items: items.map((item) => ({
       name: item.name,
       quantity: item.quantity,

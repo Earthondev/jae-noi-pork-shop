@@ -6,6 +6,7 @@ import { updateAdminOrder } from "../../../../../db/order-repository";
 import { publicErrorBody } from "../../../../../lib/public-errors";
 import { reportServerError } from "../../../../../lib/server-monitoring";
 import { MalformedRequestBodyError, parseBoundedJson, RequestBodyTooLargeError, UnsupportedRequestContentTypeError } from "../../../../../lib/request-body";
+import { isCarrierCode, isValidTrackingNumber, normalizeTrackingNumber, type CarrierCode } from "../../../../../lib/carriers";
 
 const MAX_UPDATE_BODY_BYTES = 4 * 1024;
 const statuses: OrderStatus[] = ["received", "preparing", "ready_for_pickup", "shipped", "completed", "cancelled"];
@@ -16,7 +17,7 @@ export async function PATCH(request: Request, context: { params: Promise<{ id: s
   if (!user) return NextResponse.json({ error: "กรุณาเข้าสู่ระบบผู้ดูแล" }, { status: 401 });
   if (!isSameOriginMutation(request)) return NextResponse.json({ error: "คำขอไม่ถูกต้อง" }, { status: 403 });
 
-  let body: { orderStatus?: unknown; paymentStatus?: unknown; trackingNumber?: unknown } | null;
+  let body: { orderStatus?: unknown; paymentStatus?: unknown; trackingNumber?: unknown; carrierCode?: unknown } | null;
   try {
     body = await parseBoundedJson(request, MAX_UPDATE_BODY_BYTES) as typeof body;
   } catch (error) {
@@ -29,6 +30,7 @@ export async function PATCH(request: Request, context: { params: Promise<{ id: s
   const orderStatus = body?.orderStatus;
   const paymentStatus = body?.paymentStatus;
   const trackingNumber = body?.trackingNumber;
+  const carrierCode = body?.carrierCode;
   if (orderStatus !== undefined && (typeof orderStatus !== "string" || !statuses.includes(orderStatus as OrderStatus))) {
     return NextResponse.json({ error: "สถานะออเดอร์ไม่ถูกต้อง" }, { status: 400 });
   }
@@ -38,7 +40,15 @@ export async function PATCH(request: Request, context: { params: Promise<{ id: s
   if (trackingNumber !== undefined && (typeof trackingNumber !== "string" || trackingNumber.length > 100)) {
     return NextResponse.json({ error: "เลขพัสดุยาวเกินไป" }, { status: 400 });
   }
-  if (orderStatus === undefined && paymentStatus === undefined && trackingNumber === undefined) {
+  if (carrierCode !== undefined && carrierCode !== null && !isCarrierCode(carrierCode)) {
+    return NextResponse.json({ error: "บริษัทขนส่งไม่ถูกต้อง" }, { status: 400 });
+  }
+  const effectiveCarrierCode = isCarrierCode(carrierCode) ? carrierCode : undefined;
+  const normalizedTrackingNumber = typeof trackingNumber === "string" ? normalizeTrackingNumber(trackingNumber) : undefined;
+  if (normalizedTrackingNumber && (!effectiveCarrierCode || !isValidTrackingNumber(effectiveCarrierCode, normalizedTrackingNumber))) {
+    return NextResponse.json({ error: "เลขพัสดุไม่ตรงกับรูปแบบของบริษัทขนส่ง" }, { status: 400 });
+  }
+  if (orderStatus === undefined && paymentStatus === undefined && trackingNumber === undefined && carrierCode === undefined) {
     return NextResponse.json({ error: "ไม่พบข้อมูลที่ต้องการแก้ไข" }, { status: 400 });
   }
 
@@ -48,7 +58,8 @@ export async function PATCH(request: Request, context: { params: Promise<{ id: s
     result = await updateAdminOrder(id, {
       orderStatus: orderStatus as OrderStatus | undefined,
       paymentStatus: paymentStatus as PaymentStatus | undefined,
-      trackingNumber: trackingNumber as string | undefined,
+      trackingNumber: normalizedTrackingNumber,
+      carrierCode: carrierCode as CarrierCode | null | undefined,
     });
   } catch (error) {
     reportServerError({ event: "admin_order_update_failed", operation: "admin.order.update", error, path: "/api/admin/orders/:id", method: "PATCH" });

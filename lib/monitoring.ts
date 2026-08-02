@@ -20,6 +20,7 @@ export type MonitoringEventName =
   | "admin_logout_failed"
   | "admin_order_update_failed"
   | "admin_product_image_failed"
+  | "admin_tracking_import_failed"
   | "admin_slip_read_failed"
   | "client_render_failed"
   | "worker_unhandled_exception"
@@ -93,6 +94,7 @@ const safeDescriptions: Record<MonitoringEventName, string> = {
   admin_logout_failed: "Admin logout service failed",
   admin_order_update_failed: "Admin order update failed",
   admin_product_image_failed: "Admin product image upload failed",
+  admin_tracking_import_failed: "Admin tracking import failed",
   admin_slip_read_failed: "Admin slip retrieval failed",
   client_render_failed: "The customer interface could not render",
   worker_unhandled_exception: "The Worker caught an unexpected exception",
