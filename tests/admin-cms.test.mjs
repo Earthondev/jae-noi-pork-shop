@@ -24,6 +24,7 @@ test("storefront settings accept only the bundled brand defaults or approved upl
     phoneSecondary: "087-8755479",
     shippingFee: 50,
     freeShippingMinimum: 300,
+    lastFreeShippingMinimum: 300,
     pickupAddress: "หน้าร้าน",
     pickupMapUrl: "https://maps.app.goo.gl/uVChd79bzjbXYwtXA",
     promptPayId: "",

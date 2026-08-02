@@ -865,6 +865,17 @@ function StorefrontPanel({ settings, saving, mutate, setNotice, onFormActive, on
   const [activeSubTab, setActiveSubTab] = useState<"brand" | "info" | "story" | "contact">("brand");
   const dirty = JSON.stringify({ ...draft, fingerprint: "" }) !== JSON.stringify({ ...settings, fingerprint: "" });
   function field<K extends keyof AdminStorefrontSettings>(key: K, value: AdminStorefrontSettings[K]) { setDraft((current) => ({ ...current, [key]: value })); }
+  function toggleFreeShippingPromotion(disabled: boolean) {
+    setDraft((current) => {
+      const lastMinimum = current.lastFreeShippingMinimum ?? current.freeShippingMinimum ?? 300;
+      return disabled
+        ? { ...current, freeShippingMinimum: null, lastFreeShippingMinimum: lastMinimum }
+        : { ...current, freeShippingMinimum: lastMinimum, lastFreeShippingMinimum: lastMinimum };
+    });
+  }
+  function setFreeShippingMinimum(value: number | null) {
+    setDraft((current) => ({ ...current, freeShippingMinimum: value, lastFreeShippingMinimum: value ?? current.lastFreeShippingMinimum }));
+  }
 
   useEffect(() => {
     onFormDirty(dirty);
@@ -946,14 +957,14 @@ function StorefrontPanel({ settings, saving, mutate, setNotice, onFormActive, on
             <label><span>ค่าส่งไปรษณีย์</span><input min="0" max="100000" type="number" value={draft.shippingFee ?? ""} onChange={(event) => field("shippingFee", event.target.value ? Number(event.target.value) : null)} /></label>
             <div className="free-shipping-control full">
               <label className="free-shipping-toggle" htmlFor="free-shipping-disabled">
-                <input id="free-shipping-disabled" type="checkbox" checked={draft.freeShippingMinimum === null} onChange={(event) => field("freeShippingMinimum", event.target.checked ? null : 300)} aria-describedby="free-shipping-help" />
+                <input id="free-shipping-disabled" type="checkbox" checked={draft.freeShippingMinimum === null} onChange={(event) => toggleFreeShippingPromotion(event.target.checked)} aria-describedby="free-shipping-help" />
                 <span className="free-shipping-toggle-track" aria-hidden="true"><span className="free-shipping-toggle-thumb" /></span>
                 <span className="free-shipping-toggle-copy"><strong>ไม่มีโปรโมชันส่งฟรี</strong><small>{draft.freeShippingMinimum === null ? "เก็บค่าส่งตามปกติทุกยอดสั่งซื้อ" : `ส่งฟรีเมื่อซื้อครบ ${draft.freeShippingMinimum.toLocaleString("th-TH")} บาท`}</small></span>
                 <span className="free-shipping-toggle-state" aria-hidden="true">{draft.freeShippingMinimum === null ? "ปิด" : "เปิด"}</span>
               </label>
               <small className="field-help" id="free-shipping-help">เปิดสวิตช์เพื่อปิดโปรโมชันส่งฟรีชั่วคราว</small>
             </div>
-            <label><span>ซื้อครบกี่บาทส่งฟรี</span><input min="1" max="1000000" type="number" disabled={draft.freeShippingMinimum === null} value={draft.freeShippingMinimum ?? ""} onChange={(event) => field("freeShippingMinimum", event.target.value ? Number(event.target.value) : null)} /></label>
+            {draft.freeShippingMinimum !== null && <label><span>ซื้อครบกี่บาทส่งฟรี</span><input min="1" max="1000000" type="number" value={draft.freeShippingMinimum} onChange={(event) => setFreeShippingMinimum(event.target.value ? Number(event.target.value) : null)} /></label>}
             <label className="full"><span>ที่อยู่รับเองหน้าร้าน</span><textarea maxLength={500} rows={4} value={draft.pickupAddress} onChange={(event) => field("pickupAddress", event.target.value)} /></label>
             <label className="full"><span>ลิงก์ Google Maps</span><input type="url" maxLength={500} value={draft.pickupMapUrl} onChange={(event) => field("pickupMapUrl", event.target.value)} /></label>
           </div>

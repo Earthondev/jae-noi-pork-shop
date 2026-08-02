@@ -50,6 +50,7 @@ export type AdminStorefrontSettings = {
   phoneSecondary: string;
   shippingFee: number | null;
   freeShippingMinimum: number | null;
+  lastFreeShippingMinimum: number | null;
   pickupAddress: string;
   pickupMapUrl: string;
   promptPayId: string;
@@ -176,6 +177,12 @@ export function cleanStorefrontSettings(input: Omit<AdminStorefrontSettings, "fi
   if (freeShippingMinimum !== null && (!Number.isFinite(freeShippingMinimum) || freeShippingMinimum <= 0 || freeShippingMinimum > 1_000_000)) {
     throw new AdminCmsValidationError("ยอดขั้นต่ำส่งฟรีต้องมากกว่า 0 บาท");
   }
+  const lastFreeShippingMinimum = input.lastFreeShippingMinimum === null || input.lastFreeShippingMinimum === undefined
+    ? freeShippingMinimum
+    : Number(input.lastFreeShippingMinimum);
+  if (lastFreeShippingMinimum !== null && (!Number.isFinite(lastFreeShippingMinimum) || lastFreeShippingMinimum <= 0 || lastFreeShippingMinimum > 1_000_000)) {
+    throw new AdminCmsValidationError("ยอดขั้นต่ำส่งฟรีล่าสุดไม่ถูกต้อง");
+  }
   const pickupMapUrl = input.pickupMapUrl.trim().slice(0, 500);
   if (pickupMapUrl && !safePickupMapUrl(pickupMapUrl)) throw new AdminCmsValidationError("ลิงก์แผนที่ต้องเป็น Google Maps แบบ HTTPS");
   const promptPayId = normalizePromptPayId(input.promptPayId ?? "");
@@ -200,6 +207,7 @@ export function cleanStorefrontSettings(input: Omit<AdminStorefrontSettings, "fi
     phoneSecondary: normalizePhone(input.phoneSecondary),
     shippingFee,
     freeShippingMinimum,
+    lastFreeShippingMinimum: freeShippingMinimum ?? lastFreeShippingMinimum,
     pickupAddress: cleanText(input.pickupAddress, 500),
     pickupMapUrl,
     promptPayId,

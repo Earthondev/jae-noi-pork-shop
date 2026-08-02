@@ -14,6 +14,7 @@ INSERT OR REPLACE INTO storefront_settings (key, value, status, version, updated
 ('store_name', 'เจ๊น้อย เขียงหมูตะคร้อ', 'พร้อมใช้', 1, '2026-07-16T00:00:00.000Z'),
 ('postal_shipping_fee', '50', 'พร้อมใช้', 1, '2026-07-16T00:00:00.000Z'),
 ('free_shipping_minimum', '', 'พร้อมใช้', 1, '2026-07-16T00:00:00.000Z'),
+('free_shipping_minimum_last', '', 'พร้อมใช้', 1, '2026-07-16T00:00:00.000Z'),
 ('pickup_address', 'ร้านเจ๊น้อย เขียงหมูตะคร้อ ถนนนิเวศรัตน์ ต.บัวใหญ่ อ.บัวใหญ่ จ.นครราชสีมา 30120', 'พร้อมใช้', 1, '2026-07-16T00:00:00.000Z'),
 ('pickup_map_url', 'https://maps.app.goo.gl/uVChd79bzjbXYwtXA?g_st=il', 'พร้อมใช้', 1, '2026-07-16T00:00:00.000Z'),
 ('promptpay_id', '0931687892', 'พร้อมใช้', 1, '2026-07-16T00:00:00.000Z'),
