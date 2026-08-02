@@ -192,7 +192,8 @@ npx wrangler d1 execute site-creator-d1 \
 - `CLOUDFLARE_D1_DATABASE_ID`
 - `CLOUDFLARE_R2_BUCKET_NAME`
 - `CLOUDFLARE_PRODUCT_MEDIA_BUCKET_NAME`
-- `CLOUDFLARE_CUSTOM_DOMAIN` (ไม่บังคับ)
+- `CLOUDFLARE_CUSTOM_DOMAIN` — ต้องเป็น `jaenoishop.com` เสมอ ถ้าเว้นว่าง build จะถอด
+  route ของโดเมนออกและหน้าร้านจะล่ม
 - `PRODUCT_MEDIA_ORIGIN`
 
 ### Production runtime secrets

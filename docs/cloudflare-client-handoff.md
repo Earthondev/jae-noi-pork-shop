@@ -47,7 +47,7 @@
 ตั้งสองค่านี้ใน Cloudflare Workers Builds:
 
 ```text
-CLOUDFLARE_CUSTOM_DOMAIN=
+CLOUDFLARE_CUSTOM_DOMAIN=jaenoishop.com
 CLOUDFLARE_WORKER_NAME=jae-noi-pork-shop
 CLOUDFLARE_D1_DATABASE_NAME=jae-noi-pork-shop
 CLOUDFLARE_D1_DATABASE_ID=7bfa8fbb-f603-441c-bbb0-b4474cdfd2fa
@@ -56,8 +56,9 @@ CLOUDFLARE_PRODUCT_MEDIA_BUCKET_NAME=jae-noi-pork-shop-media
 PRODUCT_MEDIA_ORIGIN=https://pub-example.r2.dev
 ```
 
-`CLOUDFLARE_CUSTOM_DOMAIN` เว้นว่างได้ระหว่างที่ร้านยังไม่มีโดเมน ระบบจะเปิดผ่าน
-`workers.dev` ก่อน เมื่อซื้อโดเมนแล้วจึงใส่ hostname และ deploy ใหม่
+ร้านใช้ `jaenoishop.com` ตั้งแต่ 3 ส.ค. 2569 **ห้าม deploy โดยไม่ตั้งค่านี้** เพราะ
+build จะถอด route ของโดเมนออกแล้วเปิด `workers.dev` แทน ทำให้หน้าร้านที่ลูกค้าใช้อยู่
+ล่มทันที (ดู `vite.config.ts` — `workers_dev` ถูกตั้งเป็น `!customDomain`)
 ตัว build จะหยุดทันทีหากชื่อ Worker, ชื่อ D1 หรือ D1 UUID ไม่ครบ และตรวจซ้ำหลัง build
 เพื่อไม่ให้ staging หรือ production ชี้ฐานข้อมูลสลับกัน
 
