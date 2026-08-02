@@ -1,6 +1,7 @@
 /** Cloudflare Worker entry point for the vinext-starter template. */
 import { handleImageOptimization, DEFAULT_DEVICE_SIZES, DEFAULT_IMAGE_SIZES } from "vinext/server/image-optimization";
 import handler from "vinext/server/app-router-entry";
+import { APP_IMAGE_WIDTHS } from "../lib/image-widths";
 import { reportOperationalError, type MonitoringBindings } from "../lib/monitoring";
 import { PERMISSIONS_POLICY } from "../lib/security-policy";
 
@@ -125,7 +126,7 @@ const worker = {
             response = Response.redirect(new URL(source, request.url), 307);
           }
         } else {
-          const allowedWidths = [...DEFAULT_DEVICE_SIZES, ...DEFAULT_IMAGE_SIZES];
+          const allowedWidths = [...DEFAULT_DEVICE_SIZES, ...DEFAULT_IMAGE_SIZES, ...APP_IMAGE_WIDTHS];
           response = await handleImageOptimization(request, {
             fetchAsset: (path) => {
               const assetUrl = new URL(path, request.url);

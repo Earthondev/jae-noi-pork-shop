@@ -137,6 +137,12 @@ export default defineConfig(async ({ command }) => {
     // A single binding handles both storefront optimization and security
     // normalization of uploaded product/slip images.
     images: { binding: "IMAGES" },
+    // Static assets are served whether or not this is named, but `env.ASSETS`
+    // only exists inside the Worker when it is. `/_vinext/image` checks for it
+    // and falls back to a 307 at the untouched source file when it is missing —
+    // which is why every product photo was being delivered full-size and
+    // unconverted even though the optimizer was wired up correctly.
+    assets: { binding: "ASSETS" },
   };
 
   // Wrangler snapshots its log path while the Cloudflare plugin is imported.
