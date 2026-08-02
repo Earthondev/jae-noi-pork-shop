@@ -25,6 +25,7 @@ import {
 } from "../lib/remembered-customer";
 import { browserRecentOrderStorage, saveRecentOrder } from "../lib/recent-order";
 import { formatThaiAddress } from "../lib/thai-address";
+import { postalShippingCost } from "../lib/shipping";
 
 type ClientPaymentStatus = "waiting" | "verified" | "review" | "invalid";
 
@@ -240,7 +241,9 @@ export function Shop() {
     [storefront.products, quantities],
   );
   const unavailableProduct = cartItems.find((product) => product.status !== "เปิดขาย" || product.price === null);
-  const shippingCost = storefront.fulfilment === "postal" ? storefront.shippingFee : 0;
+  const shippingCost = storefront.fulfilment === "postal"
+    ? postalShippingCost(subtotal, storefront)
+    : 0;
   const orderTotal = subtotal + (shippingCost ?? 0);
   let promptPayPayload: string | null = null;
   if (storefront.promptPayId && orderTotal > 0 && !unavailableProduct && shippingCost !== null) {
@@ -494,6 +497,7 @@ export function Shop() {
             fulfilment: storefront.fulfilment,
             onSelectFulfilment: storefront.setFulfilment,
             shippingFee: storefront.shippingFee,
+            freeShippingMinimum: storefront.freeShippingMinimum,
             pickupAddress: storefront.pickupAddress,
             pickupMapUrl: storefront.pickupMapUrl,
             promptPayId: storefront.promptPayId,

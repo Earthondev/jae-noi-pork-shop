@@ -885,6 +885,8 @@ function StorefrontPanel({ settings, saving, mutate, setNotice, onFormActive, on
             <label><span>เบอร์หลัก</span><input required inputMode="tel" value={draft.phonePrimary} onChange={(event) => field("phonePrimary", event.target.value)} /></label>
             <label><span>เบอร์สำรอง</span><input required inputMode="tel" value={draft.phoneSecondary} onChange={(event) => field("phoneSecondary", event.target.value)} /></label>
             <label><span>ค่าส่งไปรษณีย์</span><input min="0" max="100000" type="number" value={draft.shippingFee ?? ""} onChange={(event) => field("shippingFee", event.target.value ? Number(event.target.value) : null)} /></label>
+            <label className="full"><span><input type="checkbox" checked={draft.freeShippingMinimum === null} onChange={(event) => field("freeShippingMinimum", event.target.checked ? null : 300)} /> ไม่มีส่งฟรี</span><small className="field-help">ติ๊กไว้เมื่อต้องการเก็บค่าส่งทุกยอดสั่งซื้อ</small></label>
+            <label><span>ซื้อครบกี่บาทส่งฟรี</span><input min="1" max="1000000" type="number" disabled={draft.freeShippingMinimum === null} value={draft.freeShippingMinimum ?? ""} onChange={(event) => field("freeShippingMinimum", event.target.value ? Number(event.target.value) : null)} /></label>
             <label className="full"><span>ที่อยู่รับเองหน้าร้าน</span><textarea maxLength={500} rows={4} value={draft.pickupAddress} onChange={(event) => field("pickupAddress", event.target.value)} /></label>
             <label className="full"><span>ลิงก์ Google Maps</span><input type="url" maxLength={500} value={draft.pickupMapUrl} onChange={(event) => field("pickupMapUrl", event.target.value)} /></label>
           </div>

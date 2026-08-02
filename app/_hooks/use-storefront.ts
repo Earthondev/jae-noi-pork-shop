@@ -36,6 +36,7 @@ export type StorefrontResponse = {
   rounds: PreorderRound[];
   nextRound: PreorderRound | null;
   shippingFee: number | null;
+  freeShippingMinimum: number | null;
   pickupAddress: string | null;
   pickupMapUrl: string | null;
   promptPayId: string | null;
@@ -67,6 +68,7 @@ export type UseStorefrontResult = Readonly<{
   fulfilment: Fulfilment;
   setFulfilment: (fulfilment: Fulfilment) => void;
   shippingFee: number | null;
+  freeShippingMinimum: number | null;
   pickupAddress: string | null;
   pickupMapUrl: string | null;
   promptPayId: string | null;
@@ -92,6 +94,7 @@ export function useStorefront({
   const [rounds, setRounds] = useState<PreorderRound[]>([]);
   const [nextRound, setNextRound] = useState<PreorderRound | null>(null);
   const [shippingFee, setShippingFee] = useState<number | null>(null);
+  const [freeShippingMinimum, setFreeShippingMinimum] = useState<number | null>(null);
   const [pickupAddress, setPickupAddress] = useState<string | null>(null);
   const [pickupMapUrl, setPickupMapUrl] = useState<string | null>(null);
   const [promptPayId, setPromptPayId] = useState<string | null>(null);
@@ -147,6 +150,7 @@ export function useStorefront({
         if (validRound !== currentRound) setSelectedRound(validRound);
         if (!data.pickupAddress && fulfilmentRef.current === "pickup") setFulfilment("postal");
         setShippingFee(data.shippingFee);
+        setFreeShippingMinimum(data.freeShippingMinimum);
         setPickupAddress(data.pickupAddress);
         setPickupMapUrl(data.pickupMapUrl);
         setPromptPayId(data.promptPayId);
@@ -220,6 +224,7 @@ export function useStorefront({
     fulfilment,
     setFulfilment,
     shippingFee,
+    freeShippingMinimum,
     pickupAddress,
     pickupMapUrl,
     promptPayId,

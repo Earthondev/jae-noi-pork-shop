@@ -24,6 +24,7 @@ export type StorefrontData = {
   rounds: StorefrontRound[];
   nextRound: StorefrontRound | null;
   shippingFee: number | null;
+  freeShippingMinimum: number | null;
   pickupAddress: string | null;
   pickupMapUrl: string | null;
   promptPayId: string | null;
@@ -118,12 +119,14 @@ export async function getD1StorefrontData(now = new Date()): Promise<StorefrontD
   const value = (key: string) => settings.get(key)?.value ?? "";
   const readyValue = (key: string) => settings.get(key)?.status === "พร้อมใช้" ? value(key) : "";
   const shippingFee = readyValue("postal_shipping_fee") === "" ? null : Number(readyValue("postal_shipping_fee"));
+  const freeShippingMinimum = readyValue("free_shipping_minimum") === "" ? null : Number(readyValue("free_shipping_minimum"));
 
   return {
     products,
     rounds: activeRounds.map(toRound),
     nextRound: nextRoundRow ? toRound(nextRoundRow) : null,
     shippingFee: Number.isFinite(shippingFee) ? shippingFee : null,
+    freeShippingMinimum: Number.isFinite(freeShippingMinimum) && freeShippingMinimum > 0 ? freeShippingMinimum : null,
     pickupAddress: readyValue("pickup_address") || null,
     pickupMapUrl: safePickupMapUrl(readyValue("pickup_map_url")),
     promptPayId: value("promptpay_id") || null,

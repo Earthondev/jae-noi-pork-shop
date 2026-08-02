@@ -2,6 +2,7 @@ import { env } from "cloudflare:workers";
 import { NextResponse } from "next/server";
 import { countRecentOrdersByPhone, findOrderByIdempotencyKey, insertOrder } from "../../../db/order-repository";
 import { getStorefrontData } from "../../../db/storefront-repository";
+import { postalShippingCost } from "../../../lib/shipping";
 import { createSecureOrderId } from "../../../lib/order-id";
 import {
   clientPaymentStatus,
@@ -155,7 +156,7 @@ export async function POST(request: Request) {
     });
 
     const subtotal = items.reduce((sum, item) => sum + item.unitPrice * item.quantity, 0);
-    const shippingFee = fulfilment === "postal" ? storefront.shippingFee ?? 0 : 0;
+    const shippingFee = fulfilment === "postal" ? postalShippingCost(subtotal, storefront) ?? 0 : 0;
     const address = fulfilment === "postal" ? formatThaiAddress(structuredAddress) : storefront.pickupAddress ?? "";
     operation = "order.normalize_slip";
     const normalizedSlip = uploadedSlipBytes

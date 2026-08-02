@@ -6,6 +6,7 @@ import type { Quantities } from "../../_hooks/use-checkout-draft";
 import type { Fulfilment, PreorderRound, Product } from "../../_hooks/use-storefront";
 import { computePillWidth, fitFontSize } from "../../../lib/qr-image";
 import { AddressFields, type AddressFieldName } from "./address-fields";
+import { amountUntilFreeShipping } from "../../../lib/shipping";
 
 type ClientPaymentStatus = "waiting" | "verified" | "review" | "invalid";
 
@@ -52,6 +53,7 @@ export type CartDrawerProps = Readonly<{
     fulfilment: Fulfilment;
     onSelectFulfilment: (fulfilment: Fulfilment) => void;
     shippingFee: number | null;
+    freeShippingMinimum: number | null;
     pickupAddress: string | null;
     pickupMapUrl: string | null;
     promptPayId: string | null;
@@ -75,6 +77,7 @@ export type CartDrawerProps = Readonly<{
 }>;
 
 export function CartDrawer({ drawerRef, onClose, cart, checkout, storefront, order }: CartDrawerProps) {
+  const freeShippingGap = amountUntilFreeShipping(cart.subtotal, storefront.freeShippingMinimum);
   const [copiedId, setCopiedId] = useState(false);
   const [copiedAmount, setCopiedAmount] = useState(false);
   const [orderCopyStatus, setOrderCopyStatus] = useState<"idle" | "copied" | "error">("idle");
@@ -522,8 +525,11 @@ export function CartDrawer({ drawerRef, onClose, cart, checkout, storefront, ord
               <form onSubmit={handleSubmit}>
                 <div className="summary-row pending-row">
                   <span>{storefront.fulfilment === "pickup" ? "รับเองหน้าร้าน" : "ค่าจัดส่งไปรษณีย์"}</span>
-                  <strong>{storefront.fulfilment === "pickup" ? "0 บาท (ฟรี)" : storefront.shippingFee === null ? "รอข้อมูล" : `${storefront.shippingFee.toLocaleString("th-TH")} บาท`}</strong>
+                  <strong>{storefront.fulfilment === "pickup" ? "0 บาท (ฟรี)" : order.shippingCost === null ? "รอข้อมูล" : order.shippingCost === 0 ? "0 บาท (ส่งฟรี)" : `${order.shippingCost.toLocaleString("th-TH")} บาท`}</strong>
                 </div>
+                {storefront.fulfilment === "postal" && freeShippingGap !== null && (
+                  <p className="field-help full">{freeShippingGap === 0 ? "ออเดอร์นี้ได้รับสิทธิ์ส่งฟรีแล้ว" : `ซื้อเพิ่มอีก ${freeShippingGap.toLocaleString("th-TH")} บาท รับสิทธิ์ส่งฟรี`}</p>
+                )}
                 <div className="summary-row total-row">
                   <span>ยอดชำระทั้งหมด</span>
                   <strong>{order.shippingCost === null ? "รอข้อมูล" : `${order.orderTotal.toLocaleString("th-TH")} บาท`}</strong>
@@ -555,7 +561,7 @@ export function CartDrawer({ drawerRef, onClose, cart, checkout, storefront, ord
                     </label>
                     <label className={storefront.fulfilment === "postal" ? "selected" : ""}>
                       <input type="radio" name="fulfilment" value="postal" checked={storefront.fulfilment === "postal"} onChange={() => storefront.onSelectFulfilment("postal")} />
-                      <span><strong>จัดส่งไปรษณีย์</strong><small>{storefront.shippingFee === null ? "ค่าส่งรอข้อมูล" : `ค่าส่ง ${storefront.shippingFee.toLocaleString("th-TH")} บาท`}</small></span>
+                      <span><strong>จัดส่งไปรษณีย์</strong><small>{storefront.shippingFee === null ? "ค่าส่งรอข้อมูล" : storefront.freeShippingMinimum === null ? `ค่าส่ง ${storefront.shippingFee.toLocaleString("th-TH")} บาท` : `ค่าส่ง ${storefront.shippingFee.toLocaleString("th-TH")} บาท · ซื้อครบ ${storefront.freeShippingMinimum.toLocaleString("th-TH")} บาท ส่งฟรี`}</small></span>
                     </label>
                   </fieldset>
                   {storefront.fulfilment === "pickup" && storefront.pickupMapUrl && (

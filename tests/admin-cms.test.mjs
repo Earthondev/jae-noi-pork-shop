@@ -23,6 +23,7 @@ test("storefront settings accept only the bundled brand defaults or approved upl
     phonePrimary: "087-2416773",
     phoneSecondary: "087-8755479",
     shippingFee: 50,
+    freeShippingMinimum: 300,
     pickupAddress: "หน้าร้าน",
     pickupMapUrl: "https://maps.app.goo.gl/uVChd79bzjbXYwtXA",
     promptPayId: "",
@@ -35,6 +36,10 @@ test("storefront settings accept only the bundled brand defaults or approved upl
   assert.throws(
     () => cleanStorefrontSettings({ ...settings, storeLogoUrl: "/images/unapproved-logo.jpg" }),
     /โลโก้ต้องมาจากพื้นที่รูปของร้านเท่านั้น/,
+  );
+  assert.throws(
+    () => cleanStorefrontSettings({ ...settings, freeShippingMinimum: 0 }),
+    /ยอดขั้นต่ำส่งฟรีต้องมากกว่า 0 บาท/,
   );
 });
 

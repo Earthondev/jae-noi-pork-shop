@@ -137,6 +137,9 @@ function settingsInput(value: unknown): Omit<AdminStorefrontSettings, "fingerpri
   const shippingFee = settings.shippingFee === null || settings.shippingFee === "" || settings.shippingFee === undefined
     ? null
     : Number(settings.shippingFee);
+  const freeShippingMinimum = settings.freeShippingMinimum === null || settings.freeShippingMinimum === "" || settings.freeShippingMinimum === undefined
+    ? null
+    : Number(settings.freeShippingMinimum);
   return {
     storeName: requiredString(settings.storeName, "ชื่อร้าน"),
     heroTitle: requiredString(settings.heroTitle, "หัวข้อหน้าร้าน"),
@@ -148,6 +151,7 @@ function settingsInput(value: unknown): Omit<AdminStorefrontSettings, "fingerpri
     phonePrimary: requiredString(settings.phonePrimary, "เบอร์โทรหลัก"),
     phoneSecondary: requiredString(settings.phoneSecondary, "เบอร์โทรสำรอง"),
     shippingFee,
+    freeShippingMinimum,
     pickupAddress: optionalString(settings.pickupAddress) ?? "",
     pickupMapUrl: optionalString(settings.pickupMapUrl) ?? "",
     promptPayId: optionalString(settings.promptPayId) ?? "",

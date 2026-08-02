@@ -58,6 +58,7 @@ export async function getAdminCmsData(): Promise<AdminCmsData> {
   const settingMap = new Map(settingRows.map((row) => [row.key, row.value]));
   const value = (key: string, fallback = "") => settingMap.get(key) || fallback;
   const fee = settingMap.get("postal_shipping_fee");
+  const freeShippingMinimum = settingMap.get("free_shipping_minimum");
   const settings: AdminStorefrontSettings = {
     storeName: value("store_name", "เจ๊น้อย เขียงหมูตะคร้อ"),
     heroTitle: value("hero_title", DEFAULT_STOREFRONT_CONTENT.heroTitle),
@@ -68,6 +69,7 @@ export async function getAdminCmsData(): Promise<AdminCmsData> {
     storyDescription: value("story_description", DEFAULT_STOREFRONT_CONTENT.storyDescription),
     phonePrimary: value("phone_primary", "087-2416773"), phoneSecondary: value("phone_secondary", "087-8755479"),
     shippingFee: fee === undefined || fee === "" ? null : Number(fee), pickupAddress: value("pickup_address"),
+    freeShippingMinimum: freeShippingMinimum === undefined || freeShippingMinimum === "" ? null : Number(freeShippingMinimum),
     pickupMapUrl: value("pickup_map_url"),
     promptPayId: value("promptpay_id"), promptPayName: value("promptpay_name"),
     storeLogoUrl: value("store_logo_url"), storeCoverUrl: value("store_cover_url"),
@@ -169,7 +171,8 @@ export async function updateAdminStorefrontSettings(input: Omit<AdminStorefrontS
     store_name: settings.storeName, hero_title: settings.heroTitle, hero_highlight: settings.heroHighlight,
     hero_description: settings.heroDescription, announcement_text: settings.announcementText, story_title: settings.storyTitle,
     story_description: settings.storyDescription, phone_primary: settings.phonePrimary, phone_secondary: settings.phoneSecondary,
-    postal_shipping_fee: settings.shippingFee === null ? "" : String(settings.shippingFee), pickup_address: settings.pickupAddress,
+    postal_shipping_fee: settings.shippingFee === null ? "" : String(settings.shippingFee),
+    free_shipping_minimum: settings.freeShippingMinimum === null ? "" : String(settings.freeShippingMinimum), pickup_address: settings.pickupAddress,
     pickup_map_url: settings.pickupMapUrl,
     promptpay_id: settings.promptPayId, promptpay_name: settings.promptPayName,
     store_logo_url: settings.storeLogoUrl, store_cover_url: settings.storeCoverUrl,
