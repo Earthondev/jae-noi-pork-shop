@@ -446,15 +446,24 @@ function RoundForm({ title, value, products, disabled, lockDeliveryDate = false,
 // Products stay listed even when the round is set to open the whole shop, so
 // switching to "เลือกบางรายการ" never means hunting for the list — it just
 // enables the checkboxes that are already on screen.
+// The picker doubles as a preview of what the round will look like to a
+// customer, so it shows the same things the storefront card does — photo,
+// price, unit, category — rather than a bare list of ids.
 function RoundProductPicker({ value, products, disabled, onChange }: { value: RoundInput; products: AdminProduct[]; disabled: boolean; onChange: (value: RoundInput) => void }) {
-  const selectable = products.filter((product) => product.status !== "ซ่อนสินค้า");
+  const [search, setSearch] = useState("");
+  const [category, setCategory] = useState("ทั้งหมด");
+  const selectable = useMemo(() => products.filter((product) => product.status !== "ซ่อนสินค้า"), [products]);
+  const categories = useMemo(() => ["ทั้งหมด", ...new Set(selectable.map((product) => product.category || "อื่น ๆ"))], [selectable]);
+  const term = search.trim().toLowerCase();
+  const visible = selectable.filter((product) =>
+    (category === "ทั้งหมด" || (product.category || "อื่น ๆ") === category) &&
+    (!term || product.name.toLowerCase().includes(term) || product.id.toLowerCase().includes(term)),
+  );
   const selected = new Set(value.productIds);
   const selectedOnly = value.productScope === "selected";
-  const toggle = (id: string) => {
-    const next = new Set(selected);
-    if (next.has(id)) next.delete(id); else next.add(id);
-    onChange({ ...value, productIds: Array.from(next).sort() });
-  };
+  const setIds = (ids: string[]) => onChange({ ...value, productIds: [...new Set(ids)].sort() });
+  const toggle = (id: string) => setIds(selected.has(id) ? value.productIds.filter((current) => current !== id) : [...value.productIds, id]);
+
   return <fieldset className="admin-round-products full" disabled={disabled}>
     <legend>สินค้าที่เปิดขายในรอบนี้</legend>
     <div className="admin-round-scope-choice">
@@ -467,23 +476,64 @@ function RoundProductPicker({ value, products, disabled, onChange }: { value: Ro
         <span><strong>เลือกบางรายการ</strong><small>เปิดขายเฉพาะรายการที่ติ๊กไว้ด้านล่าง</small></span>
       </label>
     </div>
-    {selectedOnly && (
-      <div className="admin-round-product-actions">
-        <button type="button" onClick={() => onChange({ ...value, productIds: selectable.map((product) => product.id).sort() })}>เลือกทั้งหมด</button>
-        <button type="button" onClick={() => onChange({ ...value, productIds: [] })}>ล้างที่เลือก</button>
-        <span>{value.productIds.length} / {selectable.length} รายการ</span>
-      </div>
+
+    {selectable.length === 0 ? (
+      <p className="admin-round-product-empty">ยังไม่มีสินค้าให้เลือก กรุณาเพิ่มสินค้าในแท็บ “สินค้า” ก่อน</p>
+    ) : (
+      <>
+        <div className="admin-round-product-toolbar">
+          <label className="admin-round-product-search">
+            <AdminIcon name="search" />
+            <input type="search" aria-label="ค้นหาสินค้า" placeholder="ค้นหาชื่อหรือรหัสสินค้า" value={search} onChange={(event) => setSearch(event.target.value)} />
+          </label>
+          <p className="admin-round-product-count">
+            {selectedOnly ? <><strong>{value.productIds.length}</strong> / {selectable.length} รายการที่เลือก</> : <>เปิดครบทั้ง <strong>{selectable.length}</strong> รายการ</>}
+          </p>
+        </div>
+        {categories.length > 2 && (
+          <div className="admin-round-product-categories" role="tablist" aria-label="กรองตามหมวดหมู่">
+            {categories.map((name) => (
+              <button key={name} type="button" role="tab" aria-selected={category === name} className={category === name ? "active" : ""} onClick={() => setCategory(name)}>{name}</button>
+            ))}
+          </div>
+        )}
+        {selectedOnly && (
+          <div className="admin-round-product-actions">
+            <button type="button" onClick={() => setIds([...value.productIds, ...visible.map((product) => product.id)])}>เลือกที่เห็นทั้งหมด</button>
+            <button type="button" onClick={() => setIds(value.productIds.filter((id) => !visible.some((product) => product.id === id)))}>เอาที่เห็นออก</button>
+          </div>
+        )}
+        <div className="admin-round-product-grid">
+          {visible.length === 0 ? <p className="admin-round-product-empty">ไม่พบสินค้าที่ตรงกับที่ค้นหา</p> : visible.map((product) => (
+            <RoundProductOption key={product.id} product={product} checked={selectedOnly ? selected.has(product.id) : true} interactive={selectedOnly} onToggle={() => toggle(product.id)} />
+          ))}
+        </div>
+      </>
     )}
-    <div className="admin-round-product-list">
-      {selectable.length === 0 ? <p className="admin-round-product-empty">ยังไม่มีสินค้าให้เลือก กรุณาเพิ่มสินค้าก่อน</p> : selectable.map((product) => (
-        <label key={product.id} className={`admin-round-product${selectedOnly && selected.has(product.id) ? " selected" : ""}`}>
-          <input type="checkbox" disabled={!selectedOnly} checked={selectedOnly ? selected.has(product.id) : true} onChange={() => toggle(product.id)} />
-          <span><strong>{product.name}</strong><small>{product.id} · {productStatusLabels[product.status]}</small></span>
-        </label>
-      ))}
-    </div>
     {selectedOnly && value.productIds.length === 0 && <p className="admin-round-product-warning" role="alert">ต้องเลือกสินค้าอย่างน้อย 1 รายการ ไม่อย่างนั้นรอบนี้จะสั่งอะไรไม่ได้เลย</p>}
   </fieldset>;
+}
+
+function RoundProductOption({ product, checked, interactive, onToggle }: { product: AdminProduct; checked: boolean; interactive: boolean; onToggle: () => void }) {
+  const image = product.imageUrl ? adminImageSrc(product.imageUrl.split(",")[0]) : "";
+  const sellable = product.status === "เปิดขาย";
+  return <label className={`admin-round-product${checked ? " selected" : ""}${interactive ? "" : " locked"}`}>
+    <input type="checkbox" disabled={!interactive} checked={checked} onChange={onToggle} />
+    <span className="admin-round-product-thumb">
+      {image ? <Image src={image} alt={`รูปสินค้า ${product.name}`} fill sizes="88px" /> : <AdminIcon name="image" />}
+    </span>
+    <span className="admin-round-product-info">
+      <span className="admin-round-product-head">
+        <strong>{product.name}</strong>
+        <span className={`product-card-status status-${sellable ? "open" : product.status === "ปิดชั่วคราว" ? "closed" : "waiting"}`}>{productStatusLabels[product.status]}</span>
+      </span>
+      <small className="admin-round-product-meta">
+        {product.category || "อื่น ๆ"} · {product.price === null ? "รอข้อมูลราคา" : formatMoney(product.price)}{product.unit ? ` / ${product.unit}` : ""}
+      </small>
+      {product.detail && <small className="admin-round-product-detail">{product.detail}</small>}
+      {!sellable && <small className="admin-round-product-note">สถานะนี้ยังขายไม่ได้ ต่อให้ติ๊กไว้ลูกค้าก็ยังสั่งไม่ได้</small>}
+    </span>
+  </label>;
 }
 
 function roundInputFrom(round: AdminRound): RoundInput {
