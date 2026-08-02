@@ -24,6 +24,8 @@ export type CartDrawerProps = Readonly<{
     quantities: Quantities;
     subtotal: number;
     onUpdateQuantity: (productId: string, delta: number) => void;
+    /** False for cart lines the selected round does not carry. */
+    isProductInRound: (productId: string) => boolean;
   }>;
   checkout: Readonly<{
     customerName: string;
@@ -456,11 +458,14 @@ export function CartDrawer({ drawerRef, onClose, cart, checkout, storefront, ord
               {cart.items.length === 0 ? (
                 <p className="empty-cart">ยังไม่มีสินค้าในตะกร้า</p>
               ) : (
-                cart.items.map((product) => (
-                  <div className="cart-line" key={product.id}>
+                cart.items.map((product) => {
+                  const inRound = cart.isProductInRound(product.id);
+                  return (
+                  <div className={`cart-line${inRound ? "" : " out-of-round"}`} key={product.id}>
                     <div>
                       <strong>{product.name}</strong>
                       <small>{product.price === null ? "รอข้อมูลราคา" : `${product.price.toLocaleString("th-TH")} บาท/รายการ`}</small>
+                      {!inRound && <small className="cart-line-warning">ไม่ได้เปิดขายในรอบนี้ · นำออกหรือเลือกรอบอื่น</small>}
                     </div>
                     <div className="stepper compact">
                       <button className="decrease-button" type="button" onClick={() => cart.onUpdateQuantity(product.id, -1)} aria-label={`ลด ${product.name}`}>−</button>
@@ -469,12 +474,13 @@ export function CartDrawer({ drawerRef, onClose, cart, checkout, storefront, ord
                         className="increase-button"
                         type="button"
                         onClick={() => cart.onUpdateQuantity(product.id, 1)}
-                        aria-label={storefront.orderingOpen ? `เพิ่ม ${product.name}` : `ยังเพิ่ม ${product.name} ไม่ได้จนกว่าจะเปิดรอบ`}
-                        disabled={!storefront.orderingOpen}
+                        aria-label={!inRound ? `${product.name} ไม่ได้เปิดขายในรอบนี้` : storefront.orderingOpen ? `เพิ่ม ${product.name}` : `ยังเพิ่ม ${product.name} ไม่ได้จนกว่าจะเปิดรอบ`}
+                        disabled={!storefront.orderingOpen || !inRound}
                       >+</button>
                     </div>
                   </div>
-                ))
+                  );
+                })
               )}
             </div>
             <div className="summary-row"><span>รวมค่าสินค้า</span><strong>{cart.subtotal.toLocaleString("th-TH")} บาท</strong></div>

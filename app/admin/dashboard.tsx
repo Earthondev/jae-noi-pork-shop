@@ -57,7 +57,7 @@ const tabs: Array<{ id: AdminTab; icon: AdminIconName; label: string }> = [
   { id: "products", icon: "products", label: "สินค้า" },
   { id: "storefront", icon: "store", label: "หน้าร้าน" },
 ];
-const EMPTY_ROUND_INPUT: RoundInput = { deliveryDate: "", opensAt: "", closesAt: "", status: "เตรียมเปิด", note: "" };
+const EMPTY_ROUND_INPUT: RoundInput = { deliveryDate: "", opensAt: "", closesAt: "", status: "เตรียมเปิด", note: "", productScope: "all", productIds: [] };
 const EMPTY_PRODUCT_INPUT: ProductInput = { id: "", name: "", unit: "", detail: "", price: null, status: "รอข้อมูล", imageUrl: "", category: "" };
 
 export function AdminDashboard({ initialOrders, initialCms, userName, serverNow, serverClockLabel, initialTab }: { initialOrders: AdminOrder[]; initialCms: AdminCmsData; userName: string; serverNow: string; serverClockLabel: string; initialTab: AdminTab }) {
@@ -235,7 +235,7 @@ export function AdminDashboard({ initialOrders, initialCms, userName, serverNow,
 
     <p className={`admin-save-notice${notice ? " has-message" : ""}`} aria-live="polite" role="status">{notice}</p>
     {activeTab === "orders" && <OrdersPanel orders={orders} setOrders={setOrders} saving={saving} setSaving={setSaving} setNotice={setNotice} />}
-    {activeTab === "rounds" && <RoundsPanel rounds={cms.rounds} saving={saving} mutate={mutate} onFormActive={setFormActive} onFormDirty={setFormDirty} />}
+    {activeTab === "rounds" && <RoundsPanel rounds={cms.rounds} products={cms.products} saving={saving} mutate={mutate} onFormActive={setFormActive} onFormDirty={setFormDirty} />}
     {activeTab === "products" && <ProductsPanel products={cms.products} saving={saving} mutate={mutate} setNotice={setNotice} onFormActive={setFormActive} onFormDirty={setFormDirty} />}
     {activeTab === "storefront" && <StorefrontPanel key={cms.settings.fingerprint} settings={cms.settings} saving={saving} mutate={mutate} setNotice={setNotice} onFormActive={setFormActive} onFormDirty={setFormDirty} />}
 
@@ -386,7 +386,7 @@ function OrdersPanel({ orders, setOrders, saving, setSaving, setNotice }: { orde
   </section>;
 }
 
-function RoundsPanel({ rounds, saving, mutate, onFormActive, onFormDirty }: { rounds: AdminRound[]; saving: string | null; mutate: Mutation; onFormActive: (active: boolean) => void; onFormDirty: (dirty: boolean) => void }) {
+function RoundsPanel({ rounds, products, saving, mutate, onFormActive, onFormDirty }: { rounds: AdminRound[]; products: AdminProduct[]; saving: string | null; mutate: Mutation; onFormActive: (active: boolean) => void; onFormDirty: (dirty: boolean) => void }) {
   const [creating, setCreating] = useState(false); const [draft, setDraft] = useState<RoundInput>(EMPTY_ROUND_INPUT); const [editing, setEditing] = useState<string | null>(null); const [confirm, setConfirm] = useState<ConfirmState>(null);
   const sorted = useMemo(() => [...rounds].sort((a, b) => roundPriority(a) - roundPriority(b) || a.deliveryDate.localeCompare(b.deliveryDate)), [rounds]);
 
@@ -397,17 +397,10 @@ function RoundsPanel({ rounds, saving, mutate, onFormActive, onFormDirty }: { ro
 
   const isDirty = useMemo(() => {
     if (creating) {
-      return JSON.stringify(draft) !== JSON.stringify(EMPTY_ROUND_INPUT);
+      return roundInputSignature(draft) !== roundInputSignature(EMPTY_ROUND_INPUT);
     }
     if (editing && activeRound) {
-      const activeInput: RoundInput = {
-        deliveryDate: activeRound.deliveryDate,
-        opensAt: activeRound.opensAt,
-        closesAt: activeRound.closesAt,
-        status: activeRound.status,
-        note: activeRound.note || ""
-      };
-      return JSON.stringify(draft) !== JSON.stringify(activeInput);
+      return roundInputSignature(draft) !== roundInputSignature(roundInputFrom(activeRound));
     }
     return false;
   }, [creating, editing, draft, activeRound]);
@@ -423,20 +416,21 @@ function RoundsPanel({ rounds, saving, mutate, onFormActive, onFormDirty }: { ro
 
   return <section className="admin-panel">
     {creating ? (
-      <RoundForm title="เพิ่มรอบใหม่" value={draft} disabled={saving !== null} onChange={setDraft} onCancel={() => setCreating(false)} onSubmit={async () => { if (await mutate("round.create", { round: draft }, "เพิ่มรอบขายแล้ว")) { setDraft(EMPTY_ROUND_INPUT); setCreating(false); } }} />
+      <RoundForm title="เพิ่มรอบใหม่" value={draft} products={products} disabled={saving !== null} onChange={setDraft} onCancel={() => setCreating(false)} onSubmit={async () => { if (await mutate("round.create", { round: draft }, "เพิ่มรอบขายแล้ว")) { setDraft(EMPTY_ROUND_INPUT); setCreating(false); } }} />
     ) : editing ? (
-      <RoundForm key={editing} title={`แก้ไข ${editing}`} value={draft} disabled={saving !== null} lockDeliveryDate onChange={setDraft} onCancel={() => setEditing(null)} onSubmit={async () => { if (await mutate("round.update", { id: editing, round: draft }, "บันทึกรอบขายแล้ว")) setEditing(null); }} />
+      <RoundForm key={editing} title={`แก้ไข ${editing}`} value={draft} products={products} disabled={saving !== null} lockDeliveryDate onChange={setDraft} onCancel={() => setEditing(null)} onSubmit={async () => { if (await mutate("round.update", { id: editing, round: draft }, "บันทึกรอบขายแล้ว")) setEditing(null); }} />
     ) : (
       <>
         <div className="admin-section-heading"><div><p className="eyebrow">กำหนดวันเปิดและปิดตะกร้า</p><h2>รอบขาย</h2></div><button className="admin-primary-button" type="button" onClick={() => { setCreating(true); setEditing(null); setDraft(EMPTY_ROUND_INPUT); }}><AdminIcon name="plus" />เพิ่มรอบ</button></div>
         <div className="admin-card-list admin-round-list">{sorted.map((round) => (
           <article className={`admin-cms-card admin-round-card priority-${roundPriority(round)}`} key={round.id}>
-            <div className="admin-card-top"><div><span className={`cms-status status-${round.status === "เปิดรับ" ? "open" : "muted"}`}>{roundStatusLabels[round.status]}</span><h3>{round.label || round.id}</h3><small>{round.displayState}</small></div><button type="button" onClick={() => { setDraft({ deliveryDate: round.deliveryDate, opensAt: round.opensAt, closesAt: round.closesAt, status: round.status, note: round.note || "" }); setEditing(round.id); setCreating(false); }}><AdminIcon name="edit" />แก้ไข</button></div>
+            <div className="admin-card-top"><div><span className={`cms-status status-${round.status === "เปิดรับ" ? "open" : "muted"}`}>{roundStatusLabels[round.status]}</span><h3>{round.label || round.id}</h3><small>{round.displayState}</small></div><button type="button" onClick={() => { setDraft(roundInputFrom(round)); setEditing(round.id); setCreating(false); }}><AdminIcon name="edit" />แก้ไข</button></div>
             <div className="admin-round-sales"><span>ยอดชำระแล้วรอบนี้</span><strong>{formatMoney(round.sales)}</strong></div>
             <dl className="admin-mini-stats"><div><dt>เปิดรับ</dt><dd>{formatInputDateTime(round.opensAt)}</dd></div><div><dt>ปิดรับ</dt><dd>{formatInputDateTime(round.closesAt)}</dd></div><div><dt>ออเดอร์</dt><dd>{round.orderCount}</dd></div><div><dt>เฉลี่ยชำระแล้ว</dt><dd>{formatMoney(round.paidOrderCount ? round.sales / round.paidOrderCount : 0)}</dd></div></dl>
+            <p className="admin-round-scope">{round.productScope === "selected" ? `เปิดเฉพาะ ${round.productIds.length} รายการ · ${roundProductNames(round, products)}` : "เปิดขายทั้งร้าน"}</p>
             {round.note && <p>{round.note}</p>}
-            {round.status === "เตรียมเปิด" && <button className="admin-open-round" type="button" disabled={saving !== null} onClick={() => setConfirm({ title: "เปิดรอบขายนี้?", description: `${round.label || round.id} จะเริ่มรับออเดอร์จากลูกค้าทันที`, confirmLabel: "เปิดรอบขาย", action: async () => { await mutate("round.update", { id: round.id, round: { ...round, status: "เปิดรับ" } }, "เปิดรอบขายแล้ว"); } })}>เปิดรอบขาย</button>}
-            {round.status === "เปิดรับ" && <button className="admin-close-round" type="button" onClick={() => setConfirm({ title: "ปิดรอบขายนี้?", description: `${round.label || round.id} จะหยุดรับออเดอร์ใหม่ทันที แต่ออเดอร์เดิมยังอยู่ครบ`, confirmLabel: "ปิดรอบขาย", tone: "danger", action: async () => { await mutate("round.update", { id: round.id, round: { ...round, status: "ปิดรับ" } }, "ปิดรอบขายแล้ว"); } })}>ปิดรอบขาย</button>}
+            {round.status === "เตรียมเปิด" && <button className="admin-open-round" type="button" disabled={saving !== null} onClick={() => setConfirm({ title: "เปิดรอบขายนี้?", description: `${round.label || round.id} จะเริ่มรับออเดอร์จากลูกค้าทันที${round.productScope === "selected" ? ` เฉพาะ ${round.productIds.length} รายการที่เลือกไว้` : ""}`, confirmLabel: "เปิดรอบขาย", action: async () => { await mutate("round.update", { id: round.id, round: { ...roundInputFrom(round), status: "เปิดรับ", fingerprint: round.fingerprint } }, "เปิดรอบขายแล้ว"); } })}>เปิดรอบขาย</button>}
+            {round.status === "เปิดรับ" && <button className="admin-close-round" type="button" onClick={() => setConfirm({ title: "ปิดรอบขายนี้?", description: `${round.label || round.id} จะหยุดรับออเดอร์ใหม่ทันที แต่ออเดอร์เดิมยังอยู่ครบ`, confirmLabel: "ปิดรอบขาย", tone: "danger", action: async () => { await mutate("round.update", { id: round.id, round: { ...roundInputFrom(round), status: "ปิดรับ", fingerprint: round.fingerprint } }, "ปิดรอบขายแล้ว"); } })}>ปิดรอบขาย</button>}
           </article>
         ))}</div>
       </>
@@ -445,8 +439,73 @@ function RoundsPanel({ rounds, saving, mutate, onFormActive, onFormDirty }: { ro
   </section>;
 }
 
-function RoundForm({ title, value, disabled, lockDeliveryDate = false, onChange, onCancel, onSubmit }: { title: string; value: RoundInput; disabled: boolean; lockDeliveryDate?: boolean; onChange: (value: RoundInput) => void; onCancel: () => void; onSubmit: () => void }) {
-  return <form className="admin-edit-card" onSubmit={(event) => { event.preventDefault(); onSubmit(); }}><h3>{title}</h3><div className="admin-form-grid"><label><span>วันจัดส่ง</span><input required type="date" disabled={disabled || lockDeliveryDate} value={value.deliveryDate} onChange={(event) => onChange({ ...value, deliveryDate: event.target.value })} /></label><label><span>เปิดรับตั้งแต่</span><input required type="datetime-local" disabled={disabled} value={value.opensAt} onChange={(event) => onChange({ ...value, opensAt: event.target.value })} /></label><label><span>ปิดรับวันที่</span><input required type="datetime-local" disabled={disabled} value={value.closesAt} onChange={(event) => onChange({ ...value, closesAt: event.target.value })} /></label><label><span>สถานะ</span><select disabled={disabled} value={value.status} onChange={(event) => onChange({ ...value, status: event.target.value as RoundInput["status"] })}>{ROUND_STATUSES.map((status) => <option key={status} value={status}>{roundStatusLabels[status]}</option>)}</select></label><label className="full"><span>หมายเหตุ</span><textarea rows={3} maxLength={500} value={value.note} onChange={(event) => onChange({ ...value, note: event.target.value })} /></label></div><FormActions disabled={disabled} onCancel={onCancel} /></form>;
+function RoundForm({ title, value, products, disabled, lockDeliveryDate = false, onChange, onCancel, onSubmit }: { title: string; value: RoundInput; products: AdminProduct[]; disabled: boolean; lockDeliveryDate?: boolean; onChange: (value: RoundInput) => void; onCancel: () => void; onSubmit: () => void }) {
+  return <form className="admin-edit-card" onSubmit={(event) => { event.preventDefault(); onSubmit(); }}><h3>{title}</h3><div className="admin-form-grid"><label><span>วันจัดส่ง</span><input required type="date" disabled={disabled || lockDeliveryDate} value={value.deliveryDate} onChange={(event) => onChange({ ...value, deliveryDate: event.target.value })} /></label><label><span>เปิดรับตั้งแต่</span><input required type="datetime-local" disabled={disabled} value={value.opensAt} onChange={(event) => onChange({ ...value, opensAt: event.target.value })} /></label><label><span>ปิดรับวันที่</span><input required type="datetime-local" disabled={disabled} value={value.closesAt} onChange={(event) => onChange({ ...value, closesAt: event.target.value })} /></label><label><span>สถานะ</span><select disabled={disabled} value={value.status} onChange={(event) => onChange({ ...value, status: event.target.value as RoundInput["status"] })}>{ROUND_STATUSES.map((status) => <option key={status} value={status}>{roundStatusLabels[status]}</option>)}</select></label><RoundProductPicker value={value} products={products} disabled={disabled} onChange={onChange} /><label className="full"><span>หมายเหตุ</span><textarea rows={3} maxLength={500} value={value.note} onChange={(event) => onChange({ ...value, note: event.target.value })} /></label></div><FormActions disabled={disabled} onCancel={onCancel} /></form>;
+}
+
+// Products stay listed even when the round is set to open the whole shop, so
+// switching to "เลือกบางรายการ" never means hunting for the list — it just
+// enables the checkboxes that are already on screen.
+function RoundProductPicker({ value, products, disabled, onChange }: { value: RoundInput; products: AdminProduct[]; disabled: boolean; onChange: (value: RoundInput) => void }) {
+  const selectable = products.filter((product) => product.status !== "ซ่อนสินค้า");
+  const selected = new Set(value.productIds);
+  const selectedOnly = value.productScope === "selected";
+  const toggle = (id: string) => {
+    const next = new Set(selected);
+    if (next.has(id)) next.delete(id); else next.add(id);
+    onChange({ ...value, productIds: Array.from(next).sort() });
+  };
+  return <fieldset className="admin-round-products full" disabled={disabled}>
+    <legend>สินค้าที่เปิดขายในรอบนี้</legend>
+    <div className="admin-round-scope-choice">
+      <label className={value.productScope === "all" ? "selected" : ""}>
+        <input type="radio" name="productScope" value="all" checked={value.productScope === "all"} onChange={() => onChange({ ...value, productScope: "all" })} />
+        <span><strong>เปิดทั้งร้าน</strong><small>ลูกค้าสั่งสินค้าที่เปิดขายได้ทุกรายการ</small></span>
+      </label>
+      <label className={selectedOnly ? "selected" : ""}>
+        <input type="radio" name="productScope" value="selected" checked={selectedOnly} onChange={() => onChange({ ...value, productScope: "selected" })} />
+        <span><strong>เลือกบางรายการ</strong><small>เปิดขายเฉพาะรายการที่ติ๊กไว้ด้านล่าง</small></span>
+      </label>
+    </div>
+    {selectedOnly && (
+      <div className="admin-round-product-actions">
+        <button type="button" onClick={() => onChange({ ...value, productIds: selectable.map((product) => product.id).sort() })}>เลือกทั้งหมด</button>
+        <button type="button" onClick={() => onChange({ ...value, productIds: [] })}>ล้างที่เลือก</button>
+        <span>{value.productIds.length} / {selectable.length} รายการ</span>
+      </div>
+    )}
+    <div className="admin-round-product-list">
+      {selectable.length === 0 ? <p className="admin-round-product-empty">ยังไม่มีสินค้าให้เลือก กรุณาเพิ่มสินค้าก่อน</p> : selectable.map((product) => (
+        <label key={product.id} className={`admin-round-product${selectedOnly && selected.has(product.id) ? " selected" : ""}`}>
+          <input type="checkbox" disabled={!selectedOnly} checked={selectedOnly ? selected.has(product.id) : true} onChange={() => toggle(product.id)} />
+          <span><strong>{product.name}</strong><small>{product.id} · {productStatusLabels[product.status]}</small></span>
+        </label>
+      ))}
+    </div>
+    {selectedOnly && value.productIds.length === 0 && <p className="admin-round-product-warning" role="alert">ต้องเลือกสินค้าอย่างน้อย 1 รายการ ไม่อย่างนั้นรอบนี้จะสั่งอะไรไม่ได้เลย</p>}
+  </fieldset>;
+}
+
+function roundInputFrom(round: AdminRound): RoundInput {
+  return {
+    deliveryDate: round.deliveryDate,
+    opensAt: round.opensAt,
+    closesAt: round.closesAt,
+    status: round.status,
+    note: round.note || "",
+    productScope: round.productScope,
+    productIds: [...round.productIds].sort(),
+  };
+}
+
+function roundInputSignature(input: RoundInput): string {
+  return JSON.stringify({ ...input, productIds: [...input.productIds].sort() });
+}
+
+function roundProductNames(round: AdminRound, products: AdminProduct[]): string {
+  const names = new Map(products.map((product) => [product.id, product.name]));
+  const listed = round.productIds.map((id) => names.get(id) ?? id);
+  return listed.length > 3 ? `${listed.slice(0, 3).join(", ")} และอีก ${listed.length - 3} รายการ` : listed.join(", ");
 }
 
 function ProductsPanel({ products, saving, mutate, setNotice, onFormActive, onFormDirty }: { products: AdminProduct[]; saving: string | null; mutate: Mutation; setNotice: (value: string) => void; onFormActive: (active: boolean) => void; onFormDirty: (dirty: boolean) => void }) {
@@ -885,7 +944,15 @@ function StorefrontPanel({ settings, saving, mutate, setNotice, onFormActive, on
             <label><span>เบอร์หลัก</span><input required inputMode="tel" value={draft.phonePrimary} onChange={(event) => field("phonePrimary", event.target.value)} /></label>
             <label><span>เบอร์สำรอง</span><input required inputMode="tel" value={draft.phoneSecondary} onChange={(event) => field("phoneSecondary", event.target.value)} /></label>
             <label><span>ค่าส่งไปรษณีย์</span><input min="0" max="100000" type="number" value={draft.shippingFee ?? ""} onChange={(event) => field("shippingFee", event.target.value ? Number(event.target.value) : null)} /></label>
-            <label className="full"><span><input type="checkbox" checked={draft.freeShippingMinimum === null} onChange={(event) => field("freeShippingMinimum", event.target.checked ? null : 300)} /> ไม่มีส่งฟรี</span><small className="field-help">ติ๊กไว้เมื่อต้องการเก็บค่าส่งทุกยอดสั่งซื้อ</small></label>
+            <div className="free-shipping-control full">
+              <label className="free-shipping-toggle" htmlFor="free-shipping-disabled">
+                <input id="free-shipping-disabled" type="checkbox" checked={draft.freeShippingMinimum === null} onChange={(event) => field("freeShippingMinimum", event.target.checked ? null : 300)} aria-describedby="free-shipping-help" />
+                <span className="free-shipping-toggle-track" aria-hidden="true"><span className="free-shipping-toggle-thumb" /></span>
+                <span className="free-shipping-toggle-copy"><strong>ไม่มีโปรโมชันส่งฟรี</strong><small>{draft.freeShippingMinimum === null ? "เก็บค่าส่งตามปกติทุกยอดสั่งซื้อ" : `ส่งฟรีเมื่อซื้อครบ ${draft.freeShippingMinimum.toLocaleString("th-TH")} บาท`}</small></span>
+                <span className="free-shipping-toggle-state" aria-hidden="true">{draft.freeShippingMinimum === null ? "ปิด" : "เปิด"}</span>
+              </label>
+              <small className="field-help" id="free-shipping-help">เปิดสวิตช์เพื่อปิดโปรโมชันส่งฟรีชั่วคราว</small>
+            </div>
             <label><span>ซื้อครบกี่บาทส่งฟรี</span><input min="1" max="1000000" type="number" disabled={draft.freeShippingMinimum === null} value={draft.freeShippingMinimum ?? ""} onChange={(event) => field("freeShippingMinimum", event.target.value ? Number(event.target.value) : null)} /></label>
             <label className="full"><span>ที่อยู่รับเองหน้าร้าน</span><textarea maxLength={500} rows={4} value={draft.pickupAddress} onChange={(event) => field("pickupAddress", event.target.value)} /></label>
             <label className="full"><span>ลิงก์ Google Maps</span><input type="url" maxLength={500} value={draft.pickupMapUrl} onChange={(event) => field("pickupMapUrl", event.target.value)} /></label>

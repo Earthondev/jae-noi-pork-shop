@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { VisibleProductStatus } from "../../lib/product-catalog";
 import { PUBLIC_ERROR_MESSAGES } from "../../lib/public-errors";
+import type { RoundProductScope } from "../../lib/round-products";
 
 export type Product = {
   id: string;
@@ -15,7 +16,16 @@ export type Product = {
   category: string;
 };
 
-export type PreorderRound = { id: string; deliveryDate: string; opensAt: string; closesAt: string; label: string; note: string };
+export type PreorderRound = {
+  id: string;
+  deliveryDate: string;
+  opensAt: string;
+  closesAt: string;
+  label: string;
+  note: string;
+  productScope: RoundProductScope;
+  productIds: string[];
+};
 
 export type StorefrontContent = {
   storeName: string;

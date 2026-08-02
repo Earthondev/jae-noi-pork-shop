@@ -9,13 +9,19 @@ export type ProductCardProps = Readonly<{
   index: number;
   onUpdateQuantity: (productId: string, delta: number) => void;
   orderingOpen: boolean;
+  /** False when the round on offer does not carry this product. */
+  inRound?: boolean;
 }>;
 
-export function ProductCard({ product, quantity, index, onUpdateQuantity, orderingOpen }: ProductCardProps) {
+export function ProductCard({ product, quantity, index, onUpdateQuantity, orderingOpen, inRound = true }: ProductCardProps) {
   const productReady = product.status === "เปิดขาย" && product.price !== null;
-  const isPurchasable = orderingOpen && productReady;
-  const badge = product.status === "ปิดชั่วคราว" ? "ปิดรับชั่วคราว" : product.status === "รอข้อมูล" ? "รอข้อมูล" : product.unit;
-  const statusClass = product.status === "เปิดขาย" ? "open" : product.status === "ปิดชั่วคราว" ? "closed" : "waiting";
+  const isPurchasable = orderingOpen && productReady && inRound;
+  // A product left out of the round is still on sale in general, so it keeps
+  // its normal look and only loses the add button — unlike "ปิดชั่วคราว",
+  // which is the shop pausing the product itself.
+  const outOfRound = orderingOpen && productReady && !inRound;
+  const badge = outOfRound ? "ไม่มีในรอบนี้" : product.status === "ปิดชั่วคราว" ? "ปิดรับชั่วคราว" : product.status === "รอข้อมูล" ? "รอข้อมูล" : product.unit;
+  const statusClass = outOfRound ? "out-of-round" : product.status === "เปิดขาย" ? "open" : product.status === "ปิดชั่วคราว" ? "closed" : "waiting";
   const [imageSrc, setImageSrc] = useState(product.image);
   const [trackedImage, setTrackedImage] = useState(product.image);
   if (product.image !== trackedImage) {
@@ -35,7 +41,7 @@ export function ProductCard({ product, quantity, index, onUpdateQuantity, orderi
           priority={index === 0}
           onError={() => setImageSrc(PRODUCT_IMAGE_PLACEHOLDER)}
         />
-        <span className={`product-badge${product.status === "ปิดชั่วคราว" ? " closed" : ""}`}>{badge}</span>
+        <span className={`product-badge${product.status === "ปิดชั่วคราว" ? " closed" : outOfRound ? " out-of-round" : ""}`}>{badge}</span>
         {product.status === "ปิดชั่วคราว" && <span className="product-closed-overlay" aria-hidden="true">พักขาย</span>}
       </div>
       <div className="product-info">
@@ -54,8 +60,8 @@ export function ProductCard({ product, quantity, index, onUpdateQuantity, orderi
                 </svg>
               </button>
             ) : (
-              <span className={`product-unavailable${!orderingOpen && productReady ? " round-closed" : product.status === "ปิดชั่วคราว" ? " closed" : ""}`}>
-                {!orderingOpen && productReady ? "รอเปิดรอบ" : product.status === "ปิดชั่วคราว" ? "ปิดรับ" : "รอข้อมูล"}
+              <span className={`product-unavailable${outOfRound ? " out-of-round" : !orderingOpen && productReady ? " round-closed" : product.status === "ปิดชั่วคราว" ? " closed" : ""}`}>
+                {outOfRound ? "ไม่มีในรอบนี้" : !orderingOpen && productReady ? "รอเปิดรอบ" : product.status === "ปิดชั่วคราว" ? "ปิดรับ" : "รอข้อมูล"}
               </span>
             )}
           </div>
@@ -73,8 +79,8 @@ export function ProductCard({ product, quantity, index, onUpdateQuantity, orderi
                 className="increase-button"
                 type="button"
                 onClick={() => onUpdateQuantity(product.id, 1)}
-                aria-label={orderingOpen ? `เพิ่มจำนวน ${product.name}` : `ยังเพิ่ม ${product.name} ไม่ได้จนกว่าจะเปิดรอบ`}
-                disabled={!orderingOpen}
+                aria-label={outOfRound ? `${product.name} ไม่ได้เปิดขายในรอบนี้` : orderingOpen ? `เพิ่มจำนวน ${product.name}` : `ยังเพิ่ม ${product.name} ไม่ได้จนกว่าจะเปิดรอบ`}
+                disabled={!orderingOpen || outOfRound}
               >
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" style={{ width: 14, height: 14 }}>
                   <line x1="12" y1="5" x2="12" y2="19"></line>

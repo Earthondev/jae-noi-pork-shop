@@ -11,6 +11,7 @@ import {
   type ProductInput,
   type RoundInput,
 } from "../../../../lib/admin-cms";
+import { ROUND_PRODUCT_SCOPES } from "../../../../lib/round-products";
 import {
   createAdminProduct,
   createAdminRound,
@@ -122,12 +123,16 @@ function roundInput(value: unknown): RoundInput {
   const round = record(value, "ข้อมูลรอบขาย");
   const status = requiredString(round.status, "สถานะรอบ");
   if (!ROUND_STATUSES.includes(status as RoundInput["status"])) throw new AdminInputError("สถานะรอบไม่ถูกต้อง");
+  const productScope = optionalString(round.productScope) ?? "all";
+  if (!ROUND_PRODUCT_SCOPES.includes(productScope as RoundInput["productScope"])) throw new AdminInputError("รูปแบบการเปิดสินค้าของรอบไม่ถูกต้อง");
   return {
     deliveryDate: requiredString(round.deliveryDate, "วันจัดส่ง"),
     opensAt: requiredString(round.opensAt, "เวลาเปิดรับ"),
     closesAt: requiredString(round.closesAt, "เวลาปิดรับ"),
     status: status as RoundInput["status"],
     note: optionalString(round.note) ?? "",
+    productScope: productScope as RoundInput["productScope"],
+    productIds: round.productIds === undefined ? [] : stringArray(round.productIds, "รายการสินค้าของรอบ"),
     fingerprint: optionalString(round.fingerprint),
   };
 }

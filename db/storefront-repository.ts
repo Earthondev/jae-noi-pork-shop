@@ -8,6 +8,7 @@ import {
   type CatalogProduct,
 } from "../lib/product-catalog";
 import { DEFAULT_STOREFRONT_CONTENT, formatRoundLabel } from "../lib/admin-cms";
+import { normalizeRoundProductScope, type RoundProductScope } from "../lib/round-products";
 import { safePickupMapUrl } from "../lib/storefront-settings";
 
 export type StorefrontRound = {
@@ -17,6 +18,9 @@ export type StorefrontRound = {
   closesAt: string;
   label: string;
   note: string;
+  /** "all" opens every purchasable product; "selected" opens only `productIds`. */
+  productScope: RoundProductScope;
+  productIds: string[];
 };
 
 export type StorefrontData = {
@@ -64,7 +68,9 @@ type RoundRow = {
   status: string;
   label: string;
   note: string;
+  product_scope: string;
 };
+type RoundProductRow = { round_id: string; product_id: string };
 type SettingRow = { key: string; value: string; status: string };
 
 export async function getStorefrontData(options: { signal?: AbortSignal } = {}): Promise<StorefrontData> {
@@ -75,16 +81,18 @@ export async function getStorefrontData(options: { signal?: AbortSignal } = {}):
 export async function getD1StorefrontData(now = new Date()): Promise<StorefrontData> {
   const bindings = env as unknown as RuntimeBindings;
   if (!bindings.DB) throw new Error("Cloudflare D1 binding `DB` is unavailable");
-  const [productResult, roundResult, settingResult] = await bindings.DB.batch([
+  const [productResult, roundResult, settingResult, roundProductResult] = await bindings.DB.batch([
     bindings.DB.prepare(`SELECT id, name, unit, detail, price, status, image_url, category
       FROM products ORDER BY sort_order`),
-    bindings.DB.prepare(`SELECT id, delivery_date, opens_at, closes_at, status, label, note
+    bindings.DB.prepare(`SELECT id, delivery_date, opens_at, closes_at, status, label, note, product_scope
       FROM delivery_rounds ORDER BY delivery_date`),
     bindings.DB.prepare("SELECT key, value, status FROM storefront_settings"),
+    bindings.DB.prepare("SELECT round_id, product_id FROM round_products"),
   ]);
   const productRows = productResult.results as unknown as ProductRow[];
   const roundRows = roundResult.results as unknown as RoundRow[];
   const settingRows = settingResult.results as unknown as SettingRow[];
+  const roundProductRows = roundProductResult.results as unknown as RoundProductRow[];
   if (productRows.length === 0 || settingRows.length === 0) throw new Error("D1 storefront has not been imported");
 
   const mediaOrigin = bindings.PRODUCT_MEDIA_ORIGIN ?? "";
@@ -108,6 +116,12 @@ export async function getD1StorefrontData(now = new Date()): Promise<StorefrontD
   const nextRoundRow = roundRows.find((row) =>
     (row.status === "เตรียมเปิด" || row.status === "เปิดรับ") && now.getTime() < thaiTime(row.opens_at),
   );
+  const productIdsByRound = new Map<string, string[]>();
+  for (const row of roundProductRows) {
+    const existing = productIdsByRound.get(row.round_id);
+    if (existing) existing.push(row.product_id);
+    else productIdsByRound.set(row.round_id, [row.product_id]);
+  }
   const toRound = (row: RoundRow): StorefrontRound => ({
     id: row.id,
     deliveryDate: row.delivery_date,
@@ -115,6 +129,8 @@ export async function getD1StorefrontData(now = new Date()): Promise<StorefrontD
     closesAt: row.closes_at,
     label: formatRoundLabel(row.delivery_date),
     note: row.note,
+    productScope: normalizeRoundProductScope(row.product_scope),
+    productIds: productIdsByRound.get(row.id) ?? [],
   });
   const value = (key: string) => settings.get(key)?.value ?? "";
   const readyValue = (key: string) => settings.get(key)?.status === "พร้อมใช้" ? value(key) : "";

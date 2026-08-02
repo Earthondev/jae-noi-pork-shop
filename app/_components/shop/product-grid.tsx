@@ -11,6 +11,8 @@ export type ProductGridProps = Readonly<{
   selectedCategory: string;
   onSelectCategory: (category: string) => void;
   orderingOpen: boolean;
+  /** False for products the open (or selected) rounds do not carry. */
+  isProductInRound: (productId: string) => boolean;
 }>;
 
 export function ProductGrid({
@@ -22,6 +24,7 @@ export function ProductGrid({
   selectedCategory,
   onSelectCategory,
   orderingOpen,
+  isProductInRound,
 }: ProductGridProps) {
   return (
     <section className="products-section" id="products">
@@ -73,6 +76,7 @@ export function ProductGrid({
                   index={index}
                   onUpdateQuantity={onUpdateQuantity}
                   orderingOpen={orderingOpen}
+                  inRound={isProductInRound(product.id)}
                 />
               ))
             )}

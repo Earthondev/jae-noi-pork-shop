@@ -15,11 +15,13 @@ import {
   type RoundInput,
 } from "../lib/admin-cms";
 import { PRODUCT_IMAGE_PLACEHOLDER, safeProductImageUrl } from "../lib/product-catalog";
+import { normalizeRoundProductScope } from "../lib/round-products";
 
 type RuntimeBindings = { DB?: D1Database; PRODUCT_MEDIA_ORIGIN?: string };
 export type CmsMutationResult = "updated" | "not_found" | "conflict" | "duplicate";
 type ProductRow = Omit<AdminProduct, "imageUrl" | "updatedAt" | "fingerprint"> & { image_url: string; updated_at: string; sort_order: number; version: number };
-type RoundRow = { id: string; delivery_date: string; opens_at: string; closes_at: string; status: AdminRound["status"]; label: string; note: string; version: number };
+type RoundRow = { id: string; delivery_date: string; opens_at: string; closes_at: string; status: AdminRound["status"]; label: string; note: string; product_scope: string; version: number };
+type RoundProductRow = { round_id: string; product_id: string };
 type SettingRow = { key: string; value: string; version: number };
 
 function bindings(): { db: D1Database; mediaOrigin: string } {
@@ -30,26 +32,35 @@ function bindings(): { db: D1Database; mediaOrigin: string } {
 
 export async function getAdminCmsData(): Promise<AdminCmsData> {
   const { db } = bindings();
-  const [productsResult, roundsResult, settingsResult, totalsResult] = await db.batch([
+  const [productsResult, roundsResult, settingsResult, totalsResult, roundProductsResult] = await db.batch([
     db.prepare("SELECT id,name,unit,detail,price,status,image_url,category,sort_order,version,updated_at FROM products ORDER BY sort_order"),
-    db.prepare("SELECT id,delivery_date,opens_at,closes_at,status,label,note,version FROM delivery_rounds ORDER BY delivery_date"),
+    db.prepare("SELECT id,delivery_date,opens_at,closes_at,status,label,note,product_scope,version FROM delivery_rounds ORDER BY delivery_date"),
     db.prepare("SELECT key,value,version FROM storefront_settings"),
     db.prepare(`SELECT round_id,
       COUNT(*) AS order_count,
       SUM(CASE WHEN payment_status='paid' AND order_status!='cancelled' THEN 1 ELSE 0 END) AS paid_order_count,
       COALESCE(SUM(CASE WHEN payment_status='paid' AND order_status!='cancelled' THEN total ELSE 0 END),0) AS sales
       FROM orders GROUP BY round_id`),
+    db.prepare("SELECT round_id,product_id FROM round_products"),
   ]);
   const totals = new Map((totalsResult.results as Array<{ round_id: string; order_count: number; paid_order_count: number; sales: number }>).map((row) => [row.round_id, row]));
   const products = (productsResult.results as unknown as ProductRow[]).map((row) => ({
     id: row.id, name: row.name, unit: row.unit, detail: row.detail, price: row.price, status: row.status,
     imageUrl: row.image_url, category: row.category, updatedAt: row.updated_at, fingerprint: String(row.version),
   }));
+  const productIdsByRound = new Map<string, string[]>();
+  for (const row of roundProductsResult.results as unknown as RoundProductRow[]) {
+    const existing = productIdsByRound.get(row.round_id);
+    if (existing) existing.push(row.product_id);
+    else productIdsByRound.set(row.round_id, [row.product_id]);
+  }
   const rounds = (roundsResult.results as unknown as RoundRow[]).map((row) => {
     const total = totals.get(row.id);
     return {
       id: row.id, deliveryDate: row.delivery_date, opensAt: row.opens_at, closesAt: row.closes_at,
-      status: row.status, label: formatRoundLabel(row.delivery_date), note: row.note, orderCount: total?.order_count ?? 0,
+      status: row.status, label: formatRoundLabel(row.delivery_date), note: row.note,
+      productScope: normalizeRoundProductScope(row.product_scope), productIds: productIdsByRound.get(row.id) ?? [],
+      orderCount: total?.order_count ?? 0,
       paidOrderCount: total?.paid_order_count ?? 0,
       sales: total?.sales ?? 0, displayState: displayState(row), fingerprint: String(row.version),
     };
@@ -149,8 +160,12 @@ export async function reorderAdminProducts(orderedIds: string[]): Promise<CmsMut
 export async function createAdminRound(input: RoundInput): Promise<CmsMutationResult> {
   const round = validateRoundInput(input); const id = roundIdFromDeliveryDate(round.deliveryDate); const { db } = bindings();
   if (await db.prepare("SELECT 1 FROM delivery_rounds WHERE id=? OR delivery_date=?").bind(id, round.deliveryDate).first()) return "duplicate";
-  await db.prepare(`INSERT INTO delivery_rounds (id,delivery_date,opens_at,closes_at,status,label,note,version,updated_at) VALUES (?,?,?,?,?,?,?,1,?)`)
-    .bind(id, round.deliveryDate, round.opensAt, round.closesAt, round.status, formatRoundLabel(round.deliveryDate), round.note, new Date().toISOString()).run();
+  await assertRoundProductsExist(db, round.productIds);
+  await db.batch([
+    db.prepare(`INSERT INTO delivery_rounds (id,delivery_date,opens_at,closes_at,status,label,note,product_scope,version,updated_at) VALUES (?,?,?,?,?,?,?,?,1,?)`)
+      .bind(id, round.deliveryDate, round.opensAt, round.closesAt, round.status, formatRoundLabel(round.deliveryDate), round.note, round.productScope, new Date().toISOString()),
+    ...roundProductStatements(db, id, round.productIds),
+  ]);
   return "updated";
 }
 
@@ -158,9 +173,27 @@ export async function updateAdminRound(id: string, input: RoundInput): Promise<C
   const round = validateRoundInput(input); if (roundIdFromDeliveryDate(round.deliveryDate) !== id) throw new AdminCmsValidationError("ไม่สามารถเปลี่ยนวันจัดส่งของรอบเดิมได้ กรุณาสร้างรอบใหม่");
   const { db } = bindings(); const current = await db.prepare("SELECT version FROM delivery_rounds WHERE id=?").bind(id).first<{ version: number }>();
   if (!current) return "not_found"; if (input.fingerprint && input.fingerprint !== String(current.version)) return "conflict";
-  await db.prepare("UPDATE delivery_rounds SET opens_at=?,closes_at=?,status=?,note=?,version=version+1,updated_at=? WHERE id=? AND version=?")
-    .bind(round.opensAt, round.closesAt, round.status, round.note, new Date().toISOString(), id, current.version).run();
+  await assertRoundProductsExist(db, round.productIds);
+  // Rewriting the whole selection in the same batch as the round row keeps the
+  // scope and its product list from ever disagreeing, even mid-failure.
+  await db.batch([
+    db.prepare("UPDATE delivery_rounds SET opens_at=?,closes_at=?,status=?,note=?,product_scope=?,version=version+1,updated_at=? WHERE id=? AND version=?")
+      .bind(round.opensAt, round.closesAt, round.status, round.note, round.productScope, new Date().toISOString(), id, current.version),
+    db.prepare("DELETE FROM round_products WHERE round_id=?").bind(id),
+    ...roundProductStatements(db, id, round.productIds),
+  ]);
   return "updated";
+}
+
+function roundProductStatements(db: D1Database, roundId: string, productIds: string[]) {
+  return productIds.map((productId) => db.prepare("INSERT INTO round_products (round_id,product_id) VALUES (?,?)").bind(roundId, productId));
+}
+
+async function assertRoundProductsExist(db: D1Database, productIds: string[]): Promise<void> {
+  if (productIds.length === 0) return;
+  const placeholders = productIds.map(() => "?").join(",");
+  const found = await db.prepare(`SELECT COUNT(*) AS count FROM products WHERE id IN (${placeholders})`).bind(...productIds).first<{ count: number }>();
+  if ((found?.count ?? 0) !== productIds.length) throw new AdminCmsValidationError("มีสินค้าในรอบที่ไม่พบในระบบแล้ว กรุณารีเฟรชแล้วเลือกใหม่");
 }
 
 export async function updateAdminStorefrontSettings(input: Omit<AdminStorefrontSettings, "fingerprint"> & { fingerprint?: string }): Promise<CmsMutationResult> {

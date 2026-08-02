@@ -63,9 +63,13 @@ test("rechecks the selected round immediately before submit and returns a friend
   assert.match(storefrontHook, /setInterval\(\(\) => void refreshStorefront\(\), 30_000\)/);
   assert.match(storefrontHook, /visibilitychange/);
   assert.match(shop, /const latestStorefront = await storefront\.refreshStorefront\(\)/);
-  assert.match(shop, /latestStorefront\.rounds\.some/);
+  assert.match(shop, /latestStorefront\.rounds\.find/);
   assert.match(shop, /รอบปิดพอดีระหว่างที่คุณกำลังสั่งซื้อ/);
+  // The same last-moment recheck also covers a product being dropped from the
+  // round while the customer had the page open.
+  assert.match(shop, /roundIncludesProduct\(latestRound, product\.id\)/);
   assert.match(orderRoute, /รอบปิดพอดีระหว่างที่คุณกำลังสั่งซื้อ/);
+  assert.match(orderRoute, /roundIncludesProduct\(selectedRound, product\.id\)/);
   assert.match(orderRoute, /status: 409/);
 });
 

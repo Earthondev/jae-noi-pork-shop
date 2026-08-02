@@ -1,4 +1,4 @@
-import { index, integer, sqliteTable, text, uniqueIndex } from "drizzle-orm/sqlite-core";
+import { index, integer, primaryKey, sqliteTable, text, uniqueIndex } from "drizzle-orm/sqlite-core";
 
 export const products = sqliteTable("products", {
   id: text("id").primaryKey(),
@@ -25,10 +25,21 @@ export const deliveryRounds = sqliteTable("delivery_rounds", {
   status: text("status").notNull(),
   label: text("label").notNull().default(""),
   note: text("note").notNull().default(""),
+  // "all" opens every purchasable product; "selected" opens only the products
+  // listed for this round in `roundProducts`.
+  productScope: text("product_scope").notNull().default("all"),
   version: integer("version").notNull().default(1),
   updatedAt: text("updated_at").notNull(),
 }, (table) => [
   index("delivery_rounds_window_idx").on(table.status, table.opensAt, table.closesAt),
+]);
+
+export const roundProducts = sqliteTable("round_products", {
+  roundId: text("round_id").notNull().references(() => deliveryRounds.id),
+  productId: text("product_id").notNull().references(() => products.id),
+}, (table) => [
+  primaryKey({ columns: [table.roundId, table.productId] }),
+  index("round_products_product_id_idx").on(table.productId),
 ]);
 
 export const storefrontSettings = sqliteTable("storefront_settings", {

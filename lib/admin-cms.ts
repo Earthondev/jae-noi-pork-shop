@@ -1,5 +1,6 @@
 import type { ProductStatus } from "./product-catalog";
 import { DEFAULT_STORE_COVER, DEFAULT_STORE_LOGO, safeStorefrontAssetUrl } from "./product-catalog";
+import { ROUND_PRODUCT_SCOPES, type RoundProductScope } from "./round-products";
 import { safePickupMapUrl } from "./storefront-settings";
 
 export const PRODUCT_STATUSES: readonly ProductStatus[] = ["เปิดขาย", "ปิดชั่วคราว", "รอข้อมูล", "ซ่อนสินค้า"];
@@ -28,6 +29,8 @@ export type AdminRound = {
   status: RoundStatus;
   label: string;
   note: string;
+  productScope: RoundProductScope;
+  productIds: string[];
   orderCount: number;
   paidOrderCount?: number;
   sales: number;
@@ -81,6 +84,8 @@ export type RoundInput = {
   closesAt: string;
   status: RoundStatus;
   note: string;
+  productScope: RoundProductScope;
+  productIds: string[];
   fingerprint?: string;
 };
 
@@ -144,7 +149,22 @@ export function validateRoundInput(input: RoundInput): RoundInput {
   const deliveryAt = localInputMs(`${input.deliveryDate}T23:59`);
   if (opensAt >= closesAt) throw new AdminCmsValidationError("เวลาเปิดรับต้องมาก่อนเวลาปิดรับ");
   if (closesAt > deliveryAt) throw new AdminCmsValidationError("เวลาปิดรับต้องไม่เกินวันจัดส่ง");
-  return { ...input, note: cleanText(input.note, 500) };
+  return { ...input, note: cleanText(input.note, 500), ...validateRoundProducts(input) };
+}
+
+// A round opens the whole shop by default. Only when the shop owner switches
+// it to "selected" does the product list matter — and an empty list there
+// would silently open a round that nothing can be ordered from.
+function validateRoundProducts(input: RoundInput): Pick<RoundInput, "productScope" | "productIds"> {
+  const productScope = input.productScope ?? "all";
+  if (!ROUND_PRODUCT_SCOPES.includes(productScope)) throw new AdminCmsValidationError("รูปแบบการเปิดสินค้าของรอบไม่ถูกต้อง");
+  if (productScope === "all") return { productScope, productIds: [] };
+
+  const productIds = Array.from(new Set((input.productIds ?? []).map(normalizeProductId))).filter(Boolean);
+  if (productIds.length === 0) throw new AdminCmsValidationError("รอบที่เปิดเฉพาะบางรายการต้องเลือกสินค้าอย่างน้อย 1 รายการ");
+  if (productIds.length > 200) throw new AdminCmsValidationError("เลือกสินค้าในรอบได้ไม่เกิน 200 รายการ");
+  if (!productIds.every((id) => /^[A-Z0-9_-]{2,40}$/.test(id))) throw new AdminCmsValidationError("รหัสสินค้าในรอบไม่ถูกต้อง");
+  return { productScope, productIds };
 }
 
 export function cleanStorefrontSettings(input: Omit<AdminStorefrontSettings, "fingerprint">): Omit<AdminStorefrontSettings, "fingerprint"> {

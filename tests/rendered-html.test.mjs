@@ -46,7 +46,11 @@ test("keeps the Thai mobile shop content and accessibility contract", async () =
   assert.match(shop, /const orderingOpen = !storeLoading && rounds\.length > 0/);
   assert.match(shop, /aria-live="polite"/);
   assert.match(shop, /รอเปิดรอบ/);
-  assert.match(shop, /disabled={!orderingOpen}/);
+  assert.match(shop, /disabled={!orderingOpen \|\| outOfRound}/);
+  // Products a round does not carry stay visible but unaddable, in the
+  // storefront and in the cart alike.
+  assert.match(shop, /ไม่มีในรอบนี้/);
+  assert.match(shop, /disabled={!storefront\.orderingOpen \|\| !inRound}/);
   assert.match(shop, /className="closed-round-cart"/);
   assert.match(shop, /สินค้าในตะกร้ายังไม่ถูกจองและยังไม่ต้องชำระเงิน/);
   assert.match(shop, /กลับไปเลือกสินค้า/);

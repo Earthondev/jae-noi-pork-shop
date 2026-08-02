@@ -24,6 +24,7 @@ import {
   saveRememberedCustomer,
 } from "../lib/remembered-customer";
 import { browserRecentOrderStorage, saveRecentOrder } from "../lib/recent-order";
+import { openRoundProductIdSet, roundIncludesProduct, roundProductIdSet } from "../lib/round-products";
 import { formatThaiAddress } from "../lib/thai-address";
 import { postalShippingCost } from "../lib/shipping";
 
@@ -230,6 +231,18 @@ export function Shop() {
     return storefront.products.filter((product) => (product.category || "อื่น ๆ") === selectedCategory);
   }, [storefront.products, selectedCategory]);
   
+  // Before a round is picked, anything at least one open round carries is
+  // still addable; once a round is picked, that round alone decides. `null`
+  // means no per-round restriction applies at all.
+  const roundProductIds = useMemo(() => {
+    const selected = storefront.rounds.find((round) => round.id === storefront.selectedRound);
+    return selected ? roundProductIdSet(selected) : openRoundProductIdSet(storefront.rounds);
+  }, [storefront.rounds, storefront.selectedRound]);
+  const isProductInRound = useCallback(
+    (productId: string) => roundProductIds === null || roundProductIds.has(productId),
+    [roundProductIds],
+  );
+
   const cartItems = storefront.products.filter((product) => (quantities[product.id] ?? 0) > 0);
   const cartCount = cartItems.reduce((sum, product) => sum + (quantities[product.id] ?? 0), 0);
   const subtotal = useMemo(
@@ -241,12 +254,13 @@ export function Shop() {
     [storefront.products, quantities],
   );
   const unavailableProduct = cartItems.find((product) => product.status !== "เปิดขาย" || product.price === null);
+  const outOfRoundProduct = cartItems.find((product) => !isProductInRound(product.id));
   const shippingCost = storefront.fulfilment === "postal"
     ? postalShippingCost(subtotal, storefront)
     : 0;
   const orderTotal = subtotal + (shippingCost ?? 0);
   let promptPayPayload: string | null = null;
-  if (storefront.promptPayId && orderTotal > 0 && !unavailableProduct && shippingCost !== null) {
+  if (storefront.promptPayId && orderTotal > 0 && !unavailableProduct && !outOfRoundProduct && shippingCost !== null) {
     try {
       promptPayPayload = generatePromptPayPayload(storefront.promptPayId, { amount: orderTotal });
     } catch {
@@ -269,6 +283,10 @@ export function Shop() {
       storefront.setNotice("ขณะนี้ยังไม่เปิดรับออเดอร์ กรุณาติดตามรอบถัดไป");
       return;
     }
+    if (outOfRoundProduct) {
+      storefront.setNotice(`${outOfRoundProduct.name} ไม่ได้เปิดขายในรอบที่เลือก กรุณานำออกจากตะกร้าหรือเลือกรอบอื่น`);
+      return;
+    }
     if (storefront.fulfilment === "postal" && storefront.shippingFee === null) { storefront.setNotice("ค่าจัดส่งไปรษณีย์ยังรอข้อมูล"); return; }
     if (!storefront.secureWriteReady) { storefront.setNotice("โหมดดูตัวอย่าง: การบันทึกออเดอร์อย่างปลอดภัยกำลังรอเชื่อมบัญชีระบบ Google"); return; }
 
@@ -285,8 +303,14 @@ export function Shop() {
         storefront.setNotice("ยังตรวจสอบสถานะรอบล่าสุดไม่ได้ ข้อมูลที่กรอกไว้ยังอยู่ กรุณาลองอีกครั้ง");
         return;
       }
-      if (!latestStorefront.rounds.some((round) => round.id === selectedRoundAtSubmit)) {
+      const latestRound = latestStorefront.rounds.find((round) => round.id === selectedRoundAtSubmit);
+      if (!latestRound) {
         storefront.setNotice("รอบปิดพอดีระหว่างที่คุณกำลังสั่งซื้อ ข้อมูลและสินค้าในตะกร้ายังอยู่ กรุณาติดตามรอบถัดไป");
+        return;
+      }
+      const droppedFromRound = cartItems.find((product) => !roundIncludesProduct(latestRound, product.id));
+      if (droppedFromRound) {
+        storefront.setNotice(`${droppedFromRound.name} ถูกนำออกจากรอบนี้พอดี ข้อมูลในตะกร้ายังอยู่ กรุณานำออกหรือเลือกรอบอื่น`);
         return;
       }
 
@@ -403,6 +427,7 @@ export function Shop() {
         selectedCategory={selectedCategory}
         onSelectCategory={setSelectedCategory}
         orderingOpen={storefront.orderingOpen}
+        isProductInRound={isProductInRound}
       />
 
       <section className="story" id="story">
@@ -468,7 +493,7 @@ export function Shop() {
         <CartDrawer
           drawerRef={drawerRef}
           onClose={() => setCartOpen(false)}
-          cart={{ items: cartItems, quantities, subtotal, onUpdateQuantity: updateQuantity }}
+          cart={{ items: cartItems, quantities, subtotal, onUpdateQuantity: updateQuantity, isProductInRound }}
           checkout={{
             customerName: checkoutDraft.customerName,
             phone: checkoutDraft.phone,
