@@ -11,7 +11,10 @@ mobile-first และรันบน Cloudflare Workers โดยใช้ D1 �
 - โค้ดหลังบ้านตรวจ Cloudflare Access JWT, audience, issuer และ email allowlist ซ้ำใน Worker
 - Cloudflare Access edge policy สำหรับ `/admin*` และ `/api/admin/*` ต้องตั้งและตรวจใน
   Cloudflare Zero Trust หลัง deploy เพราะเป็นค่าภายนอก repository
-- SlipOK เตรียมโค้ดไว้แล้ว แต่ต้องคง `SLIPOK_ENABLED=false` จนกว่าจะผูกบัญชีและทดสอบสลิปจริง
+- เว็บใช้งานจริงที่ **https://jaenoishop.com** ตั้งแต่ 3 ส.ค. 2569 URL `*.workers.dev`
+  ทั้งหมดถูกปิดแล้วโดยตั้งใจ
+- SlipOK **เปิดใช้งานบน production แล้ว** (3 ส.ค. 2569) แต่ยังไม่เคยทดสอบกับสลิปจริง
+  ถ้าคีย์ผิดทุกสลิปจะตกไป `รอตรวจสลิป` ซึ่งเท่ากับพฤติกรรมเดิม ไม่ทำให้สลิปดีถูกปฏิเสธ
 - Production deploy ผ่าน Cloudflare Worker ตามค่าที่กำหนดใน environment ของผู้ดูแล
 
 ## ความสามารถหลัก
@@ -34,6 +37,10 @@ mobile-first และรันบน Cloudflare Workers โดยใช้ D1 �
 - ดูบริษัทขนส่ง เลขพัสดุ ปุ่มคัดลอก และลิงก์ติดตามอย่างเป็นทางการจากหน้าติดตามออเดอร์
 - ลูกค้ายืนยันว่าได้รับสินค้าแล้วได้ และระบบปิดงานอัตโนมัติเมื่อเกินระยะเวลาที่กำหนด
 - ดาวน์โหลดใบยืนยันการชำระเงินเป็น PNG หรือพิมพ์/บันทึกเป็น PDF
+- สินค้าที่รอบนั้นไม่ได้เปิดขายยังแสดงในกริดแต่กดเพิ่มไม่ได้ พร้อมป้าย "ไม่มีในรอบนี้"
+  ถ้าเปิดหลายรอบพร้อมกันจะรวมสินค้าทุกรอบ แล้วแคบลงเมื่อเลือกรอบในตะกร้า
+- สลิปที่ตรวจไม่ผ่าน แนบใหม่ได้อีก 1 ครั้งจากหน้าติดตามออเดอร์ พร้อม QR พร้อมเพย์
+  เต็มยอดให้สแกนจ่ายซ้ำ ถ้ายังไม่ผ่านจะแสดงเบอร์ร้านให้ติดต่อโดยตรง
 
 ### ระบบหลังบ้าน
 
@@ -45,9 +52,17 @@ mobile-first และรันบน Cloudflare Workers โดยใช้ D1 �
 - อัปโหลดรูปสินค้า โลโก้ และภาพปกเข้า R2 หลังถอดรหัส ย่อ และเข้ารหัสใหม่เป็น WebP
 - ลากการ์ดสินค้าเพื่อเรียงลำดับ รองรับ touch, mouse, keyboard และ auto-scroll
 - สร้างและแก้ไขรอบขาย พร้อมสรุปยอดเฉพาะออเดอร์ที่ชำระแล้วและไม่ถูกยกเลิก
+- กำหนดได้ว่าแต่ละรอบเปิดขายทั้งร้านหรือเลือกเฉพาะบางรายการ พร้อมพรีวิวสินค้าแบบมีรูป
+  ค้นหา และกรองหมวดหมู่
+- แท็บ "พิมพ์สติ๊กเกอร์" แยกออกมา พิมพ์หรือ export PNG ทั้งรอบได้ในคลิกเดียว
+  ขนาด 77 × 30 มม. ตัดออเดอร์รับหน้าร้านออกให้อัตโนมัติ
+- แยกยอดสินค้า ยอดค่าส่ง และยอดรวม พร้อมอันดับสินค้าขายดี ตามตัวกรองที่เลือกอยู่
+- ลากชิปหมวดหมู่เพื่อจัดลำดับที่หน้าร้านแบบถาวร (เก็บใน `storefront_settings`)
 - แก้ข้อความหน้าร้าน เบอร์โทร ค่าส่ง จุดรับสินค้า และข้อมูล PromptPay
 - ตรวจการแก้ไขชนกันด้วย version/fingerprint และรีเฟรชข้อมูลในหน้าเดิม
-- รักษาแท็บหลังบ้านผ่าน URL เช่น `/admin?tab=products`
+- รักษาแท็บหลังบ้านผ่าน URL เช่น `/admin?tab=products` แท็บที่มี: `orders`,
+  `stickers`, `rounds`, `products`, `storefront` (ตรวจค่าทั้งฝั่ง server ใน
+  `app/admin/page.tsx` และฝั่ง client ใน `app/admin/dashboard.tsx` — เพิ่มแท็บใหม่ต้องแก้ทั้งสองที่)
 
 ## สถาปัตยกรรม
 
@@ -222,6 +237,10 @@ npx wrangler d1 execute site-creator-d1 \
 4. `0004_orders_round_id_index.sql` — index สำหรับสรุปออเดอร์ตามรอบ
 5. `0005_round_products.sql` — ขอบเขตสินค้าที่เปิดขายแยกตามรอบ
 6. `0006_tracking_imports.sql` — บริษัทขนส่ง ประวัตินำเข้า และตัวคุมเลขพัสดุซ้ำ
+7. `0007_slip_retries.sql` — โควตาแนบสลิปใหม่ของลูกค้า
+
+**รัน migration ให้เสร็จก่อน deploy เสมอ** ถ้า deploy โค้ดที่อ่านคอลัมน์ที่ยังไม่มี
+หน้า admin จะพังทั้งหน้า (เคยเกิดจริงกับ `carrier_code` ตอน `0006`)
 
 `db/schema.ts` ต้องแก้ให้ตรงกับ migration แต่ `drizzle/*.sql` ไม่ถูก apply เข้า
 production โดยอัตโนมัติ อ่านรายละเอียด schema และข้อควรระวังได้ที่
@@ -367,5 +386,6 @@ account และ database ด้วยตนเอง
 - [DATABASE_SCHEMA.md](./DATABASE_SCHEMA.md) — schema และ workflow ของ D1 migration
 - [docs/cloudflare-client-handoff.md](./docs/cloudflare-client-handoff.md) — การส่งมอบและตั้งค่า Cloudflare
 - [docs/monitoring.md](./docs/monitoring.md) — Sentry, quota และ incident response
-- [docs/slipok-integration.md](./docs/slipok-integration.md) — เงื่อนไขก่อนเปิด SlipOK
+- [docs/slipok-integration.md](./docs/slipok-integration.md) — สถานะ SlipOK และวิธีปิดกลับ
+- [CLAUDE.md](./CLAUDE.md) — ข้อควรระวังตอน deploy, custom domain และการทำงานพร้อมกันหลาย agent
 - [figma-plugin/README.md](./figma-plugin/README.md) — เครื่องมือช่วยบันทึกและทบทวน UX/UI ใน Figma
