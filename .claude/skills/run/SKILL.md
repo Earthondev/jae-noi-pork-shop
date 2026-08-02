@@ -59,7 +59,15 @@ sqlite3 "<path>.sqlite" "SELECT id, name, status FROM products;"
 sqlite3 "<path>.sqlite" "DELETE FROM orders WHERE id='<test-order-id>';"   # cleanup after manual testing
 ```
 
-Tables: `products`, `delivery_rounds`, `storefront_settings` (generic key/value — e.g. `promptpay_id`, `promptpay_name`, `postal_shipping_fee`), `orders`, `order_items`, `cms_imports`.
+Tables: `products`, `delivery_rounds`, `round_products`, `storefront_settings` (generic key/value — e.g. `promptpay_id`, `promptpay_name`, `postal_shipping_fee`, `category_order`), `orders`, `order_items`, `tracking_imports`, `tracking_import_rows`, `cms_imports`. Full column notes in `DATABASE_SCHEMA.md`.
+
+The local database is **not** migrated automatically — `npm run dev` never runs
+`migrations apply`. After pulling a change that adds one, apply it by hand with
+the dev server stopped, or the admin page will crash on a missing column:
+
+```bash
+sqlite3 "<path>.sqlite" < migrations/0007_slip_retries.sql
+```
 
 ## Production/staging D1 (read-only checks — be careful, this is real data)
 
@@ -76,7 +84,14 @@ Never run write/DELETE statements against the remote production database without
 
 ## Deploying
 
-`npm run deploy:cloudflare` requires `CLOUDFLARE_WORKER_NAME`, `CLOUDFLARE_D1_DATABASE_NAME`, `CLOUDFLARE_D1_DATABASE_ID`, `CLOUDFLARE_R2_BUCKET_NAME`, `CLOUDFLARE_PRODUCT_MEDIA_BUCKET_NAME` as real (non-.dev.vars) environment variables — these are not stored in the repo. Confirm with the user before deploying; this project has previously had a live shop running on it.
+`npm run deploy:cloudflare` requires `CLOUDFLARE_WORKER_NAME`, `CLOUDFLARE_D1_DATABASE_NAME`, `CLOUDFLARE_D1_DATABASE_ID`, `CLOUDFLARE_R2_BUCKET_NAME`, `CLOUDFLARE_PRODUCT_MEDIA_BUCKET_NAME` and `CLOUDFLARE_CUSTOM_DOMAIN` as real environment variables. They live in the gitignored `.env` in the repo root — load them with `set -a && . .env && set +a`.
+
+**Never deploy without `CLOUDFLARE_CUSTOM_DOMAIN`.** The shop is live on
+`jaenoishop.com`; omitting the variable drops the route and sends the storefront
+back to `workers.dev`, which is an outage. Apply any pending D1 migration
+*before* deploying, not after. See CLAUDE.md for both.
+
+Confirm with the user before deploying — this shop has real customers and real orders.
 
 ## Heads-up: this repo is sometimes edited concurrently
 

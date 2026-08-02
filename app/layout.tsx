@@ -41,6 +41,10 @@ export const viewport: Viewport = { themeColor: "#b51519", colorScheme: "light" 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
     <html lang="th">
+      <head>
+        <link rel="preconnect" href="https://pub-152b30e9e62f4e82aa0893fd90576e96.r2.dev" crossOrigin="anonymous" />
+        <link rel="dns-prefetch" href="https://pub-152b30e9e62f4e82aa0893fd90576e96.r2.dev" />
+      </head>
       <body className={`${bodyFont.variable} ${displayFont.variable}`}>
         {children}
         {/* Server-rendered so assistants that do not run JavaScript still get
