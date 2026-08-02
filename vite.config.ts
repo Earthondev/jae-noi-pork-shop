@@ -18,6 +18,19 @@ const { d1, r2 } = hostingConfig;
 // macOS Seatbelt blocks FSEvents, so Codex previews need polling for HMR.
 const isCodexSeatbeltSandbox = process.env.CODEX_SANDBOX === "seatbelt";
 
+/**
+ * Hostnames to publish for a configured custom domain. An apex gets its www
+ * form as well, because customers type it and a bare apex leaves them on a
+ * dead hostname. A domain that already names a subdomain is published alone —
+ * "www.shop.example.com" is not something anyone asked for.
+ */
+export function customDomainPatterns(customDomain: string): string[] {
+  const host = customDomain.trim().toLowerCase().replace(/\.$/, "");
+  if (!host) return [];
+  if (host.startsWith("www.")) return [host, host.slice(4)];
+  return host.split(".").length > 2 ? [host] : [host, `www.${host}`];
+}
+
 export default defineConfig(async ({ command }) => {
   // Keep Wrangler and Miniflare state project-local. These are non-secret tool
   // settings; application environment belongs in ignored `.env*` files.
@@ -77,9 +90,14 @@ export default defineConfig(async ({ command }) => {
     compatibility_flags: ["nodejs_compat"],
     workers_dev: isCloudflareDeployment ? !customDomain : undefined,
     preview_urls: isCloudflareDeployment ? !customDomain : undefined,
+    // `wrangler deploy` reconciles routes against this list, so a hostname that
+    // is not here gets detached on the next deploy — adding www through the
+    // dashboard silently disappeared until it was declared here. An apex is
+    // therefore always published together with its www form; the canonical tag
+    // in app/layout.tsx keeps search engines on one of them.
     routes:
       isCloudflareDeployment && customDomain
-        ? [{ pattern: customDomain, custom_domain: true }]
+        ? customDomainPatterns(customDomain).map((pattern) => ({ pattern, custom_domain: true }))
         : [],
     // Production credentials must be configured with `wrangler secret put`.
     // They are intentionally omitted from build output so private keys and API
