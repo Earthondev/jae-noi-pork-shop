@@ -385,6 +385,19 @@ function OrdersPanel({ orders, setOrders, saving, setSaving, setNotice }: { orde
   const [statusDrafts, setStatusDrafts] = useState<Record<string, StatusDraft>>({});
   const [confirm, setConfirm] = useState<ConfirmState>(null);
 
+  const filtered = useMemo(() => orders.filter((order) => {
+    const normalized = query.trim().toLowerCase();
+    const matchesQuery = !normalized || `${order.id} ${order.customer_name} ${order.phone}`.toLowerCase().includes(normalized);
+    const matchesRange = inOrderRange(order.created_at, range);
+    const matchesFilter = filter === "all"
+      || (filter === "attention" && ["waiting_for_slip_review", "invalid_slip"].includes(order.payment_status))
+      || (filter === "pending_slip" && order.payment_status === "waiting_for_slip_review")
+      || (filter === "paid" && order.payment_status === "paid")
+      || (filter === "shipped" && ["shipped", "completed"].includes(order.order_status));
+    const matchesRound = selectedRound === "all" || (order.round_id || "ไม่ระบุรอบ") === selectedRound;
+    return matchesQuery && matchesRange && matchesFilter && matchesRound;
+  }), [filter, orders, query, range, selectedRound]);
+
   function handlePrintStickers(targetOrders: AdminOrder[]) {
     if (targetOrders.length === 0) return;
     setPrintTargetOrders(targetOrders);
@@ -422,20 +435,7 @@ function OrdersPanel({ orders, setOrders, saving, setSaving, setNotice }: { orde
     setStatusDrafts((current) => { if (!(orderId in current)) return current; const next = { ...current }; delete next[orderId]; return next; });
   }
 
-  const availableRounds = useMemo(() => Array.from(new Set(orders.map((o) => o.round_id || "ไม่ระบุรอบ"))), [orders]);
 
-  const filtered = useMemo(() => orders.filter((order) => {
-    const normalized = query.trim().toLowerCase();
-    const matchesQuery = !normalized || `${order.id} ${order.customer_name} ${order.phone}`.toLowerCase().includes(normalized);
-    const matchesRange = inOrderRange(order.created_at, range);
-    const matchesFilter = filter === "all"
-      || (filter === "attention" && ["waiting_for_slip_review", "invalid_slip"].includes(order.payment_status))
-      || (filter === "pending_slip" && order.payment_status === "waiting_for_slip_review")
-      || (filter === "paid" && order.payment_status === "paid")
-      || (filter === "shipped" && ["shipped", "completed"].includes(order.order_status));
-    const matchesRound = selectedRound === "all" || (order.round_id || "ไม่ระบุรอบ") === selectedRound;
-    return matchesQuery && matchesRange && matchesFilter && matchesRound;
-  }), [filter, orders, query, range, selectedRound]);
 
   const summary = useMemo(() => ({
     total: filtered.length,
