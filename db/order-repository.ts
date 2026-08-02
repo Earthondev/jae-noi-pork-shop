@@ -155,6 +155,11 @@ export async function getAdminOrders(): Promise<AdminOrder[]> {
     tracking_number: row.tracking_number,
     carrier_code: isCarrierCode(row.carrier_code) ? row.carrier_code : null,
     items: (itemsByOrder.get(row.id) ?? []).map((item) => `${item.name} × ${item.quantity}`).join(", "),
+    item_lines: (itemsByOrder.get(row.id) ?? []).map((item) => ({
+      name: item.name,
+      quantity: item.quantity,
+      unitPrice: item.unit_price,
+    })),
   }));
 }
 

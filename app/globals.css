@@ -1895,17 +1895,42 @@ footer .footer-phone-links a:active { background: rgba(255, 255, 255, 0.1); }
   padding: 6px 12px;
   font-size: 0.8125rem;
   font-weight: 600;
-  color: #1e293b;
-  background: #f1f5f9;
-  border: 1px solid #cbd5e1;
+  color: #8f1013;
+  background: #fff5f5;
+  border: 1px solid #fecaca;
   border-radius: 6px;
   cursor: pointer;
-  transition: all 0.15s ease;
+  transition: all 0.18s cubic-bezier(0.16, 1, 0.3, 1);
   text-decoration: none;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
 }
 .admin-print-sticker-btn:hover {
-  background: #e2e8f0;
-  border-color: #94a3b8;
+  background: #b51519;
+  color: #ffffff;
+  border-color: #b51519;
+  transform: translateY(-1px);
+  box-shadow: 0 3px 6px rgba(181, 21, 25, 0.18);
+}
+.admin-print-sticker-btn:active {
+  transform: translateY(0);
+  box-shadow: none;
+}
+
+.admin-round-card-tag {
+  display: inline-flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px 14px;
+  border-radius: 10px;
+  border: 1px solid #e2e8f0;
+  background: #ffffff;
+  transition: all 0.2s ease;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.03);
+}
+.admin-round-card-tag.active {
+  border-color: #b51519;
+  background: #fff5f5;
+  box-shadow: 0 2px 8px rgba(181, 21, 25, 0.12);
 }
 
 .admin-batch-bar {
@@ -2514,6 +2539,25 @@ footer .footer-phone-links a:active { background: rgba(255, 255, 255, 0.1); }
 .admin-kpi-grid span { display: flex; align-items: center; gap: 6px; color: var(--admin-muted); font-size: .68rem; font-weight: 800; }
 .admin-kpi-grid svg { width: 16px; height: 16px; color: var(--admin-red); }
 .admin-kpi-grid strong { overflow: hidden; color: var(--admin-red-dark); font-size: 1.35rem; white-space: nowrap; text-overflow: ellipsis; }
+/* Goods vs postage split, plus what actually sold, for the current filter. */
+.admin-sales-breakdown { margin-bottom: 14px; padding: 15px; border: 1px solid var(--admin-line); border-radius: 16px; background: var(--admin-surface); box-shadow: 0 6px 18px rgb(75 36 27 / 5%); }
+.admin-sales-breakdown h3 { margin: 0 0 11px; color: var(--admin-red-dark); font-size: .8rem; }
+.admin-sales-figures { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+.admin-sales-figures > div { min-width: 0; padding: 11px; border-radius: 12px; background: var(--admin-bg); display: grid; gap: 4px; }
+.admin-sales-figures span { color: var(--admin-muted); font-size: .66rem; font-weight: 800; }
+.admin-sales-figures strong { color: var(--admin-ink); font-size: .95rem; overflow-wrap: anywhere; }
+.admin-sales-figures .shipping strong { color: #8a6d00; }
+.admin-sales-figures .grand { background: #fff0ec; }
+.admin-sales-figures .grand strong { color: var(--admin-red-dark); }
+.admin-best-sellers { margin-top: 13px; padding-top: 13px; border-top: 1px dashed var(--admin-line); }
+.admin-best-sellers h4 { margin: 0 0 9px; color: var(--admin-red-dark); font-size: .76rem; }
+.admin-best-sellers ol { margin: 0; padding: 0; list-style: none; display: grid; gap: 5px; }
+.admin-best-sellers li { display: grid; grid-template-columns: 22px minmax(0, 1fr) auto auto; gap: 9px; align-items: center; padding: 8px 10px; border-radius: 10px; background: var(--admin-bg); }
+.admin-best-sellers .rank { display: grid; place-items: center; width: 22px; height: 22px; border-radius: 50%; background: var(--admin-red-dark); color: white; font-size: .66rem; font-weight: 900; }
+.admin-best-sellers .name { min-width: 0; color: var(--admin-ink); font-size: .78rem; font-weight: 800; overflow-wrap: anywhere; }
+.admin-best-sellers .qty { color: var(--admin-muted); font-size: .72rem; font-weight: 800; white-space: nowrap; }
+.admin-best-sellers .revenue { color: var(--admin-red-dark); font-size: .78rem; font-weight: 900; white-space: nowrap; }
+.admin-best-sellers-empty { margin: 13px 0 0; color: var(--admin-muted); font-size: .74rem; font-weight: 700; }
 .admin-round-summary { margin-bottom: 14px; padding: 14px; border: 1px solid var(--admin-line); border-radius: 16px; background: #efe4d7; }
 .admin-round-summary h3 { margin: 0 0 10px; color: var(--admin-red-dark); font-size: .8rem; }
 .admin-round-summary > div { display: grid; gap: 6px; }

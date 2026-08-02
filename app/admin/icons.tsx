@@ -3,7 +3,7 @@ import type { ReactNode, SVGProps } from "react";
 export type AdminIconName =
   | "orders" | "calendar" | "products" | "store" | "external" | "logout"
   | "search" | "plus" | "edit" | "hide" | "up" | "down" | "check"
-  | "chevron" | "image" | "phone" | "clock" | "money" | "close" | "grid" | "list" | "sort" | "menu" | "download" | "grip";
+  | "chevron" | "image" | "phone" | "clock" | "money" | "close" | "grid" | "list" | "sort" | "menu" | "download" | "grip" | "printer";
 
 const paths: Record<AdminIconName, ReactNode> = {
   menu: <path d="M3 12h18M3 6h18M3 18h18"/>,
@@ -31,6 +31,7 @@ const paths: Record<AdminIconName, ReactNode> = {
   list: <><path d="M9 6h11M9 12h11M9 18h11"/><circle cx="5" cy="6" r="1"/><circle cx="5" cy="12" r="1"/><circle cx="5" cy="18" r="1"/></>,
   download: <><path d="M12 3v12m0 0 4-4m-4 4-4-4"/><path d="M5 19h14"/></>,
   grip: <><circle cx="9" cy="6" r="1.4" fill="currentColor" stroke="none"/><circle cx="15" cy="6" r="1.4" fill="currentColor" stroke="none"/><circle cx="9" cy="12" r="1.4" fill="currentColor" stroke="none"/><circle cx="15" cy="12" r="1.4" fill="currentColor" stroke="none"/><circle cx="9" cy="18" r="1.4" fill="currentColor" stroke="none"/><circle cx="15" cy="18" r="1.4" fill="currentColor" stroke="none"/></>,
+  printer: <><path d="M6 9V4h12v5"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></>,
 };
 
 export function AdminIcon({ name, ...props }: { name: AdminIconName } & SVGProps<SVGSVGElement>) {

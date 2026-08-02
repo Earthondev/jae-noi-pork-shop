@@ -19,6 +19,7 @@ import {
 } from "../../lib/admin-cms";
 import { CustomerFacingError, PUBLIC_ERROR_MESSAGES, safeClientApiMessage } from "../../lib/public-errors";
 import { categoryNamesFromProducts, orderCategoryNames } from "../../lib/category-order";
+import { productSales, salesBreakdown } from "../../lib/order-sales-summary";
 import type { CarrierCode } from "../../lib/carriers";
 import { ConfirmDialog } from "./confirm-dialog";
 import { AdminIcon, type AdminIconName } from "./icons";
@@ -248,11 +249,133 @@ export function AdminDashboard({ initialOrders, initialCms, userName, serverNow,
 
 type StatusDraft = { orderStatus: OrderStatus; paymentStatus: PaymentStatus };
 
+function drawStickerCanvas(order: AdminOrder): HTMLCanvasElement {
+  const scale = 4;
+  const width = Math.round(77 * 3.7795 * scale);
+  const height = Math.round(30 * 3.7795 * scale);
+  const marginLeft = Math.round(10 * 3.7795 * scale);
+  const marginRight = Math.round(10 * 3.7795 * scale);
+  const contentWidth = width - marginLeft - marginRight;
+
+  const canvas = document.createElement("canvas");
+  canvas.width = width;
+  canvas.height = height;
+  const ctx = canvas.getContext("2d");
+  if (!ctx) return canvas;
+
+  ctx.fillStyle = "#ffffff";
+  ctx.fillRect(0, 0, width, height);
+
+  ctx.fillStyle = "#000000";
+  ctx.font = `bold ${Math.round(6.5 * 3.7795 * scale / 2.8)}px system-ui, -apple-system, sans-serif`;
+  ctx.textBaseline = "top";
+  ctx.fillText("ร้านเจ๊น้อย เขียงหมู", marginLeft, Math.round(1.5 * 3.7795 * scale));
+
+  ctx.font = `bold ${Math.round(6.5 * 3.7795 * scale / 2.8)}px monospace`;
+  const orderIdWidth = ctx.measureText(order.id).width;
+  ctx.fillText(order.id, width - marginRight - orderIdWidth, Math.round(1.5 * 3.7795 * scale));
+
+  ctx.strokeStyle = "#000000";
+  ctx.lineWidth = Math.round(0.8 * scale);
+  ctx.beginPath();
+  ctx.moveTo(marginLeft, Math.round(7 * 3.7795 * scale));
+  ctx.lineTo(width - marginRight, Math.round(7 * 3.7795 * scale));
+  ctx.stroke();
+
+  ctx.font = `bold ${Math.round(8.5 * 3.7795 * scale / 2.8)}px system-ui, -apple-system, sans-serif`;
+  const recipientText = `ผู้รับ: ${order.customer_name} (${order.phone})`;
+  ctx.fillText(recipientText, marginLeft, Math.round(8.5 * 3.7795 * scale), contentWidth);
+
+  ctx.font = `${Math.round(7 * 3.7795 * scale / 2.8)}px system-ui, -apple-system, sans-serif`;
+  const addressText = `ที่อยู่: ${order.address || "รับเองหน้าร้าน"}`;
+  
+  const words = addressText.split(" ");
+  let line = "";
+  let yPos = Math.round(14 * 3.7795 * scale);
+  const lineHeight = Math.round(3.5 * 3.7795 * scale);
+  let lineCount = 0;
+
+  for (let i = 0; i < words.length; i++) {
+    const testLine = line + (line ? " " : "") + words[i];
+    const metrics = ctx.measureText(testLine);
+    if (metrics.width > contentWidth && i > 0) {
+      ctx.fillText(line, marginLeft, yPos);
+      line = words[i];
+      yPos += lineHeight;
+      lineCount++;
+      if (lineCount >= 2) break;
+    } else {
+      line = testLine;
+    }
+  }
+  if (lineCount < 2 && line) {
+    ctx.fillText(line, marginLeft, yPos);
+  }
+
+  ctx.setLineDash([Math.round(2 * scale), Math.round(2 * scale)]);
+  ctx.beginPath();
+  ctx.moveTo(marginLeft, Math.round(22.5 * 3.7795 * scale));
+  ctx.lineTo(width - marginRight, Math.round(22.5 * 3.7795 * scale));
+  ctx.stroke();
+  ctx.setLineDash([]);
+
+  ctx.font = `${Math.round(6.5 * 3.7795 * scale / 2.8)}px system-ui, -apple-system, sans-serif`;
+  const itemsText = `สินค้า: ${order.items ? order.items.replace(/\n+/g, ", ") : "—"}`;
+  ctx.fillText(itemsText, marginLeft, Math.round(24 * 3.7795 * scale), contentWidth);
+
+  return canvas;
+}
+
+function handleDownloadStickerImage(order: AdminOrder) {
+  const canvas = drawStickerCanvas(order);
+  const dataUrl = canvas.toDataURL("image/png");
+  const link = document.createElement("a");
+  link.download = `shipping-label-${order.id}.png`;
+  link.href = dataUrl;
+  link.click();
+}
+
+function handleDownloadBatchImages(orders: AdminOrder[]) {
+  orders.forEach((order, index) => {
+    setTimeout(() => {
+      handleDownloadStickerImage(order);
+    }, index * 250);
+  });
+}
+
+function ShippingStickerPrintArea({ orders }: { orders: AdminOrder[] }) {
+  if (orders.length === 0) return null;
+  return (
+    <div className="shipping-label-print-area">
+      {orders.map((order) => (
+        <div className="shipping-sticker-page" key={order.id}>
+          <div className="sticker-header">
+            <span className="sticker-shop-title">ร้านเจ๊น้อย เขียงหมู</span>
+            <span className="sticker-order-id">{order.id}</span>
+          </div>
+          <div className="sticker-recipient">
+            <span className="sticker-label">ผู้รับ:</span> {order.customer_name} ({order.phone})
+          </div>
+          <div className="sticker-address">
+            <span className="sticker-label">ที่อยู่:</span> {order.address || "รับเองหน้าร้าน"}
+          </div>
+          <div className="sticker-items">
+            <span className="sticker-label">สินค้า:</span> {order.items ? order.items.replace(/\n+/g, ", ") : "—"}
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 function OrdersPanel({ orders, setOrders, saving, setSaving, setNotice }: { orders: AdminOrder[]; setOrders: React.Dispatch<React.SetStateAction<AdminOrder[]>>; saving: string | null; setSaving: (value: string | null) => void; setNotice: (value: string) => void }) {
   const [query, setQuery] = useState("");
   const [range, setRange] = useState<OrderRange>("today");
   const [filter, setFilter] = useState<OrderFilter>("all");
+  const [selectedRound, setSelectedRound] = useState<string>("all");
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
+  const [selectedOrderIds, setSelectedOrderIds] = useState<Set<string>>(new Set());
+  const [printTargetOrders, setPrintTargetOrders] = useState<AdminOrder[]>([]);
   const [trackingDrafts, setTrackingDrafts] = useState<Record<string, string>>(() => Object.fromEntries(orders.map((order) => [order.id, order.tracking_number ?? ""])));
   const [carrierDrafts, setCarrierDrafts] = useState<Record<string, CarrierCode>>(() => Object.fromEntries(orders.map((order) => [order.id, order.carrier_code ?? "flash"])));
   // Status dropdowns used to write straight to the server on every change.
@@ -261,6 +384,33 @@ function OrdersPanel({ orders, setOrders, saving, setSaving, setNotice }: { orde
   // requires an explicit save.
   const [statusDrafts, setStatusDrafts] = useState<Record<string, StatusDraft>>({});
   const [confirm, setConfirm] = useState<ConfirmState>(null);
+
+  function handlePrintStickers(targetOrders: AdminOrder[]) {
+    if (targetOrders.length === 0) return;
+    setPrintTargetOrders(targetOrders);
+    document.body.classList.add("print-shipping-label");
+    setTimeout(() => {
+      window.print();
+      document.body.classList.remove("print-shipping-label");
+    }, 150);
+  }
+
+  function toggleSelectOrder(orderId: string) {
+    setSelectedOrderIds((current) => {
+      const next = new Set(current);
+      if (next.has(orderId)) next.delete(orderId);
+      else next.add(orderId);
+      return next;
+    });
+  }
+
+  function toggleSelectAll() {
+    if (selectedOrderIds.size === filtered.length) {
+      setSelectedOrderIds(new Set());
+    } else {
+      setSelectedOrderIds(new Set(filtered.map((order) => order.id)));
+    }
+  }
 
   function draftFor(order: AdminOrder): StatusDraft {
     return statusDrafts[order.id] ?? { orderStatus: order.order_status, paymentStatus: order.payment_status };
@@ -272,6 +422,8 @@ function OrdersPanel({ orders, setOrders, saving, setSaving, setNotice }: { orde
     setStatusDrafts((current) => { if (!(orderId in current)) return current; const next = { ...current }; delete next[orderId]; return next; });
   }
 
+  const availableRounds = useMemo(() => Array.from(new Set(orders.map((o) => o.round_id || "ไม่ระบุรอบ"))), [orders]);
+
   const filtered = useMemo(() => orders.filter((order) => {
     const normalized = query.trim().toLowerCase();
     const matchesQuery = !normalized || `${order.id} ${order.customer_name} ${order.phone}`.toLowerCase().includes(normalized);
@@ -281,8 +433,9 @@ function OrdersPanel({ orders, setOrders, saving, setSaving, setNotice }: { orde
       || (filter === "pending_slip" && order.payment_status === "waiting_for_slip_review")
       || (filter === "paid" && order.payment_status === "paid")
       || (filter === "shipped" && ["shipped", "completed"].includes(order.order_status));
-    return matchesQuery && matchesRange && matchesFilter;
-  }), [filter, orders, query, range]);
+    const matchesRound = selectedRound === "all" || (order.round_id || "ไม่ระบุรอบ") === selectedRound;
+    return matchesQuery && matchesRange && matchesFilter && matchesRound;
+  }), [filter, orders, query, range, selectedRound]);
 
   const summary = useMemo(() => ({
     total: filtered.length,
@@ -290,13 +443,27 @@ function OrdersPanel({ orders, setOrders, saving, setSaving, setNotice }: { orde
     pending: filtered.filter((order) => order.payment_status === "waiting_for_slip_review").length,
     preparing: filtered.filter((order) => order.order_status === "preparing").length,
   }), [filtered]);
-  const byRound = useMemo(() => Array.from(filtered.reduce((map, order) => {
+  // Both follow the active range/search/status filter, so the breakdown and the
+  // best sellers always describe exactly the orders listed below them.
+  const breakdown = useMemo(() => salesBreakdown(filtered), [filtered]);
+  const bestSellers = useMemo(() => productSales(filtered), [filtered]);
+  const byRound = useMemo(() => Array.from(orders.filter((order) => {
+    const normalized = query.trim().toLowerCase();
+    const matchesQuery = !normalized || `${order.id} ${order.customer_name} ${order.phone}`.toLowerCase().includes(normalized);
+    const matchesRange = inOrderRange(order.created_at, range);
+    const matchesFilter = filter === "all"
+      || (filter === "attention" && ["waiting_for_slip_review", "invalid_slip"].includes(order.payment_status))
+      || (filter === "pending_slip" && order.payment_status === "waiting_for_slip_review")
+      || (filter === "paid" && order.payment_status === "paid")
+      || (filter === "shipped" && ["shipped", "completed"].includes(order.order_status));
+    return matchesQuery && matchesRange && matchesFilter;
+  }).reduce((map, order) => {
     const key = order.round_id || "ไม่ระบุรอบ";
     const current = map.get(key) ?? { count: 0, sales: 0 };
     current.count += 1;
     if (order.payment_status === "paid" && order.order_status !== "cancelled") current.sales += order.total ?? 0;
     map.set(key, current); return map;
-  }, new Map<string, { count: number; sales: number }>()).entries()), [filtered]);
+  }, new Map<string, { count: number; sales: number }>()).entries()), [filter, orders, query, range]);
 
   async function updateOrder(id: string, patch: { orderStatus?: OrderStatus; paymentStatus?: PaymentStatus; trackingNumber?: string; carrierCode?: CarrierCode | null }, success: string) {
     setSaving(`order:${id}`); setNotice("");
@@ -368,7 +535,118 @@ function OrdersPanel({ orders, setOrders, saving, setSaving, setNotice }: { orde
       <Kpi icon="clock" label="รอตรวจสลิป" value={String(summary.pending)} accent={summary.pending > 0} />
       <Kpi icon="products" label="กำลังเตรียม" value={String(summary.preparing)} />
     </div>
-    {byRound.length > 0 && <div className="admin-round-summary"><h3>ยอดตามรอบจัดส่ง</h3><div>{byRound.map(([roundId, data]) => <span key={roundId}><b>{roundId}</b><small>{data.count} ออเดอร์ · ชำระแล้ว {formatMoney(data.sales)}</small></span>)}</div></div>}
+
+    <section className="admin-sales-breakdown" aria-label="แยกยอดตามตัวกรองที่เลือก">
+      <h3>แยกยอด · {breakdown.paidOrders} ออเดอร์ที่ชำระแล้ว</h3>
+      <div className="admin-sales-figures">
+        <div><span>ยอดสินค้า</span><strong>{formatMoney(breakdown.goods)}</strong></div>
+        <div className="shipping"><span>ยอดค่าส่ง</span><strong>{formatMoney(breakdown.shipping)}</strong></div>
+        <div className="grand"><span>ยอดรวม</span><strong>{formatMoney(breakdown.total)}</strong></div>
+      </div>
+      {bestSellers.length > 0 ? (
+        <div className="admin-best-sellers">
+          <h4>สินค้าขายดีในตัวกรองนี้</h4>
+          <ol>
+            {bestSellers.map((product, index) => (
+              <li key={product.name}>
+                <span className="rank" aria-hidden="true">{index + 1}</span>
+                <span className="name">{product.name}</span>
+                <span className="qty">{product.quantity.toLocaleString("th-TH")} ชิ้น</span>
+                <span className="revenue">{formatMoney(product.revenue)}</span>
+              </li>
+            ))}
+          </ol>
+        </div>
+      ) : (
+        <p className="admin-best-sellers-empty">ยังไม่มีออเดอร์ที่ชำระแล้วในตัวกรองนี้</p>
+      )}
+    </section>
+
+    {byRound.length > 0 && (
+      <div className="admin-round-summary">
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "8px" }}>
+          <h3>ยอดและพิมพ์สติ๊กเกอร์ตามรอบจัดส่ง</h3>
+          {selectedRound !== "all" && (
+            <button type="button" className="admin-status-discard-btn" style={{ fontSize: "0.8125rem", padding: "4px 10px" }} onClick={() => setSelectedRound("all")}>
+              ✕ แสดงทุกรอบจัดส่ง
+            </button>
+          )}
+        </div>
+        <div style={{ display: "flex", flexWrap: "wrap", gap: "8px" }}>
+          {byRound.map(([roundId, data]) => {
+            const roundOrders = orders.filter((o) => (o.round_id || "ไม่ระบุรอบ") === roundId);
+            const isSelected = selectedRound === roundId;
+            return (
+              <div
+                key={roundId}
+                className={`admin-round-card-tag${isSelected ? " active" : ""}`}
+              >
+                <div
+                  style={{ cursor: "pointer", display: "flex", alignItems: "center", gap: "6px" }}
+                  onClick={() => setSelectedRound(isSelected ? "all" : roundId)}
+                >
+                  <b style={{ color: isSelected ? "#b51519" : "inherit" }}>{roundId}</b>
+                  <small style={{ color: "#64748b" }}>({data.count} ออเดอร์ · {formatMoney(data.sales)})</small>
+                </div>
+                <div style={{ display: "flex", gap: "6px" }}>
+                  <button
+                    type="button"
+                    className="admin-print-sticker-btn"
+                    style={{ fontSize: "0.75rem", padding: "3px 8px" }}
+                    onClick={() => handlePrintStickers(roundOrders)}
+                    title={`พิมพ์/บันทึก PDF สติ๊กเกอร์ทั้งหมดในรอบ ${roundId}`}
+                  >
+                    <AdminIcon name="printer" /> พิมพ์/PDF
+                  </button>
+                  <button
+                    type="button"
+                    className="admin-print-sticker-btn"
+                    style={{ fontSize: "0.75rem", padding: "3px 8px" }}
+                    onClick={() => handleDownloadBatchImages(roundOrders)}
+                    title={`ดาวน์โหลดรูป PNG สติ๊กเกอร์ทั้งหมดในรอบ ${roundId}`}
+                  >
+                    <AdminIcon name="download" /> รูป PNG
+                  </button>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    )}
+    
+    {filtered.length > 0 && (
+      <div className="admin-batch-bar">
+        <label style={{ display: "inline-flex", alignItems: "center", gap: "8px", cursor: "pointer", fontWeight: 600 }}>
+          <input
+            type="checkbox"
+            className="admin-order-checkbox"
+            checked={selectedOrderIds.size > 0 && selectedOrderIds.size === filtered.length}
+            onChange={toggleSelectAll}
+          />
+          <span>เลือกทั้งหมด ({filtered.length} รายการ)</span>
+        </label>
+        {selectedOrderIds.size > 0 && (
+          <div className="admin-batch-actions">
+            <button
+              type="button"
+              className="admin-print-sticker-btn"
+              onClick={() => handlePrintStickers(filtered.filter((order) => selectedOrderIds.has(order.id)))}
+            >
+              <AdminIcon name="printer" /> พิมพ์ / บันทึก PDF ({selectedOrderIds.size})
+            </button>
+            <button
+              type="button"
+              className="admin-print-sticker-btn"
+              onClick={() => handleDownloadBatchImages(filtered.filter((order) => selectedOrderIds.has(order.id)))}
+            >
+              <AdminIcon name="download" /> บันทึกเป็นรูปภาพ PNG ({selectedOrderIds.size})
+            </button>
+          </div>
+        )}
+      </div>
+    )}
+
     <div className="order-cards">
       {filtered.length === 0 && <div className="admin-empty"><AdminIcon name="orders" /><h3>ยังไม่พบออเดอร์</h3><p>ลองเปลี่ยนช่วงเวลา ตัวกรอง หรือคำค้นหา</p></div>}
       {filtered.map((order) => {
@@ -376,15 +654,45 @@ function OrdersPanel({ orders, setOrders, saving, setSaving, setNotice }: { orde
         const isSaving = saving === `order:${order.id}`;
         const draft = draftFor(order);
         const statusDirty = draft.orderStatus !== order.order_status || draft.paymentStatus !== order.payment_status;
+        const isSelected = selectedOrderIds.has(order.id);
         return <article className={`admin-order admin-order-compact${isExpanded ? " expanded" : ""}${isSaving ? " is-saving" : ""}`} aria-busy={isSaving} key={order.id}>
-          <button className="admin-order-summary" type="button" aria-expanded={isExpanded} onClick={() => setExpanded((current) => toggleSet(current, order.id))}>
-            <span><small>{safeThaiDateTime(order.created_at)} · {order.round_id || "ไม่ระบุรอบ"}</small><strong>{order.id}</strong><em>{order.customer_name} · {formatMoney(order.total)}</em></span>
-            <span className="status-stack"><i className={`status-pill payment-${order.payment_status}`}>{paymentStatusLabels[order.payment_status]}</i><i className={`status-pill status-${order.order_status}`}>{statusLabels[order.order_status]}</i><AdminIcon name="chevron" /></span>
-          </button>
+          <div style={{ display: "flex", alignItems: "center", gap: "8px", width: "100%" }}>
+            <input
+              type="checkbox"
+              className="admin-order-checkbox"
+              style={{ marginLeft: "12px" }}
+              checked={isSelected}
+              onChange={() => toggleSelectOrder(order.id)}
+              aria-label={`เลือกออเดอร์ ${order.id}`}
+            />
+            <button className="admin-order-summary" style={{ flex: 1 }} type="button" aria-expanded={isExpanded} onClick={() => setExpanded((current) => toggleSet(current, order.id))}>
+              <span><small>{safeThaiDateTime(order.created_at)} · {order.round_id || "ไม่ระบุรอบ"}</small><strong>{order.id}</strong><em>{order.customer_name} · {formatMoney(order.total)}</em></span>
+              <span className="status-stack"><i className={`status-pill payment-${order.payment_status}`}>{paymentStatusLabels[order.payment_status]}</i><i className={`status-pill status-${order.order_status}`}>{statusLabels[order.order_status]}</i><AdminIcon name="chevron" /></span>
+            </button>
+          </div>
           {isExpanded && <div className="admin-order-details">
             <div className="admin-order-grid"><div><span>ลูกค้า</span><p>{order.customer_name}</p><a href={`tel:${phoneHref(order.phone)}`}><AdminIcon name="phone" />{order.phone}</a></div><div><span>รายการ</span><p>{order.items || "—"}</p><strong>{formatMoney(order.total)}</strong></div><div className="full"><span>{order.fulfilment === "pickup" ? "รับเองหน้าร้าน" : "ที่อยู่จัดส่ง"}</span><p>{order.address}</p>{order.note && <small>หมายเหตุ: {order.note}</small>}{order.admin_note && <small className="verification-note">ผลตรวจสลิป: {order.admin_note}</small>}</div></div>
             <div className="admin-controls">
-              <div className="admin-slip-control">{order.slip_key ? <div className="admin-slip-actions"><a className="slip-link" href={`/api/admin/slips/${encodeURIComponent(order.id)}`} target="_blank" rel="noreferrer"><AdminIcon name="image" />เปิดดูสลิป</a><a className="slip-link slip-download-link" href={`/api/admin/slips/${encodeURIComponent(order.id)}?download=1`}><AdminIcon name="download" />ดาวน์โหลดสลิป</a></div> : <span className="no-slip">ยังไม่มีสลิป</span>}<small>ตรวจเงินเข้าในแอปธนาคารก่อนกดยืนยัน</small></div>
+              <div className="admin-slip-control">
+                {order.slip_key ? <div className="admin-slip-actions"><a className="slip-link" href={`/api/admin/slips/${encodeURIComponent(order.id)}`} target="_blank" rel="noreferrer"><AdminIcon name="image" />เปิดดูสลิป</a><a className="slip-link slip-download-link" href={`/api/admin/slips/${encodeURIComponent(order.id)}?download=1`}><AdminIcon name="download" />ดาวน์โหลดสลิป</a></div> : <span className="no-slip">ยังไม่มีสลิป</span>}
+                <div style={{ display: "flex", gap: "6px", flexWrap: "wrap", marginTop: "8px" }}>
+                  <button
+                    type="button"
+                    className="admin-print-sticker-btn"
+                    onClick={() => handlePrintStickers([order])}
+                  >
+                    <AdminIcon name="printer" /> พิมพ์ / บันทึก PDF
+                  </button>
+                  <button
+                    type="button"
+                    className="admin-print-sticker-btn"
+                    onClick={() => handleDownloadStickerImage(order)}
+                  >
+                    <AdminIcon name="download" /> บันทึกรูป PNG
+                  </button>
+                </div>
+                <small>ตรวจเงินเข้าในแอปธนาคารก่อนกดยืนยัน</small>
+              </div>
               <label><span>สถานะชำระเงิน</span><select disabled={isSaving} value={draft.paymentStatus} onChange={(event) => setDraftField(order, { paymentStatus: event.target.value as PaymentStatus })}>{Object.entries(paymentStatusLabels).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label>
               <label><span>สถานะออเดอร์</span><select disabled={isSaving} value={draft.orderStatus} onChange={(event) => setDraftField(order, { orderStatus: event.target.value as OrderStatus })}>{Object.entries(statusLabels).map(([value, label]) => <option key={value} value={value} disabled={(order.payment_status !== "paid" && !["received", "cancelled"].includes(value)) || (order.fulfilment === "pickup" && value === "shipped") || (order.fulfilment === "postal" && value === "ready_for_pickup")}>{label}</option>)}</select>{order.payment_status !== "paid" && <small className="status-select-hint">ต้องยืนยัน &quot;ชำระแล้ว&quot; ก่อน จึงจะเลือกสถานะเตรียม/จัดส่งได้</small>}</label>
               {statusDirty && <div className="admin-status-save-bar"><span>มีการแก้ไขสถานะที่ยังไม่ได้บันทึก</span><button type="button" className="admin-status-discard-btn" disabled={isSaving} onClick={() => clearDraft(order.id)}>ยกเลิก</button><button type="button" className="admin-status-save-btn" disabled={isSaving} onClick={() => saveOrderStatus(order)}>{isSaving ? "กำลังบันทึก…" : "บันทึกสถานะ"}</button></div>}
@@ -395,6 +703,7 @@ function OrdersPanel({ orders, setOrders, saving, setSaving, setNotice }: { orde
       })}
     </div>
     <ConfirmDialog open={Boolean(confirm)} title={confirm?.title ?? ""} description={confirm?.description ?? ""} confirmLabel={confirm?.confirmLabel ?? "ยืนยัน"} tone={confirm?.tone} busy={saving !== null} onCancel={() => setConfirm(null)} onConfirm={() => { const action = confirm?.action; setConfirm(null); if (action) void action(); }} />
+    <ShippingStickerPrintArea orders={printTargetOrders} />
   </section>;
 }
 
