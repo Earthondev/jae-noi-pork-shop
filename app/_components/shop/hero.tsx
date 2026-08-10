@@ -1,5 +1,5 @@
 import Image from "next/image";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import type { PreorderRound, StorefrontContent } from "../../_hooks/use-storefront";
 
 export type HeroProps = Readonly<{
@@ -14,6 +14,37 @@ export function Hero({ storeLoading, orderingOpen, rounds, nextRound, content }:
   // Hover already pauses the marquee; touch devices have no hover, so a tap
   // toggles the pause instead.
   const [marqueePaused, setMarqueePaused] = useState(false);
+
+  const [interestCount, setInterestCount] = useState<number | null>(null);
+  const [interestTapped, setInterestTapped] = useState(false);
+  const [interestPending, setInterestPending] = useState(false);
+  const showInterestPrompt = !storeLoading && !orderingOpen;
+
+  // Only fetched while there's nothing to buy — this is the number shown in
+  // place of the dead-end "ยังไม่เปิดรับออเดอร์" button.
+  useEffect(() => {
+    if (!showInterestPrompt) return;
+    const controller = new AbortController();
+    void fetch("/api/round-interest", { signal: controller.signal })
+      .then((response) => (response.ok ? (response.json() as Promise<{ count: number }>) : null))
+      .then((data) => { if (data) setInterestCount(data.count); })
+      .catch(() => undefined);
+    return () => controller.abort();
+  }, [showInterestPrompt]);
+
+  const tapInterest = () => {
+    if (interestPending || interestTapped) return;
+    setInterestPending(true);
+    void fetch("/api/round-interest", { method: "POST" })
+      .then((response) => (response.ok ? (response.json() as Promise<{ count: number }>) : null))
+      .then((data) => {
+        setInterestTapped(true);
+        if (data) setInterestCount(data.count);
+      })
+      .catch(() => undefined)
+      .finally(() => setInterestPending(false));
+  };
+
   return (
     <>
       <section className="hero" id="top">
@@ -33,7 +64,7 @@ export function Hero({ storeLoading, orderingOpen, rounds, nextRound, content }:
                 ? "กำลังตรวจสอบรอบ ปุ่มสั่งซื้อยังไม่พร้อม"
                 : orderingOpen
                   ? `${rounds[0].label} เปิดรับออเดอร์แล้ว ปุ่มเลือกสินค้าพร้อมใช้งาน`
-                  : "ยังไม่มีรอบที่เปิดรับ ปุ่มสั่งซื้อถูกปิดไว้"}
+                  : "ยังไม่มีรอบที่เปิดรับ กดปุ่มสนใจรอบหน้าเพื่อแจ้งความสนใจได้"}
             </span>
             <span className="round-status-icon" aria-hidden="true">
               {storeLoading ? (
@@ -78,10 +109,22 @@ export function Hero({ storeLoading, orderingOpen, rounds, nextRound, content }:
             <div className="hero-actions">
               {orderingOpen ? (
                 <a className="primary-action" href="#products">เลือกสินค้า</a>
+              ) : storeLoading ? (
+                <button className="primary-action" type="button" disabled>กำลังตรวจสอบรอบ</button>
               ) : (
-                <button className="primary-action" type="button" disabled>
-                  {storeLoading ? "กำลังตรวจสอบรอบ" : "ยังไม่เปิดรับออเดอร์"}
-                </button>
+                <div className="hero-interest">
+                  <button
+                    className="primary-action"
+                    type="button"
+                    onClick={tapInterest}
+                    disabled={interestPending || interestTapped}
+                  >
+                    {interestTapped ? "รับทราบแล้ว ขอบคุณค่ะ" : "🔔 กดสนใจรอบหน้า"}
+                  </button>
+                  {interestCount !== null && interestCount > 0 && (
+                    <span className="hero-interest-count">มีคนกดสนใจรอบหน้าแล้ว {interestCount} คน</span>
+                  )}
+                </div>
               )}
             </div>
           </div>

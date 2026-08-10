@@ -57,6 +57,15 @@ test("public order route rate limits and bounds the body before multipart parsin
   assert.ok(route.indexOf("if (!(await checkRateLimit") < route.indexOf("parseBoundedFormData(request"));
 });
 
+test("round-interest taps are rate limited before being recorded, and the table holds no PII", async () => {
+  const [route, migration] = await Promise.all([
+    projectFile("app/api/round-interest/route.ts"),
+    projectFile("migrations/0008_round_interest.sql"),
+  ]);
+  assert.ok(route.indexOf("await checkRateLimit(") < route.indexOf("await recordRoundInterestTap("));
+  assert.match(migration, /CREATE TABLE IF NOT EXISTS round_interest \(\s*id INTEGER PRIMARY KEY AUTOINCREMENT,\s*created_at TEXT NOT NULL\s*\);/);
+});
+
 test("uploaded images are decoded and re-encoded before storage", async () => {
   const [orders, productImages, normalizer] = await Promise.all([
     projectFile("app/api/orders/route.ts"),

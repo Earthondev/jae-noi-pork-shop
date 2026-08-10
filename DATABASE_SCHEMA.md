@@ -213,6 +213,24 @@ carrier and tracking number. The preview an admin approves is advisory; this run
 inside the final batch, so an order whose state changed between preview and
 commit kills the whole import instead of leaving a misleading audit row.
 
+### `round_interest`
+
+Anonymous "สนใจรอบหน้า" taps shown on the storefront while no round is open —
+a social-proof counter, not a lead list. Deliberately holds no phone, name, or
+IP; abuse control (one tap per visitor per day) lives entirely in the
+R2-backed rate limiter (`lib/rate-limit.ts`), keyed by a hashed IP that is
+never written to D1.
+
+| Column | Type | Null | Default | Notes |
+|---|---|---|---|---|
+| `id` | INTEGER | NOT NULL | PK, autoincrement |
+| `created_at` | TEXT | NOT NULL | — | ISO timestamp of the tap. |
+
+Index: `round_interest_created_at_idx` (`created_at`). The displayed count is
+`COUNT(*) WHERE created_at > MAX(delivery_rounds.closes_at)` — taps since the
+last round closed — so it self-resets once a new round is scheduled, with no
+cleanup job needed.
+
 ### `cms_imports` — intentionally excluded from `db/schema.ts`
 
 | Column | Type | Null | Default |

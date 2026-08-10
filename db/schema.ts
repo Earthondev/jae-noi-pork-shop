@@ -112,6 +112,14 @@ export const trackingImports = sqliteTable("tracking_imports", {
   index("tracking_imports_created_at_idx").on(table.createdAt),
 ]);
 
+// Anonymous "interested in the next round" taps — see migrations/0008.
+export const roundInterest = sqliteTable("round_interest", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  createdAt: text("created_at").notNull(),
+}, (table) => [
+  index("round_interest_created_at_idx").on(table.createdAt),
+]);
+
 export const trackingImportRows = sqliteTable("tracking_import_rows", {
   importId: text("import_id").notNull().references(() => trackingImports.id, { onDelete: "cascade" }),
   sourceRow: integer("source_row").notNull(),

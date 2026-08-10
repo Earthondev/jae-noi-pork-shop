@@ -328,6 +328,8 @@ img { display: block; }
 .hero-ordering-copy strong { color: var(--red-800); font-size: .96rem; font-weight: 900; }
 .hero-ordering-copy span { color: var(--muted); font-size: .8rem; line-height: 1.45; }
 .hero-actions { grid-column: 1 / -1; display: flex; align-items: center; }
+.hero-interest { width: 100%; display: grid; gap: 8px; justify-items: center; }
+.hero-interest-count { color: var(--muted); font-size: 0.8rem; font-weight: 700; }
 .primary-action {
   width: 100%;
   min-height: 52px;
