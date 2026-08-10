@@ -24,8 +24,17 @@ test("structured data is valid JSON and states the shop's real contact details",
   assert.equal(data.address.addressRegion, SHOP.province);
   // Assistants read makesOffer to answer "ร้านนี้ขายอะไร".
   const offered = data.makesOffer.map((entry) => entry.itemOffered.name);
-  assert.deepEqual(offered, ["แหนมหมู", "ไส้กรอกอีสาน", "แคปหมู", "กากหมูโบราณ"]);
+  assert.deepEqual(offered, ["แหนมหมู", "ไส้กรอกอีสาน", "กากหมูโบราณ"]);
   assert.ok(data.makesOffer.every((entry) => entry.priceCurrency === "THB"));
+  // Google's Product rich result requires offers/review/aggregateRating on the
+  // Product node itself — regression test for the "8 invalid" Search Console error.
+  for (const entry of data.makesOffer) {
+    assert.ok(entry.itemOffered.offers, `${entry.itemOffered.name} ต้องมี offers`);
+    assert.equal(typeof entry.itemOffered.offers.price, "number");
+    assert.equal(entry.itemOffered.offers.priceCurrency, "THB");
+  }
+  const porkRind = data.makesOffer.find((entry) => entry.itemOffered.name === "กากหมูโบราณ");
+  assert.equal(porkRind.itemOffered.alternateName, "แคปหมู", "แคปหมู ต้องผูกกับสินค้าเดียวกัน ไม่ใช่รายการแยก");
 });
 
 test("the JSON-LD cannot break out of its script tag", () => {

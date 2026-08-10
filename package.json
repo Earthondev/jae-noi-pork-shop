@@ -19,7 +19,8 @@
     "test:e2e": "playwright test",
     "lint": "eslint . --ignore-pattern dist --ignore-pattern .next --ignore-pattern .wrangler --ignore-pattern .vinext --ignore-pattern .agents",
     "db:generate": "drizzle-kit generate",
-    "db:export-sheet-orders": "node --env-file=.dev.vars scripts/export-sheet-orders-to-d1-sql.mjs"
+    "db:export-sheet-orders": "node --env-file=.dev.vars scripts/export-sheet-orders-to-d1-sql.mjs",
+    "admin:cli": "node scripts/backend-cli.mjs"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",

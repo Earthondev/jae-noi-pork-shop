@@ -76,20 +76,37 @@ export function shopJsonLd(): string {
       { "@type": "ContactPoint", telephone: SHOP.phonePrimary, contactType: "sales", availableLanguage: "Thai" },
       { "@type": "ContactPoint", telephone: SHOP.phoneSecondary, contactType: "customer service", availableLanguage: "Thai" },
     ],
+    // Prices are snapshots of the admin catalogue, not a live read of it (this
+    // file has no D1 access — see the module comment). Google flags a mismatch
+    // between structured data and the page price as a Merchant error, so keep
+    // these in sync by hand whenever a price changes in Admin > สินค้า.
     makesOffer: [
-      offer("แหนมหมู", "แหนมหมูสูตรดั้งเดิม ทำสดใหม่ แพ็กสูญญากาศ"),
-      offer("ไส้กรอกอีสาน", "ไส้กรอกอีสานรสเปรี้ยวกำลังดี ย่างทานร้อน ๆ"),
-      offer("แคปหมู", "แคปหมูติดมัน กรอบ ไม่เหม็นหืน"),
-      offer("กากหมูโบราณ", "กากหมูเจียวสูตรโบราณ หอมกรอบ"),
+      offer("แหนมหมู", "แหนมหมูสูตรดั้งเดิม ทำสดใหม่ แพ็กสูญญากาศ", 130),
+      offer("ไส้กรอกอีสาน", "ไส้กรอกอีสานรสเปรี้ยวกำลังดี ย่างทานร้อน ๆ", 100),
+      // "แคปหมู" is the name customers search for; "กากหมูโบราณ" is the same
+      // product's name in the admin catalogue. One Product, not two, or Google
+      // sees two listings for a store that only sells one of them.
+      offer("กากหมูโบราณ", "กากหมูเจียวสูตรโบราณ หอมกรอบ", 185, "แคปหมู"),
     ],
   });
 }
 
-function offer(name: string, description: string) {
+function offer(name: string, description: string, price: number, alternateName?: string) {
   return {
     "@type": "Offer",
-    itemOffered: { "@type": "Product", name, description, category: "อาหารแปรรูปจากหมู" },
+    // Google's Product rich-result validator requires offers/review/aggregateRating
+    // on the Product node itself, not only on the Offer wrapping it — a Product
+    // with no offers of its own is reported invalid even though an Offer refers to it.
+    itemOffered: {
+      "@type": "Product",
+      name,
+      description,
+      category: "อาหารแปรรูปจากหมู",
+      ...(alternateName ? { alternateName } : {}),
+      offers: { "@type": "Offer", priceCurrency: "THB", price, availability: "https://schema.org/PreOrder" },
+    },
     availability: "https://schema.org/PreOrder",
     priceCurrency: "THB",
+    price,
   };
 }
