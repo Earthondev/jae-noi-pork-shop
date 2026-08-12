@@ -941,6 +941,43 @@ footer .footer-phone-links a:active { background: rgba(255, 255, 255, 0.1); }
 }
 @keyframes backdrop-fade { from { opacity: 0; } to { opacity: 1; } }
 
+.tribute-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+  background: rgba(20, 12, 11, 0.72);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  display: grid;
+  place-items: center;
+  padding: 20px;
+  animation: backdrop-fade 0.3s ease-out;
+}
+.tribute-panel {
+  position: relative;
+  width: min(420px, 100%);
+  border-radius: 18px;
+  overflow: hidden;
+  box-shadow: var(--shadow-lg, 0 24px 60px rgba(0, 0, 0, 0.4));
+}
+.tribute-panel img { display: block; width: 100%; height: auto; }
+.tribute-close {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  z-index: 1;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  border: none;
+  background: rgba(0, 0, 0, 0.45);
+  color: #fff;
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+}
+.tribute-close svg { width: 18px; height: 18px; stroke: currentColor; stroke-width: 2; fill: none; }
+
 .cart-drawer {
   width: 100%;
   max-height: 92dvh;

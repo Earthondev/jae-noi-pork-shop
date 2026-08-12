@@ -9,6 +9,7 @@ import { CartDrawer, type OrderRecap } from "./_components/shop/cart-drawer";
 import { Hero } from "./_components/shop/hero";
 import { ProductGrid } from "./_components/shop/product-grid";
 import { SiteHeader } from "./_components/shop/site-header";
+import { TributeNotice } from "./_components/shop/tribute-notice";
 import { useCheckoutDraft } from "./_hooks/use-checkout-draft";
 import { useStorefront } from "./_hooks/use-storefront";
 import {
@@ -393,6 +394,7 @@ export function Shop() {
 
   return (
     <main id="top">
+      <TributeNotice />
       <SiteHeader
         cartCount={cartCount}
         onOpenCart={() => setCartOpen(true)}
