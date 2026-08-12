@@ -15,14 +15,16 @@ below before changing anything about deployment.
 - **Deploy to Cloudflare:** `npm run deploy:cloudflare` (deploys to the production-connected worker `jae-noi-pork-shop-test`)
 - **Run tests:** `npm run test` (compiles and runs node unit tests in `tests/`)
 - **Run E2E tests:** `npm run test:e2e` (Playwright, `tests-e2e/`) — covers the checkout + payment-QR flow in a real browser (mobile/WebKit + desktop/Chromium). Auto-starts `npm run dev` if not already running. This flow has broken twice in ways unit tests couldn't catch (a fixed-position bar losing its CSS containing block, a canvas-drawn payment amount rendering invisible white-on-white), so treat it as the regression gate for anything touching checkout, the cart drawer, or admin storefront settings.
-- **Lint code:** `npm run lint` — the React Compiler rules here are not cosmetic. "Existing memoization could not be preserved" means the compiler gave up on a whole component, usually because a hoisted `function` reads a `const` declared further down; the fix is to move the declaration above its consumers, not to silence the rule.
+- **Lint code:** `npm run lint` — the React Compiler rules here are not cosmetic. "Existing memoization could not be preserved" means the compiler gave up on a whole component, usually because a hoisted `function` reads a `const` declared further down; the fix is to move the declaration above its consumers, not to silence the rule. A second common failure, "Avoid calling setState() directly within an effect," is fixed the way `use-checkout-draft.ts` does it: wrap the `setState` call in `window.setTimeout(fn, 0)` inside the effect, not by silencing the rule.
 - **Database migration generation:** `npm run db:generate`
 - **Export sheet orders to D1:** `npm run db:export-sheet-orders`
 
 ## Custom domain — read before deploying
 
 `CLOUDFLARE_CUSTOM_DOMAIN=jaenoishop.com` must be set on **every** deploy (it
-lives in the gitignored `.env`; load it with `set -a && . .env && set +a`).
+lives in the gitignored `.env`; load it with `set -a && . ./.env && set +a` —
+zsh's `.` builtin fails silently on a bare `.env` with "no such file or
+directory" even when the file exists; it needs the `./` prefix).
 
 `vite.config.ts` sets `workers_dev: !customDomain`, so deploying without it does
 not merely skip the custom domain — it drops the route, re-enables `workers.dev`,
@@ -87,7 +89,9 @@ runs `git add -A`. Consequences worth planning around:
   committing that as-is would have reverted a deployed fix. Recover by committing
   on the old base and rebasing onto `origin/main`.
 - **Build releases from a clean `git worktree`** at the pushed commit, so a deploy
-  can never ship someone else's in-progress code.
+  can never ship someone else's in-progress code. Copy the gitignored `.env`
+  (and `.dev.vars` if needed) into the worktree first — a fresh checkout won't
+  have them.
 - **A lint or type error in `app/admin/dashboard.tsx` or `app/globals.css` is
   usually not yours.** Confirm by applying only your edits onto a clean checkout
   before claiming or fixing it.
@@ -116,7 +120,10 @@ the admin panel down completely — `/admin` returned a client-side crash
 (`no such column: carrier_code`) on every load until `0006` was applied.
 
 `wrangler d1 migrations apply` needs a config file the repo does not keep, so
-write a throwaway one pointing `migrations_dir` at `migrations/` with
+write a throwaway one pointing `migrations_dir` at `migrations/` (use an
+**absolute path** for `migrations_dir` if the config file itself isn't sitting
+next to the `migrations/` folder — it resolves relative to the config file,
+not your cwd) with
 `database_id 7bfa8fbb-f603-441c-bbb0-b4474cdfd2fa` (staging:
 `0b46c51f-c8b4-40b5-9ff5-efa681d7c1ee`). **Check `migrations list` before
 applying** — the command applies every pending file, and another agent's
