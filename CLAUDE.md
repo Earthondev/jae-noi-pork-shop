@@ -15,7 +15,7 @@ below before changing anything about deployment.
 - **Deploy to Cloudflare:** `npm run deploy:cloudflare` (deploys to the production-connected worker `jae-noi-pork-shop-test`)
 - **Run tests:** `npm run test` (compiles and runs node unit tests in `tests/`)
 - **Run E2E tests:** `npm run test:e2e` (Playwright, `tests-e2e/`) — covers the checkout + payment-QR flow in a real browser (mobile/WebKit + desktop/Chromium). Auto-starts `npm run dev` if not already running. This flow has broken twice in ways unit tests couldn't catch (a fixed-position bar losing its CSS containing block, a canvas-drawn payment amount rendering invisible white-on-white), so treat it as the regression gate for anything touching checkout, the cart drawer, or admin storefront settings.
-- **Lint code:** `npm run lint` — the React Compiler rules here are not cosmetic. "Existing memoization could not be preserved" means the compiler gave up on a whole component, usually because a hoisted `function` reads a `const` declared further down; the fix is to move the declaration above its consumers, not to silence the rule. A second common failure, "Avoid calling setState() directly within an effect," is fixed the way `use-checkout-draft.ts` does it: wrap the `setState` call in `window.setTimeout(fn, 0)` inside the effect, not by silencing the rule.
+- **Lint code:** `npm run lint` — the React Compiler rules here are not cosmetic. "Existing memoization could not be preserved" means the compiler gave up on a whole component, usually because a hoisted `function` reads a `const` declared further down; the fix is to move the declaration above its consumers, not to silence the rule. A second common failure, "Avoid calling setState() directly within an effect," is fixed the way `use-checkout-draft.ts` does it: wrap the `setState` call in `window.setTimeout(fn, 0)` inside the effect, not by silencing the rule. Routinely takes several minutes to finish (sometimes appears stalled with near-zero CPU for a long stretch) — that's normal, not a hang; if it truly never progresses, check for unrelated heavy processes competing for resources before assuming lint itself is broken.
 - **Database migration generation:** `npm run db:generate`
 - **Export sheet orders to D1:** `npm run db:export-sheet-orders`
 
@@ -46,19 +46,7 @@ together with its `www` form).
 ### Authentication & Testing Admin Panel in Dev
 
 - Local dev defaults to read-only for Google Sheets (`ALLOW_DEV_WRITES=false` in `.dev.vars`), but allows D1 writes.
-- `ADMIN_PASSWORD_HASH` in `.dev.vars` is a PBKDF2 hash. To test the admin UI locally, run:
-
-  ```bash
-  npm run admin:hash-password
-  ```
-
-  or set a temporary password hash:
-
-  ```bash
-  cp .dev.vars /tmp/dev.vars.backup
-  ADMIN_PASSWORD='SomeTempPassword123!' node --import tsx scripts/hash-admin-password.mjs > /tmp/temp_hash.txt
-  # Set the hash into .dev.vars
-  ```
+- Admin auth is Cloudflare Access in production — there is no password/login form (removed 2026-08-03). Local dev auto-bypasses it: `APP_ENV="development"` in `.dev.vars` makes every request authenticate as a synthetic local-dev admin, no login step needed. See `lib/admin-auth.ts` for the bypass logic.
 
 ### Local Database Access
 
@@ -76,6 +64,8 @@ together with its `www` form).
 - Use ESM (`import`/`export`) throughout.
 - Keep components clean, reusable, and responsive.
 - Always check `npm run lint` and `npm run test` before recommending deployment.
+- When visually verifying with Playwright, a `fullPage` screenshot can render `position: fixed`/`sticky` elements (header, bottom nav) a second time mid-page — that's a capture artifact of resizing the viewport to the full document height, not a real bug. Cross-check against a plain (non-fullPage, single-viewport) screenshot before reporting it as one.
+- Any `<DndContext>` (`@dnd-kit`, used in the admin products/categories drag-to-reorder) needs an explicit `id` prop once a page has more than one instance, or React logs a hydration mismatch on `aria-describedby` every load (server and client generate different values for its internal counter).
 
 ### This repo is edited by more than one agent at a time
 
@@ -83,7 +73,10 @@ A second agent works in the same working tree rather than on a branch, and it
 runs `git add -A`. Consequences worth planning around:
 
 - **Stage explicit paths, never `-A`** — otherwise you commit its half-finished
-  work, and it commits yours.
+  work, and it commits yours. If the *same* file has both your changes and
+  theirs interleaved, `git diff` to find your hunks' line ranges and stage
+  just those (e.g. a hand-built patch applied with `git apply --cached`)
+  rather than the whole file.
 - **Check `git log HEAD..origin/main` before committing.** The local tree has
   drifted a whole commit behind `origin/main` while still holding newer edits;
   committing that as-is would have reverted a deployed fix. Recover by committing
