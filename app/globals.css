@@ -2183,65 +2183,486 @@ footer .footer-phone-links a:active { background: rgba(255, 255, 255, 0.1); }
 .admin-sticker-actions .admin-print-sticker-btn { flex: 1 1 160px; justify-content: center; min-height: 46px; font-size: .82rem; }
 .admin-sticker-actions button:disabled { opacity: .55; cursor: wait; }
 .admin-sticker-none { margin: 13px 0 0; color: var(--admin-muted); font-size: .74rem; font-weight: 700; }
-.admin-round-card-tag {
-  display: inline-flex;
+/* Sales Figures Mini Cards (3 columns) */
+.admin-sales-figures-cards {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+  margin-bottom: 14px;
+}
+.admin-stat-card {
+  background: #ffffff;
+  border: 1px solid #f1ece4;
+  border-radius: 16px;
+  padding: 10px 12px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.02);
+}
+.admin-stat-icon-badge {
+  width: 38px;
+  height: 38px;
+  min-width: 38px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.admin-stat-icon-badge.pink {
+  background: #fef2f2;
+  color: #b51519;
+}
+.admin-stat-icon-badge.amber {
+  background: #fefce8;
+  color: #ca8a04;
+}
+.admin-stat-icon-badge svg {
+  width: 18px;
+  height: 18px;
+}
+.admin-stat-info {
+  display: flex;
+  flex-direction: column;
+}
+.admin-stat-label {
+  font-size: 0.72rem;
+  color: #78716c;
+  font-weight: 500;
+  white-space: nowrap;
+}
+.admin-stat-value {
+  font-size: 1.05rem;
+  font-weight: 800;
+  color: #1c1917;
+  white-space: nowrap;
+}
+.admin-stat-value.amber {
+  color: #b45309;
+}
+.admin-stat-value.red {
+  color: #b51519;
+}
+
+/* Best Sellers Card */
+.admin-best-sellers-card {
+  background: #ffffff;
+  border: 1px solid #f1ece4;
+  border-radius: 16px;
+  padding: 14px 16px;
+  margin-bottom: 14px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.02);
+}
+.admin-card-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+.admin-card-header h4, .admin-card-header h3 {
+  margin: 0;
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: #6b1d1d;
+}
+.admin-card-header .admin-header-icon {
+  width: 20px;
+  height: 20px;
+  color: #8f1013;
+}
+.admin-best-sellers-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
   flex-direction: column;
   gap: 8px;
-  padding: 10px 14px;
-  border-radius: 10px;
-  border: 1px solid #e2e8f0;
-  background: #ffffff;
-  transition: all 0.2s ease;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.03);
 }
-.admin-round-card-tag.active {
-  border-color: #b51519;
-  background: #fff5f5;
-  box-shadow: 0 2px 8px rgba(181, 21, 25, 0.12);
+.admin-best-seller-item {
+  background: #fbf8f5;
+  border-radius: 12px;
+  padding: 10px 14px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.admin-best-seller-left {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.admin-rank-badge {
+  width: 22px;
+  height: 22px;
+  min-width: 22px;
+  border-radius: 50%;
+  background: #7a1215;
+  color: #ffffff;
+  font-size: 0.75rem;
+  font-weight: 800;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.admin-product-name {
+  font-size: 0.88rem;
+  font-weight: 700;
+  color: #1c1917;
+}
+.admin-best-seller-right {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.admin-product-qty {
+  font-size: 0.82rem;
+  color: #78716c;
+  font-weight: 500;
+}
+.admin-product-revenue {
+  font-size: 0.9rem;
+  font-weight: 800;
+  color: #8f1013;
 }
 
-.admin-batch-bar {
+/* Round Summary Card */
+.admin-round-summary-card {
+  background: #ffffff;
+  border: 1px solid #f1ece4;
+  border-radius: 16px;
+  padding: 14px 16px;
+  margin-bottom: 14px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.02);
+}
+.admin-round-cards-list {
   display: flex;
   flex-direction: column;
-  align-items: stretch;
-  gap: 12px;
+  gap: 8px;
+  margin-top: 10px;
+}
+.admin-round-item-card {
+  width: 100%;
+  border: 1.5px solid #bfdbfe;
+  background: #ffffff;
+  border-radius: 14px;
   padding: 12px 14px;
-  background: #f8fafc;
-  border: 1px solid #e2e8f0;
-  border-radius: 12px;
-  margin-bottom: 16px;
-  font-size: 0.875rem;
-}
-
-@media (min-width: 768px) {
-  .admin-batch-bar {
-    flex-direction: row;
-    align-items: center;
-    justify-content: space-between;
-  }
-}
-
-.admin-batch-actions {
   display: flex;
-  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  text-align: left;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+.admin-round-item-card.active {
+  border-color: #2563eb;
+  background: #f0f7ff;
+}
+.admin-round-item-left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.admin-round-calendar-badge {
+  width: 42px;
+  height: 42px;
+  min-width: 42px;
+  background: #eff6ff;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #2563eb;
+}
+.admin-round-calendar-badge svg {
+  width: 22px;
+  height: 22px;
+}
+.admin-round-item-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.admin-round-title {
+  font-size: 0.92rem;
+  font-weight: 800;
+  color: #1d4ed8;
+}
+.admin-round-meta {
+  font-size: 0.78rem;
+  color: #64748b;
+  font-weight: 500;
+}
+.admin-round-item-chevron {
+  width: 18px;
+  height: 18px;
+  color: #94a3b8;
+}
+
+/* Batch Bar Card */
+.admin-batch-bar-card {
+  background: #ffffff;
+  border: 1px solid #f1ece4;
+  border-radius: 16px;
+  padding: 14px 16px;
+  margin-bottom: 14px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.02);
+}
+.admin-batch-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  cursor: pointer;
+}
+.admin-batch-title-wrap {
+  display: flex;
   align-items: center;
   gap: 8px;
 }
-
-.admin-batch-actions .admin-print-sticker-btn {
-  flex: 1 1 130px;
-  justify-content: center;
-  padding: 9px 12px;
-  font-size: 0.8125rem;
-  text-align: center;
-  min-height: 42px;
+.admin-batch-title-wrap h3 {
+  margin: 0;
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: #6b1d1d;
 }
-
-.admin-order-checkbox {
+.admin-batch-title-wrap .admin-header-icon {
+  width: 20px;
+  height: 20px;
+  color: #8f1013;
+}
+.admin-batch-actions-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+  margin-top: 12px;
+}
+.admin-batch-btn {
+  border-radius: 12px;
+  padding: 12px 6px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  text-align: center;
+  font-weight: 700;
+  font-size: 0.75rem;
+  line-height: 1.25;
+  cursor: pointer;
+  transition: all 0.18s ease;
+}
+.admin-batch-btn.solid-red {
+  background: #8b181b;
+  color: #ffffff;
+  border: 1px solid #7a1215;
+}
+.admin-batch-btn.solid-red:hover {
+  background: #701214;
+}
+.admin-batch-btn.solid-red .admin-batch-btn-icon-wrap {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.15);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.admin-batch-btn.solid-red svg {
   width: 18px;
   height: 18px;
+  color: #ffffff;
+}
+.admin-batch-btn.outline-red {
+  background: #ffffff;
+  color: #8b181b;
+  border: 1.5px solid #fecaca;
+}
+.admin-batch-btn.outline-red:hover {
+  background: #fff5f5;
+  border-color: #b51519;
+}
+.admin-batch-btn.outline-red .admin-batch-icon {
+  width: 22px;
+  height: 22px;
+  color: #8b181b;
+}
+.admin-batch-btn-text {
+  display: block;
+}
+
+/* Notice Banner */
+.admin-save-notice-banner {
+  background: #fefce8;
+  border: 1px solid #fef08a;
+  border-radius: 12px;
+  padding: 12px 14px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: #854d0e;
+  font-size: 0.82rem;
+  font-weight: 700;
+  margin-bottom: 14px;
+}
+.admin-save-notice-banner .admin-notice-icon {
+  width: 18px;
+  height: 18px;
+  color: #ca8a04;
+  flex-shrink: 0;
+}
+
+/* Order Item Card & Custom Checkbox */
+.admin-order-card {
+  background: #ffffff;
+  border: 1px solid #f1ece4;
+  border-radius: 16px;
+  padding: 14px 16px;
+  margin-bottom: 12px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.02);
+}
+.admin-order-card-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+}
+.admin-order-custom-checkbox {
+  position: relative;
+  width: 22px;
+  height: 22px;
+  min-width: 22px;
   cursor: pointer;
-  accent-color: #b51519;
+  display: inline-flex;
+}
+.admin-order-custom-checkbox input {
+  position: absolute;
+  opacity: 0;
+  cursor: pointer;
+  width: 0;
+  height: 0;
+}
+.admin-checkbox-mark {
+  width: 22px;
+  height: 22px;
+  border-radius: 6px;
+  border: 1.5px solid #d6d3d1;
+  background: #ffffff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.15s ease;
+}
+.admin-order-custom-checkbox input:checked ~ .admin-checkbox-mark {
+  background: #8b181b;
+  border-color: #8b181b;
+  color: #ffffff;
+}
+.admin-checkbox-mark svg {
+  width: 14px;
+  height: 14px;
+  stroke-width: 2.5;
+}
+.admin-order-summary-btn {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  text-align: left;
+  gap: 10px;
+}
+.admin-order-info-col {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.admin-order-date-round {
+  font-size: 0.72rem;
+  color: #78716c;
+  font-weight: 500;
+}
+.admin-order-id-text {
+  font-size: 0.95rem;
+  font-weight: 800;
+  color: #7a1215;
+  font-family: monospace, system-ui;
+}
+.admin-order-customer-total {
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: #1c1917;
+}
+.admin-order-status-col {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 4px;
+}
+.admin-status-stack {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 4px;
+}
+.admin-status-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  font-size: 0.72rem;
+  font-weight: 800;
+  padding: 3px 9px;
+  border-radius: 20px;
+  white-space: nowrap;
+}
+.admin-status-badge.payment-paid {
+  background: #dcfce7;
+  color: #15803d;
+}
+.admin-status-badge.payment-paid .badge-check-icon {
+  width: 11px;
+  height: 11px;
+  stroke-width: 2.5;
+}
+.admin-status-badge.payment-waiting_for_slip_review {
+  background: #fef9c3;
+  color: #854d0e;
+}
+.admin-status-badge.payment-invalid_slip {
+  background: #fee2e2;
+  color: #991b1b;
+}
+.admin-status-badge.payment-unpaid {
+  background: #f1f5f9;
+  color: #475569;
+}
+.admin-status-badge.order-received {
+  background: #f5efe6;
+  color: #78350f;
+}
+.admin-status-badge.order-preparing {
+  background: #e0f2fe;
+  color: #0369a1;
+}
+.admin-status-badge.order-shipped {
+  background: #e0e7ff;
+  color: #3730a3;
+}
+.admin-status-badge.order-cancelled {
+  background: #f3f4f6;
+  color: #6b7280;
+}
+.admin-chevron-icon {
+  width: 16px;
+  height: 16px;
+  color: #a8a29e;
+  transition: transform 0.2s ease;
+  margin-top: 2px;
+}
+.admin-chevron-icon.rotate {
+  transform: rotate(90deg);
 }
 
 @media print {

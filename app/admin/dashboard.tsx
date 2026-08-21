@@ -832,22 +832,47 @@ function OrdersPanel({ orders, setOrders, saving, setSaving, setNotice, onPrintS
     </div>
 
     <section className="admin-sales-breakdown" aria-label="แยกยอดตามตัวกรองที่เลือก">
-      <h3>แยกยอด · {breakdown.paidOrders} ออเดอร์ที่ชำระแล้ว</h3>
-      <div className="admin-sales-figures">
-        <div><span>ยอดสินค้า</span><strong>{formatMoney(breakdown.goods)}</strong></div>
-        <div className="shipping"><span>ยอดค่าส่ง</span><strong>{formatMoney(breakdown.shipping)}</strong></div>
-        <div className="grand"><span>ยอดรวม</span><strong>{formatMoney(breakdown.total)}</strong></div>
+      <div className="admin-sales-figures-cards">
+        <div className="admin-stat-card">
+          <span className="admin-stat-icon-badge pink"><AdminIcon name="tag" /></span>
+          <div className="admin-stat-info">
+            <span className="admin-stat-label">ยอดสินค้า</span>
+            <strong className="admin-stat-value">{formatMoney(breakdown.goods)}</strong>
+          </div>
+        </div>
+        <div className="admin-stat-card">
+          <span className="admin-stat-icon-badge amber"><AdminIcon name="coins" /></span>
+          <div className="admin-stat-info">
+            <span className="admin-stat-label">ยอดค่าส่ง</span>
+            <strong className="admin-stat-value amber">{formatMoney(breakdown.shipping)}</strong>
+          </div>
+        </div>
+        <div className="admin-stat-card">
+          <span className="admin-stat-icon-badge pink"><AdminIcon name="package" /></span>
+          <div className="admin-stat-info">
+            <span className="admin-stat-label">ยอดรวม</span>
+            <strong className="admin-stat-value red">{formatMoney(breakdown.total)}</strong>
+          </div>
+        </div>
       </div>
+
       {bestSellers.length > 0 ? (
-        <div className="admin-best-sellers">
-          <h4>สินค้าขายดีในตัวกรองนี้</h4>
-          <ol>
+        <div className="admin-best-sellers-card">
+          <div className="admin-card-header">
+            <AdminIcon name="bag" className="admin-header-icon" />
+            <h4>สินค้าขายดีในตัวกรองนี้</h4>
+          </div>
+          <ol className="admin-best-sellers-list">
             {bestSellers.map((product, index) => (
-              <li key={product.name}>
-                <span className="rank" aria-hidden="true">{index + 1}</span>
-                <span className="name">{product.name}</span>
-                <span className="qty">{product.quantity.toLocaleString("th-TH")} ชิ้น</span>
-                <span className="revenue">{formatMoney(product.revenue)}</span>
+              <li key={product.name} className="admin-best-seller-item">
+                <div className="admin-best-seller-left">
+                  <span className="admin-rank-badge" aria-hidden="true">{index + 1}</span>
+                  <span className="admin-product-name">{product.name}</span>
+                </div>
+                <div className="admin-best-seller-right">
+                  <span className="admin-product-qty">{product.quantity.toLocaleString("th-TH")} ชิ้น</span>
+                  <span className="admin-product-revenue">{formatMoney(product.revenue)}</span>
+                </div>
               </li>
             ))}
           </ol>
@@ -858,27 +883,36 @@ function OrdersPanel({ orders, setOrders, saving, setSaving, setNotice, onPrintS
     </section>
 
     {byRound.length > 0 && (
-      <div className="admin-round-summary">
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "8px" }}>
+      <div className="admin-round-summary-card">
+        <div className="admin-card-header">
+          <AdminIcon name="truck" className="admin-header-icon" />
           <h3>ยอดตามรอบจัดส่ง · กดเพื่อกรอง</h3>
           {selectedRound !== "all" && (
-            <button type="button" className="admin-status-discard-btn" style={{ fontSize: "0.8125rem", padding: "4px 10px" }} onClick={() => setSelectedRound("all")}>
-              ✕ แสดงทุกรอบจัดส่ง
+            <button type="button" className="admin-status-discard-btn" style={{ fontSize: "0.8125rem", padding: "4px 10px", marginLeft: "auto" }} onClick={() => setSelectedRound("all")}>
+              ✕ แสดงทุกรอบ
             </button>
           )}
         </div>
-        <div style={{ display: "flex", flexWrap: "wrap", gap: "8px" }}>
+        <div className="admin-round-cards-list">
           {byRound.map(([roundId, data]) => {
             const isSelected = selectedRound === roundId;
             return (
               <button
                 type="button"
                 key={roundId}
-                className={`admin-round-card-tag${isSelected ? " active" : ""}`}
+                className={`admin-round-item-card${isSelected ? " active" : ""}`}
                 onClick={() => setSelectedRound(isSelected ? "all" : roundId)}
               >
-                <b style={{ color: isSelected ? "#b51519" : "inherit" }}>{roundLabelFromRoundId(roundId)}</b>
-                <small style={{ color: "#64748b" }}>({data.count} ออเดอร์ · {formatMoney(data.sales)})</small>
+                <div className="admin-round-item-left">
+                  <span className="admin-round-calendar-badge">
+                    <AdminIcon name="calendar" />
+                  </span>
+                  <div className="admin-round-item-text">
+                    <strong className="admin-round-title">{roundLabelFromRoundId(roundId)}</strong>
+                    <span className="admin-round-meta">({data.count} ออเดอร์ · {formatMoney(data.sales)})</span>
+                  </div>
+                </div>
+                <AdminIcon name="chevron" className="admin-round-item-chevron" />
               </button>
             );
           })}
@@ -887,46 +921,59 @@ function OrdersPanel({ orders, setOrders, saving, setSaving, setNotice, onPrintS
     )}
     
     {filtered.length > 0 && (
-      <div className="admin-batch-bar">
-        <label style={{ display: "inline-flex", alignItems: "center", gap: "8px", cursor: "pointer", fontWeight: 600 }}>
-          <input
-            type="checkbox"
-            className="admin-order-checkbox"
-            checked={selectedOrderIds.size > 0 && selectedOrderIds.size === filtered.length}
-            onChange={toggleSelectAll}
-          />
-          <span>เลือกทั้งหมด ({filtered.length} รายการ)</span>
-        </label>
+      <div className="admin-batch-bar-card">
+        <div className="admin-batch-card-header" onClick={toggleSelectAll}>
+          <div className="admin-batch-title-wrap">
+            <AdminIcon name="fileText" className="admin-header-icon" />
+            <h3>เลือกทั้งหมด ({filtered.length} รายการ)</h3>
+          </div>
+        </div>
         {selectedOrderIds.size > 0 && (
-          <div className="admin-batch-actions">
+          <div className="admin-batch-actions-grid">
             <button
               type="button"
-              className="admin-print-sticker-btn"
+              className="admin-batch-btn solid-red"
               onClick={() => handlePrintStickers(filtered.filter((order) => selectedOrderIds.has(order.id)))}
             >
-              <AdminIcon name="printer" /> พิมพ์สติ๊กเกอร์ ({selectedOrderIds.size})
+              <span className="admin-batch-btn-icon-wrap">
+                <AdminIcon name="printer" />
+              </span>
+              <span className="admin-batch-btn-text">
+                พิมพ์<br />สติ๊กเกอร์ ({selectedOrderIds.size})
+              </span>
             </button>
             <button
               type="button"
-              className="admin-print-sticker-btn"
+              className="admin-batch-btn outline-red"
               onClick={() => handleDownloadBatchPdf(filtered.filter((order) => selectedOrderIds.has(order.id)))}
             >
-              <AdminIcon name="download" /> ดาวน์โหลด PDF ({selectedOrderIds.size})
+              <AdminIcon name="filePdf" className="admin-batch-icon" />
+              <span className="admin-batch-btn-text">
+                ดาวน์โหลด<br />PDF ({selectedOrderIds.size})
+              </span>
             </button>
             <button
               type="button"
-              className="admin-print-sticker-btn"
+              className="admin-batch-btn outline-red"
               disabled={exporting}
               onClick={() => void exportOrdersAsImages(filtered.filter((order) => selectedOrderIds.has(order.id)))}
             >
-              <AdminIcon name="download" /> {exporting ? "กำลังบันทึก…" : `บันทึกเป็นรูปภาพ PNG (${selectedOrderIds.size})`}
+              <AdminIcon name="image" className="admin-batch-icon" />
+              <span className="admin-batch-btn-text">
+                บันทึกเป็น<br />รูปภาพ PNG ({selectedOrderIds.size})
+              </span>
             </button>
           </div>
         )}
       </div>
     )}
 
-    {orderExportNotice && <p className="admin-save-notice has-message" role="status" aria-live="polite">{orderExportNotice}</p>}
+    {orderExportNotice && (
+      <div className="admin-save-notice-banner" role="status" aria-live="polite">
+        <AdminIcon name="send" className="admin-notice-icon" />
+        <span>{orderExportNotice}</span>
+      </div>
+    )}
     <div className="order-cards">
       {filtered.length === 0 && <div className="admin-empty"><AdminIcon name="orders" /><h3>ยังไม่พบออเดอร์</h3><p>ลองเปลี่ยนช่วงเวลา ตัวกรอง หรือคำค้นหา</p></div>}
       {filtered.map((order) => {
@@ -935,21 +982,48 @@ function OrdersPanel({ orders, setOrders, saving, setSaving, setNotice, onPrintS
         const draft = draftFor(order);
         const statusDirty = draft.orderStatus !== order.order_status || draft.paymentStatus !== order.payment_status;
         const isSelected = selectedOrderIds.has(order.id);
-        return <article className={`admin-order admin-order-compact${isExpanded ? " expanded" : ""}${isSaving ? " is-saving" : ""}`} aria-busy={isSaving} key={order.id}>
-          <div style={{ display: "flex", alignItems: "center", gap: "8px", width: "100%" }}>
-            <input
-              type="checkbox"
-              className="admin-order-checkbox"
-              style={{ marginLeft: "12px" }}
-              checked={isSelected}
-              onChange={() => toggleSelectOrder(order.id)}
-              aria-label={`เลือกออเดอร์ ${order.id}`}
-            />
-            <button className="admin-order-summary" style={{ flex: 1 }} type="button" aria-expanded={isExpanded} onClick={() => { setExpanded((current) => toggleSet(current, order.id)); if (order.slip_key) void preloadSlipBlob(order.id); }}>
-              <span><small>{safeThaiDateTime(order.created_at)} · {order.round_id || "ไม่ระบุรอบ"}</small><strong>{order.id}</strong><em>{order.customer_name} · {formatMoney(order.total)}</em></span>
-              <span className="status-stack"><i className={`status-pill payment-${order.payment_status}`}>{paymentStatusLabels[order.payment_status]}</i><i className={`status-pill status-${order.order_status}`}>{statusLabels[order.order_status]}</i><AdminIcon name="chevron" /></span>
-            </button>
-          </div>
+        return (
+          <article className={`admin-order admin-order-card admin-order-compact${isExpanded ? " expanded" : ""}${isSaving ? " is-saving" : ""}`} aria-busy={isSaving} key={order.id}>
+            <div className="admin-order-card-row">
+              <label className="admin-order-custom-checkbox" onClick={(e) => e.stopPropagation()}>
+                <input
+                  type="checkbox"
+                  checked={isSelected}
+                  onChange={() => toggleSelectOrder(order.id)}
+                  aria-label={`เลือกออเดอร์ ${order.id}`}
+                />
+                <span className="admin-checkbox-mark">
+                  {isSelected && <AdminIcon name="check" />}
+                </span>
+              </label>
+              <button
+                className="admin-order-summary admin-order-summary-btn"
+                type="button"
+                aria-expanded={isExpanded}
+                onClick={() => {
+                  setExpanded((current) => toggleSet(current, order.id));
+                  if (order.slip_key) void preloadSlipBlob(order.id);
+                }}
+              >
+                <div className="admin-order-info-col">
+                  <small className="admin-order-date-round">{safeThaiDateTime(order.created_at)} · {order.round_id || "ไม่ระบุรอบ"}</small>
+                  <strong className="admin-order-id-text">{order.id}</strong>
+                  <span className="admin-order-customer-total">{order.customer_name} · {formatMoney(order.total)}</span>
+                </div>
+                <div className="admin-order-status-col">
+                  <div className="admin-status-stack">
+                    <span className={`admin-status-badge payment-${order.payment_status}`}>
+                      {order.payment_status === "paid" && <AdminIcon name="check" className="badge-check-icon" />}
+                      {paymentStatusLabels[order.payment_status]}
+                    </span>
+                    <span className={`admin-status-badge order-${order.order_status}`}>
+                      {statusLabels[order.order_status]}
+                    </span>
+                  </div>
+                  <AdminIcon name="chevron" className={`admin-chevron-icon${isExpanded ? " rotate" : ""}`} />
+                </div>
+              </button>
+            </div>
           {isExpanded && <div className="admin-order-details">
             <div className="admin-order-grid"><div><span>ลูกค้า</span><p>{order.customer_name}</p><a href={`tel:${phoneHref(order.phone)}`}><AdminIcon name="phone" />{order.phone}</a></div><div><span>รายการ</span><p>{order.items || "—"}</p><strong>{formatMoney(order.total)}</strong></div><div className="full"><span>{order.fulfilment === "pickup" ? "รับเองหน้าร้าน" : "ที่อยู่จัดส่ง"}</span><p>{order.address}</p>{order.note && <small>หมายเหตุ: {order.note}</small>}{order.admin_note && <small className="verification-note">ผลตรวจสลิป: {order.admin_note}</small>}</div></div>
             <div className="admin-controls">
@@ -984,11 +1058,11 @@ function OrdersPanel({ orders, setOrders, saving, setSaving, setNotice, onPrintS
               <label><span>สถานะชำระเงิน</span><select disabled={isSaving} value={draft.paymentStatus} onChange={(event) => setDraftField(order, { paymentStatus: event.target.value as PaymentStatus })}>{Object.entries(paymentStatusLabels).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label>
               <label><span>สถานะออเดอร์</span><select disabled={isSaving} value={draft.orderStatus} onChange={(event) => setDraftField(order, { orderStatus: event.target.value as OrderStatus })}>{Object.entries(statusLabels).map(([value, label]) => <option key={value} value={value} disabled={(order.payment_status !== "paid" && !["received", "cancelled"].includes(value)) || (order.fulfilment === "pickup" && value === "shipped") || (order.fulfilment === "postal" && value === "ready_for_pickup")}>{label}</option>)}</select>{order.payment_status !== "paid" && <small className="status-select-hint">ต้องยืนยัน &quot;ชำระแล้ว&quot; ก่อน จึงจะเลือกสถานะเตรียม/จัดส่งได้</small>}</label>
               {statusDirty && <div className="admin-status-save-bar"><span>มีการแก้ไขสถานะที่ยังไม่ได้บันทึก</span><button type="button" className="admin-status-discard-btn" disabled={isSaving} onClick={() => clearDraft(order.id)}>ยกเลิก</button><button type="button" className="admin-status-save-btn" disabled={isSaving} onClick={() => saveOrderStatus(order)}>{isSaving ? "กำลังบันทึก…" : "บันทึกสถานะ"}</button></div>}
-              {order.fulfilment === "postal" && <div className="admin-tracking-control"><label><span>บริษัทขนส่ง</span><select disabled={isSaving} value={carrierDrafts[order.id] ?? "flash"} onChange={(event) => setCarrierDrafts((current) => ({ ...current, [order.id]: event.target.value as CarrierCode }))}><option value="flash">Flash Express</option></select></label><label><span>เลขพัสดุ</span><span><input maxLength={100} value={trackingDrafts[order.id] ?? ""} onChange={(event) => setTrackingDrafts((current) => ({ ...current, [order.id]: event.target.value }))} placeholder="กรอกหลังส่งสินค้า" /><button type="button" disabled={saving === `order:${order.id}` || order.payment_status !== "paid"} onClick={() => void updateOrder(order.id, { trackingNumber: trackingDrafts[order.id] ?? "", carrierCode: carrierDrafts[order.id] ?? "flash", orderStatus: "shipped" }, `บันทึกเลขพัสดุและอัปเดตเป็นจัดส่งแล้ว ${order.id}`)}>บันทึกและจัดส่งแล้ว</button></span></label><small className="status-select-hint">บันทึกแล้วลูกค้าจะเห็นบริษัทขนส่ง ปุ่มคัดลอก และลิงก์ติดตาม</small></div>}
             </div>
           </div>}
-        </article>;
-      })}
+        </article>
+      );
+    })}
     </div>
     <ConfirmDialog open={Boolean(confirm)} title={confirm?.title ?? ""} description={confirm?.description ?? ""} confirmLabel={confirm?.confirmLabel ?? "ยืนยัน"} tone={confirm?.tone} busy={saving !== null} onCancel={() => setConfirm(null)} onConfirm={() => { const action = confirm?.action; setConfirm(null); if (action) void action(); }} />
   </section>;
