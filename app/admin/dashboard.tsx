@@ -1508,6 +1508,7 @@ function productCardBody(product: AdminProduct, handlers: ProductCardHandlers, d
     {dragHandle}
     <div className="product-card-image-wrap">
       {firstImage ? <Image src={adminImageSrc(firstImage)} alt={`รูปสินค้า ${product.name}`} fill sizes="96px" /> : <div className="product-card-no-image"><AdminIcon name="image" /></div>}
+      {product.badge && <span className="product-card-badge">{product.badge}</span>}
     </div>
     <div className="product-card-info">
       <div className="product-card-title-row">

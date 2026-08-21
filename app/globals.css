@@ -3486,14 +3486,14 @@ footer .footer-phone-links a:active { background: rgba(255, 255, 255, 0.1); }
   place-items: center;
   border: 0;
   border-radius: 12px;
-  background: rgba(255, 255, 255, 0.06);
-  color: #999999;
+  background: var(--admin-bg);
+  color: var(--admin-muted);
   cursor: grab;
   touch-action: none;
   user-select: none;
   -webkit-user-select: none;
 }
-.product-drag-handle:hover { background: rgba(255, 255, 255, 0.12); color: #ffffff; }
+.product-drag-handle:hover { background: color-mix(in srgb, var(--admin-red) 10%, var(--admin-bg)); color: var(--admin-red); }
 .product-drag-handle:active { cursor: grabbing; }
 .product-drag-handle:disabled { cursor: not-allowed; opacity: 0.4; }
 .admin-product-card.is-active-drag .product-drag-handle { color: var(--admin-red); }
@@ -3523,23 +3523,22 @@ footer .footer-phone-links a:active { background: rgba(255, 255, 255, 0.1); }
   font-weight: 600;
 }
 
-/* Premium Dark Product Cards (#1F1F1F) */
 .admin-product-card {
-  background: #1F1F1F !important;
-  border: none !important;
-  border-radius: 24px !important;
-  color: #FFFFFF !important;
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15) !important;
+  background: var(--admin-surface);
+  border: 1px solid var(--admin-line);
+  border-radius: 20px;
+  color: var(--ink);
+  box-shadow: 0 4px 14px rgba(75, 36, 27, 0.05);
   overflow: hidden;
   transition: all 0.25s ease;
 }
 .admin-product-card:hover {
   transform: translateY(-2px);
-  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.25) !important;
+  box-shadow: 0 8px 22px rgba(75, 36, 27, 0.1);
 }
 .admin-product-card.is-archived {
-  opacity: 0.6;
-  background: #161616 !important;
+  opacity: 0.65;
+  background: var(--admin-bg);
 }
 .product-card-body {
   padding: 16px;
@@ -3554,8 +3553,8 @@ footer .footer-phone-links a:active { background: rgba(255, 255, 255, 0.1); }
   position: relative;
   border-radius: 16px;
   overflow: hidden;
-  border: none !important;
-  background: #2A2A2A;
+  border: 1px solid var(--admin-line);
+  background: var(--admin-bg);
 }
 .product-card-image-wrap img {
   object-fit: cover;
@@ -3565,11 +3564,27 @@ footer .footer-phone-links a:active { background: rgba(255, 255, 255, 0.1); }
   height: 100%;
   display: grid;
   place-items: center;
-  color: #555;
+  color: var(--admin-muted);
 }
 .product-card-no-image svg {
   width: 28px;
   height: 28px;
+}
+.product-card-badge {
+  position: absolute;
+  top: 5px;
+  left: 5px;
+  right: 5px;
+  padding: 2px 6px;
+  border-radius: 999px;
+  background: var(--admin-red);
+  color: #fff;
+  font-size: 0.55rem;
+  font-weight: 800;
+  text-align: center;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 .product-card-info {
   flex-grow: 1;
@@ -3585,7 +3600,7 @@ footer .footer-phone-links a:active { background: rgba(255, 255, 255, 0.1); }
   width: 100%;
 }
 .product-card-category {
-  color: #A0A0A0 !important;
+  color: var(--admin-red);
   font-size: 0.7rem;
   font-weight: 800;
   text-transform: uppercase;
@@ -3599,20 +3614,20 @@ footer .footer-phone-links a:active { background: rgba(255, 255, 255, 0.1); }
   width: 100%;
 }
 .product-card-header-flex h3 {
-  color: #FFFFFF !important;
+  color: var(--ink);
   font-size: 1.15rem;
   font-weight: 700;
   margin: 0;
   line-height: 1.2;
 }
 .product-card-meta {
-  color: #CCCCCC !important;
+  color: var(--admin-muted);
   font-size: 0.85rem;
   font-weight: 600;
   margin: 4px 0 0;
 }
 .product-card-desc {
-  color: #888888 !important;
+  color: var(--admin-muted);
   font-size: 0.78rem;
   margin-top: 6px;
   line-height: 1.4;
@@ -3629,16 +3644,16 @@ footer .footer-phone-links a:active { background: rgba(255, 255, 255, 0.1); }
   white-space: nowrap;
 }
 .product-card-status.status-open {
-  background: #15803d !important;
-  color: #FFFFFF !important;
+  background: #15803d;
+  color: #FFFFFF;
 }
 .product-card-status.status-closed {
-  background: #b91c1c !important;
-  color: #FFFFFF !important;
+  background: var(--admin-red-dark);
+  color: #FFFFFF;
 }
 .product-card-status.status-waiting {
-  background: #4B5563 !important;
-  color: #FFFFFF !important;
+  background: #6B7280;
+  color: #FFFFFF;
 }
 
 /* Action buttons at the bottom of card */
@@ -3654,7 +3669,7 @@ footer .footer-phone-links a:active { background: rgba(255, 255, 255, 0.1); }
   border-radius: 16px;
   font-size: 0.88rem;
   font-weight: 700;
-  border: none !important;
+  border: 1px solid var(--admin-line);
   cursor: pointer;
   transition: background-color 0.2s ease;
   display: flex;
@@ -3672,25 +3687,27 @@ footer .footer-phone-links a:active { background: rgba(255, 255, 255, 0.1); }
   flex-shrink: 0 !important;
 }
 .product-card-actions-row .edit-btn {
-  background: #2F2F2F !important;
-  color: #FFFFFF !important;
+  background: var(--admin-surface);
+  color: var(--ink);
 }
 .product-card-actions-row .edit-btn:hover {
-  background: #3F3F3F !important;
+  background: var(--admin-bg);
 }
 .product-card-actions-row .delete-btn {
-  background: #B91C1C !important;
-  color: #FFFFFF !important;
+  background: var(--admin-red);
+  color: #FFFFFF;
+  border-color: var(--admin-red);
 }
 .product-card-actions-row .delete-btn:hover {
-  background: #DC2626 !important;
+  background: var(--admin-red-dark);
 }
 .product-card-actions-row .restore-btn {
-  background: #15803D !important;
-  color: #FFFFFF !important;
+  background: #15803D;
+  color: #FFFFFF;
+  border-color: #15803D;
 }
 .product-card-actions-row .restore-btn:hover {
-  background: #16A34A !important;
+  background: #16A34A;
 }
 
 /* Multi-image form slots styling */
