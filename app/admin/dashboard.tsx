@@ -450,12 +450,41 @@ async function handleDownloadBatchImages(orders: AdminOrder[]): Promise<StickerE
     return new File([image.blob], image.filename, { type: "image/png" });
   });
 
-  if (isAppleTouchDevice()) return shareStickerFiles(files);
+  if (canShareStickerFiles(files) || isAppleTouchDevice()) return shareStickerFiles(files);
 
   files.forEach((file, index) => {
     window.setTimeout(() => downloadStickerFile({ blob: file, filename: file.name }), index * 250);
   });
   return "downloaded";
+}
+
+async function handleShareSlip(orderId: string) {
+  try {
+    const res = await fetch(`/api/admin/slips/${encodeURIComponent(orderId)}`);
+    if (!res.ok) throw new Error("ไม่สามารถโหลดรูปสลิปได้");
+    const blob = await res.blob();
+    const isJpeg = blob.type.includes("jpeg") || blob.type.includes("jpg");
+    const ext = isJpeg ? "jpg" : "png";
+    const file = new File([blob], `slip-${orderId}.${ext}`, { type: blob.type || "image/jpeg" });
+    if (typeof navigator.share === "function" && navigator.canShare?.({ files: [file] })) {
+      try {
+        await navigator.share({ files: [file], title: `สลิปออเดอร์ ${orderId}` });
+        return;
+      } catch (err) {
+        if (err instanceof DOMException && err.name === "AbortError") return;
+      }
+    }
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `slip-${orderId}.${ext}`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 30_000);
+  } catch {
+    window.open(`/api/admin/slips/${encodeURIComponent(orderId)}`, "_blank");
+  }
 }
 
 function stickerExportNotice(result: StickerExportResult, count: number) {
@@ -915,7 +944,7 @@ function OrdersPanel({ orders, setOrders, saving, setSaving, setNotice, onPrintS
             <div className="admin-order-grid"><div><span>ลูกค้า</span><p>{order.customer_name}</p><a href={`tel:${phoneHref(order.phone)}`}><AdminIcon name="phone" />{order.phone}</a></div><div><span>รายการ</span><p>{order.items || "—"}</p><strong>{formatMoney(order.total)}</strong></div><div className="full"><span>{order.fulfilment === "pickup" ? "รับเองหน้าร้าน" : "ที่อยู่จัดส่ง"}</span><p>{order.address}</p>{order.note && <small>หมายเหตุ: {order.note}</small>}{order.admin_note && <small className="verification-note">ผลตรวจสลิป: {order.admin_note}</small>}</div></div>
             <div className="admin-controls">
               <div className="admin-slip-control">
-                {order.slip_key ? <div className="admin-slip-actions"><a className="slip-link" href={`/api/admin/slips/${encodeURIComponent(order.id)}`} target="_blank" rel="noreferrer"><AdminIcon name="image" />เปิดดูสลิป</a><a className="slip-link slip-download-link" href={`/api/admin/slips/${encodeURIComponent(order.id)}?download=1`}><AdminIcon name="download" />ดาวน์โหลดสลิป</a></div> : <span className="no-slip">ยังไม่มีสลิป</span>}
+                {order.slip_key ? <div className="admin-slip-actions"><a className="slip-link" href={`/api/admin/slips/${encodeURIComponent(order.id)}`} target="_blank" rel="noreferrer"><AdminIcon name="image" />เปิดดูสลิป</a><button type="button" className="slip-link slip-download-link" onClick={() => void handleShareSlip(order.id)}><AdminIcon name="download" />บันทึก/แชร์สลิป</button></div> : <span className="no-slip">ยังไม่มีสลิป</span>}
                 <div style={{ display: "flex", gap: "6px", flexWrap: "wrap", marginTop: "8px" }}>
                   <button
                     type="button"
