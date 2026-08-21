@@ -17,7 +17,6 @@ test("storefront settings accept only the bundled brand defaults or approved upl
     heroTitle: "อร่อยถึงเครื่อง",
     heroHighlight: "สั่งง่ายถึงบ้าน",
     heroDescription: "คำแนะนำร้าน",
-    announcementText: "ข้อความประกาศ",
     storyTitle: "เรื่องของร้าน",
     storyDescription: "รายละเอียดร้าน",
     phonePrimary: "087-2416773",

@@ -115,7 +115,7 @@ itself lives in `lib/round-products.ts` and is enforced again server-side in
 
 Generic key/value table — **not** one row per "setting type", one row *per setting*.
 Existing keys in use: `store_name`, `hero_title`, `hero_highlight`, `hero_description`,
-`announcement_text`, `story_title`, `story_description`, `phone_primary`,
+`story_title`, `story_description`, `phone_primary`,
 `phone_secondary`, `postal_shipping_fee`, `free_shipping_minimum`,
 `free_shipping_minimum_last`, `pickup_address`, `pickup_map_url`,
 `promptpay_id`, `promptpay_name`, `store_logo_url`, `store_cover_url`,
