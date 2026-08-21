@@ -11,4 +11,4 @@
  * Keep in step with `width={n}` in `app/**`; `tests/image-widths.test.mjs`
  * fails if they drift apart.
  */
-export const APP_IMAGE_WIDTHS = [80, 150, 760, 900, 1000] as const;
+export const APP_IMAGE_WIDTHS = [80, 150, 760, 900, 1000, 1100] as const;

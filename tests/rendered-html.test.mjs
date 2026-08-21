@@ -67,7 +67,7 @@ test("keeps the Thai mobile shop content and accessibility contract", async () =
   assert.match(css, /\.floating-cart/);
   assert.match(css, /\.closed-round-cart/);
   assert.match(css, /\.pickup-map-link/);
-  assert.match(css, /object-position: 50% 33%/);
+  assert.match(css, /object-position: right top/);
   assert.match(css, /align-items: start/);
   assert.match(css, /@media \(min-width: 960px\)/);
 });
