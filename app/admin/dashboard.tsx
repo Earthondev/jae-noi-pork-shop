@@ -174,86 +174,97 @@ export function AdminDashboard({ initialOrders, initialCms, userName, serverNow,
     } finally { setSaving(null); }
   }
 
-  return <main className={`admin-shell ${isNavHidden ? "form-active" : ""}`}>
-    {!isNavHidden && (
-      <>
-        <header className="admin-ops-header">
-          <button type="button" className="admin-hamburger-btn" onClick={() => setDrawerOpen(true)} aria-label="เปิดเมนู">
-            <AdminIcon name="menu" />
-          </button>
-          <div className="admin-header-title">
-            <h1>{tabs.find((tab) => tab.id === activeTab)?.label}</h1>
-          </div>
-          <div className="admin-header-meta">
-            <time dateTime={clock.iso}>{clock.label}</time>
-            <span className={`admin-store-state ${storeIsOpen ? "open" : "closed"}`}><i aria-hidden="true" />{storeIsOpen ? "หน้าร้านเปิดรับ" : "หน้าร้านปิดรับ"}</span>
-          </div>
-        </header>
+  const [printTargetOrders, setPrintTargetOrders] = useState<AdminOrder[]>([]);
 
-        {drawerOpen && (
-          <div className="admin-drawer-backdrop" onClick={() => setDrawerOpen(false)} />
-        )}
-        <aside className={`admin-drawer ${drawerOpen ? "open" : ""}`}>
-          <div className="admin-drawer-header">
-            <div className="admin-brand-lockup">
-              <span className="admin-brand-logo"><Image src={adminImageSrc(cms.settings.storeLogoUrl) || "/images/products/jae-noi-shop-logo.jpg"} alt={`โลโก้ ${cms.settings.storeName}`} fill sizes="48px" /></span>
-              <div>
-                <p>ระบบจัดการหลังบ้าน</p>
-                <strong>{cms.settings.storeName}</strong>
-              </div>
-            </div>
-            <button type="button" className="admin-drawer-close" onClick={() => setDrawerOpen(false)} aria-label="ปิดเมนู">
-              <AdminIcon name="close" />
-            </button>
-          </div>
+  function handlePrintStickers(targetOrders: AdminOrder[]) {
+    triggerShippingStickersPrint(targetOrders, setPrintTargetOrders);
+  }
 
-          <nav className="admin-drawer-nav" aria-label="เมนูหลังบ้าน">
-            {tabs.map((tab) => (
-              <button
-                key={tab.id}
-                type="button"
-                className={activeTab === tab.id ? "active" : ""}
-                aria-current={activeTab === tab.id ? "page" : undefined}
-                onClick={() => {
-                  changeTab(tab.id);
-                  setDrawerOpen(false);
-                }}
-              >
-                <span className="admin-nav-icon">
-                  <AdminIcon name={tab.icon} />
-                  {tab.id === "orders" && pendingCount > 0 && <b aria-label={`${pendingCount} รายการที่ต้องตรวจ`}>{pendingCount > 99 ? "99+" : pendingCount}</b>}
-                </span>
-                <strong>{tab.label}</strong>
+  return (
+    <>
+      <main className={`admin-shell ${isNavHidden ? "form-active" : ""}`}>
+        {!isNavHidden && (
+          <>
+            <header className="admin-ops-header">
+              <button type="button" className="admin-hamburger-btn" onClick={() => setDrawerOpen(true)} aria-label="เปิดเมนู">
+                <AdminIcon name="menu" />
               </button>
-            ))}
-          </nav>
+              <div className="admin-header-title">
+                <h1>{tabs.find((tab) => tab.id === activeTab)?.label}</h1>
+              </div>
+              <div className="admin-header-meta">
+                <time dateTime={clock.iso}>{clock.label}</time>
+                <span className={`admin-store-state ${storeIsOpen ? "open" : "closed"}`}><i aria-hidden="true" />{storeIsOpen ? "หน้าร้านเปิดรับ" : "หน้าร้านปิดรับ"}</span>
+              </div>
+            </header>
 
-          <div className="admin-drawer-footer">
-            <div className="admin-drawer-user">
-              <p className="eyebrow">บัญชีผู้ใช้</p>
-              <span title={userName}>{userName}</span>
-            </div>
-            <div className="admin-drawer-actions">
-              <Link href="/" target="_blank" className="admin-drawer-link"><AdminIcon name="external" /><span>ดูหน้าร้าน</span></Link>
-              {/* Signing out belongs to Cloudflare Access now that it owns the
-                  session. Clearing anything on our side would leave the Access
-                  cookie intact and log the admin straight back in. */}
-              <a href="/cdn-cgi/access/logout" className="admin-drawer-logout-btn"><AdminIcon name="logout" /><span>ออกจากระบบ</span></a>
-            </div>
-          </div>
-        </aside>
-      </>
-    )}
+            {drawerOpen && (
+              <div className="admin-drawer-backdrop" onClick={() => setDrawerOpen(false)} />
+            )}
+            <aside className={`admin-drawer ${drawerOpen ? "open" : ""}`}>
+              <div className="admin-drawer-header">
+                <div className="admin-brand-lockup">
+                  <span className="admin-brand-logo"><Image src={adminImageSrc(cms.settings.storeLogoUrl) || "/images/products/jae-noi-shop-logo.jpg"} alt={`โลโก้ ${cms.settings.storeName}`} fill sizes="48px" /></span>
+                  <div>
+                    <p>ระบบจัดการหลังบ้าน</p>
+                    <strong>{cms.settings.storeName}</strong>
+                  </div>
+                </div>
+                <button type="button" className="admin-drawer-close" onClick={() => setDrawerOpen(false)} aria-label="ปิดเมนู">
+                  <AdminIcon name="close" />
+                </button>
+              </div>
 
-    <p className={`admin-save-notice${notice ? " has-message" : ""}`} aria-live="polite" role="status">{notice}</p>
-    {activeTab === "orders" && <OrdersPanel orders={orders} setOrders={setOrders} saving={saving} setSaving={setSaving} setNotice={setNotice} />}
-    {activeTab === "stickers" && <StickerPanel orders={orders} />}
-    {activeTab === "rounds" && <RoundsPanel rounds={cms.rounds} products={cms.products} saving={saving} mutate={mutate} onFormActive={setFormActive} onFormDirty={setFormDirty} />}
-    {activeTab === "products" && <ProductsPanel products={cms.products} categoryOrder={cms.categoryOrder} saving={saving} mutate={mutate} setNotice={setNotice} onFormActive={setFormActive} onFormDirty={setFormDirty} />}
-    {activeTab === "storefront" && <StorefrontPanel key={cms.settings.fingerprint} settings={cms.settings} saving={saving} mutate={mutate} setNotice={setNotice} onFormActive={setFormActive} onFormDirty={setFormDirty} />}
+              <nav className="admin-drawer-nav" aria-label="เมนูหลังบ้าน">
+                {tabs.map((tab) => (
+                  <button
+                    key={tab.id}
+                    type="button"
+                    className={activeTab === tab.id ? "active" : ""}
+                    aria-current={activeTab === tab.id ? "page" : undefined}
+                    onClick={() => {
+                      changeTab(tab.id);
+                      setDrawerOpen(false);
+                    }}
+                  >
+                    <span className="admin-nav-icon">
+                      <AdminIcon name={tab.icon} />
+                      {tab.id === "orders" && pendingCount > 0 && <b aria-label={`${pendingCount} รายการที่ต้องตรวจ`}>{pendingCount > 99 ? "99+" : pendingCount}</b>}
+                    </span>
+                    <strong>{tab.label}</strong>
+                  </button>
+                ))}
+              </nav>
 
-    <ConfirmDialog open={Boolean(confirm)} title={confirm?.title ?? ""} description={confirm?.description ?? ""} confirmLabel={confirm?.confirmLabel ?? "ยืนยัน"} tone={confirm?.tone} busy={saving !== null} onCancel={() => setConfirm(null)} onConfirm={() => { const action = confirm?.action; setConfirm(null); if (action) void action(); }} />
-  </main>;
+              <div className="admin-drawer-footer">
+                <div className="admin-drawer-user">
+                  <p className="eyebrow">บัญชีผู้ใช้</p>
+                  <span title={userName}>{userName}</span>
+                </div>
+                <div className="admin-drawer-actions">
+                  <Link href="/" target="_blank" className="admin-drawer-link"><AdminIcon name="external" /><span>ดูหน้าร้าน</span></Link>
+                  {/* Signing out belongs to Cloudflare Access now that it owns the
+                      session. Clearing anything on our side would leave the Access
+                      cookie intact and log the admin straight back in. */}
+                  <a href="/cdn-cgi/access/logout" className="admin-drawer-logout-btn"><AdminIcon name="logout" /><span>ออกจากระบบ</span></a>
+                </div>
+              </div>
+            </aside>
+          </>
+        )}
+
+        <p className={`admin-save-notice${notice ? " has-message" : ""}`} aria-live="polite" role="status">{notice}</p>
+        {activeTab === "orders" && <OrdersPanel orders={orders} setOrders={setOrders} saving={saving} setSaving={setSaving} setNotice={setNotice} onPrintStickers={handlePrintStickers} />}
+        {activeTab === "stickers" && <StickerPanel orders={orders} onPrintStickers={handlePrintStickers} />}
+        {activeTab === "rounds" && <RoundsPanel rounds={cms.rounds} products={cms.products} saving={saving} mutate={mutate} onFormActive={setFormActive} onFormDirty={setFormDirty} />}
+        {activeTab === "products" && <ProductsPanel products={cms.products} categoryOrder={cms.categoryOrder} saving={saving} mutate={mutate} setNotice={setNotice} onFormActive={setFormActive} onFormDirty={setFormDirty} />}
+        {activeTab === "storefront" && <StorefrontPanel key={cms.settings.fingerprint} settings={cms.settings} saving={saving} mutate={mutate} setNotice={setNotice} onFormActive={setFormActive} onFormDirty={setFormDirty} />}
+
+        <ConfirmDialog open={Boolean(confirm)} title={confirm?.title ?? ""} description={confirm?.description ?? ""} confirmLabel={confirm?.confirmLabel ?? "ยืนยัน"} tone={confirm?.tone} busy={saving !== null} onCancel={() => setConfirm(null)} onConfirm={() => { const action = confirm?.action; setConfirm(null); if (action) void action(); }} />
+      </main>
+      <ShippingStickerPrintArea orders={printTargetOrders} />
+    </>
+  );
 }
 
 type StatusDraft = { orderStatus: OrderStatus; paymentStatus: PaymentStatus };
@@ -501,12 +512,8 @@ function ShippingStickerPrintArea({ orders }: { orders: AdminOrder[] }) {
   );
 }
 
-// Printing lives on its own tab because it is a different job from working
-// through orders: the shop sits at the label printer and runs a whole delivery
-// round at once, rather than picking orders out of a filtered list.
-function StickerPanel({ orders }: { orders: AdminOrder[] }) {
+function StickerPanel({ orders, onPrintStickers }: { orders: AdminOrder[]; onPrintStickers: (targets: AdminOrder[]) => void }) {
   const [postalOnly, setPostalOnly] = useState(true);
-  const [printTargetOrders, setPrintTargetOrders] = useState<AdminOrder[]>([]);
   const [busyRound, setBusyRound] = useState<string | null>(null);
   const [exportNotice, setExportNotice] = useState("");
 
@@ -532,7 +539,7 @@ function StickerPanel({ orders }: { orders: AdminOrder[] }) {
 
   function printRound(roundId: string, targets: AdminOrder[]) {
     void roundId;
-    triggerShippingStickersPrint(targets, setPrintTargetOrders);
+    onPrintStickers(targets);
   }
 
   async function exportRound(roundId: string, targets: AdminOrder[]) {
@@ -605,18 +612,16 @@ function StickerPanel({ orders }: { orders: AdminOrder[] }) {
       </div>
     )}
     {exportNotice && <p className="admin-save-notice has-message" role="status" aria-live="polite">{exportNotice}</p>}
-    <ShippingStickerPrintArea orders={printTargetOrders} />
   </section>;
 }
 
-function OrdersPanel({ orders, setOrders, saving, setSaving, setNotice }: { orders: AdminOrder[]; setOrders: React.Dispatch<React.SetStateAction<AdminOrder[]>>; saving: string | null; setSaving: (value: string | null) => void; setNotice: (value: string) => void }) {
+function OrdersPanel({ orders, setOrders, saving, setSaving, setNotice, onPrintStickers }: { orders: AdminOrder[]; setOrders: React.Dispatch<React.SetStateAction<AdminOrder[]>>; saving: string | null; setSaving: (value: string | null) => void; setNotice: (value: string) => void; onPrintStickers: (targets: AdminOrder[]) => void }) {
   const [query, setQuery] = useState("");
   const [range, setRange] = useState<OrderRange>("today");
   const [filter, setFilter] = useState<OrderFilter>("all");
   const [selectedRound, setSelectedRound] = useState<string>("all");
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
   const [selectedOrderIds, setSelectedOrderIds] = useState<Set<string>>(new Set());
-  const [printTargetOrders, setPrintTargetOrders] = useState<AdminOrder[]>([]);
   const [exporting, setExporting] = useState(false);
   const [orderExportNotice, setOrderExportNotice] = useState("");
   const [trackingDrafts, setTrackingDrafts] = useState<Record<string, string>>(() => Object.fromEntries(orders.map((order) => [order.id, order.tracking_number ?? ""])));
@@ -642,7 +647,7 @@ function OrdersPanel({ orders, setOrders, saving, setSaving, setNotice }: { orde
   }), [filter, orders, query, range, selectedRound]);
 
   function handlePrintStickers(targetOrders: AdminOrder[]) {
-    triggerShippingStickersPrint(targetOrders, setPrintTargetOrders);
+    onPrintStickers(targetOrders);
   }
 
   async function exportOrdersAsImages(targetOrders: AdminOrder[]) {
@@ -947,7 +952,6 @@ function OrdersPanel({ orders, setOrders, saving, setSaving, setNotice }: { orde
       })}
     </div>
     <ConfirmDialog open={Boolean(confirm)} title={confirm?.title ?? ""} description={confirm?.description ?? ""} confirmLabel={confirm?.confirmLabel ?? "ยืนยัน"} tone={confirm?.tone} busy={saving !== null} onCancel={() => setConfirm(null)} onConfirm={() => { const action = confirm?.action; setConfirm(null); if (action) void action(); }} />
-    <ShippingStickerPrintArea orders={printTargetOrders} />
   </section>;
 }
 

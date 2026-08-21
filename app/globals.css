@@ -2240,6 +2240,7 @@ footer .footer-phone-links a:active { background: rgba(255, 255, 255, 0.1); }
   }
 
   /* When printing shipping labels: hide the dashboard layout to prevent phantom blank pages */
+  body.print-shipping-label .admin-shell,
   body.print-shipping-label .admin-main,
   body.print-shipping-label .admin-page,
   body.print-shipping-label .site-header,
