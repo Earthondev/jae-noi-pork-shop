@@ -124,7 +124,7 @@ test("fills the postal address, auto-fills the postal code, and shows the paymen
 test("uses one round state for the hero CTA and product purchase controls", async ({ page }) => {
   await mockStorefront(page, (payload) => ({ ...payload, rounds: [], nextRound: null }));
 
-  await expect(page.getByRole("button", { name: "ยังไม่เปิดรับออเดอร์" })).toBeDisabled();
+  await expect(page.getByRole("button", { name: "กดสนใจรอบหน้า" })).toBeEnabled();
   await expect(page.getByText("ยังไม่มีรอบที่เปิดรับ", { exact: true })).toBeVisible();
   await expect(page.getByText("รอเปิดรอบ").first()).toBeVisible();
   await expect(page.getByRole("button", { name: /^เพิ่ม .* ลงตะกร้า$/ })).toHaveCount(0);

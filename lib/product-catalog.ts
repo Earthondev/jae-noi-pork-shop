@@ -103,3 +103,16 @@ export function catalogProductsFromRows(rows: string[][], mediaOrigin = DEFAULT_
 export function isProductPurchasable(product: Pick<CatalogProduct, "status" | "price">): boolean {
   return product.status === "เปิดขาย" && product.price !== null;
 }
+
+/**
+ * Keep the admin/catalog name as the stable internal value while making the
+ * customer-facing name discoverable for both common terms.
+ */
+export function displayProductName(name: string): string {
+  const normalized = name.trim();
+  if (normalized.includes("กากหมูโบราณ") && normalized.includes("แคปหมูติดมัน")) return normalized;
+  if (normalized === "กากหมูโบราณ" || normalized === "แคปหมู" || normalized === "แคปหมูติดมัน") {
+    return "กากหมูโบราณ (แคปหมูติดมัน)";
+  }
+  return name;
+}

@@ -7,6 +7,7 @@ import type { Fulfilment, PreorderRound, Product } from "../../_hooks/use-storef
 import { computePillWidth, fitFontSize } from "../../../lib/qr-image";
 import { AddressFields, type AddressFieldName } from "./address-fields";
 import { amountUntilFreeShipping } from "../../../lib/shipping";
+import { displayProductName } from "../../../lib/product-catalog";
 
 type ClientPaymentStatus = "waiting" | "verified" | "review" | "invalid";
 
@@ -454,27 +455,34 @@ export function CartDrawer({ drawerRef, onClose, cart, checkout, storefront, ord
           </div>
         ) : (
           <>
+            <div className="checkout-progress" aria-label="ขั้นตอนสั่งซื้อ">
+              <span className="active"><b>1</b> สินค้า</span>
+              <span><b>2</b> รับสินค้า</span>
+              <span><b>3</b> ชำระเงิน</span>
+            </div>
             <div className="cart-list">
               {cart.items.length === 0 ? (
                 <p className="empty-cart">ยังไม่มีสินค้าในตะกร้า</p>
               ) : (
                 cart.items.map((product) => {
                   const inRound = cart.isProductInRound(product.id);
+                  const customerProductName = displayProductName(product.name);
                   return (
                   <div className={`cart-line${inRound ? "" : " out-of-round"}`} key={product.id}>
                     <div>
-                      <strong>{product.name}</strong>
+                      <strong>{customerProductName}</strong>
                       <small>{product.price === null ? "รอข้อมูลราคา" : `${product.price.toLocaleString("th-TH")} บาท/รายการ`}</small>
                       {!inRound && <small className="cart-line-warning">ไม่ได้เปิดขายในรอบนี้ · นำออกหรือเลือกรอบอื่น</small>}
                     </div>
                     <div className="stepper compact">
-                      <button className="decrease-button" type="button" onClick={() => cart.onUpdateQuantity(product.id, -1)} aria-label={`ลด ${product.name}`}>−</button>
+                      <button className="decrease-button" type="button" onClick={() => cart.onUpdateQuantity(product.id, -1)} aria-label={`ลด ${customerProductName}`}
+>−</button>
                       <output>{cart.quantities[product.id]}</output>
                       <button
                         className="increase-button"
                         type="button"
                         onClick={() => cart.onUpdateQuantity(product.id, 1)}
-                        aria-label={!inRound ? `${product.name} ไม่ได้เปิดขายในรอบนี้` : storefront.orderingOpen ? `เพิ่ม ${product.name}` : `ยังเพิ่ม ${product.name} ไม่ได้จนกว่าจะเปิดรอบ`}
+                        aria-label={!inRound ? `${customerProductName} ไม่ได้เปิดขายในรอบนี้` : storefront.orderingOpen ? `เพิ่ม ${customerProductName}` : `ยังเพิ่ม ${customerProductName} ไม่ได้จนกว่าจะเปิดรอบ`}
                         disabled={!storefront.orderingOpen || !inRound}
                       >+</button>
                     </div>
@@ -484,6 +492,9 @@ export function CartDrawer({ drawerRef, onClose, cart, checkout, storefront, ord
               )}
             </div>
             <div className="summary-row"><span>รวมค่าสินค้า</span><strong>{cart.subtotal.toLocaleString("th-TH")} บาท</strong></div>
+            <p className="shipping-choice-hint">
+              {storefront.pickupAddress ? "รับเองหน้าร้านฟรี หรือจัดส่งไปรษณีย์ตามที่อยู่" : "จัดส่งไปรษณีย์ทั่วประเทศตามรอบที่เลือก"}
+            </p>
             {storefront.notice && <p ref={noticeRef} className="form-notice cart-notice" role="alert">{storefront.notice}</p>}
             {checkout.hasContent && (
               <div className="saved-draft-control" aria-label="ข้อมูลที่บันทึกชั่วคราว">

@@ -9,7 +9,6 @@ import { CartDrawer, type OrderRecap } from "./_components/shop/cart-drawer";
 import { Hero } from "./_components/shop/hero";
 import { ProductGrid } from "./_components/shop/product-grid";
 import { SiteHeader } from "./_components/shop/site-header";
-import { TributeNotice } from "./_components/shop/tribute-notice";
 import { useCheckoutDraft } from "./_hooks/use-checkout-draft";
 import { useStorefront } from "./_hooks/use-storefront";
 import {
@@ -29,6 +28,7 @@ import { openRoundProductIdSet, roundIncludesProduct, roundProductIdSet } from "
 import { formatThaiAddress } from "../lib/thai-address";
 import { postalShippingCost } from "../lib/shipping";
 import { categoryNamesFromProducts, orderCategoryNames } from "../lib/category-order";
+import { displayProductName } from "../lib/product-catalog";
 
 type ClientPaymentStatus = "waiting" | "verified" | "review" | "invalid";
 
@@ -82,10 +82,22 @@ export function Shop() {
   } = storefront;
   const restoredNoticeShownRef = useRef(false);
 
+  const [cartFeedback, setCartFeedback] = useState<string | null>(null);
+
   const updateQuantity = useCallback(
-    (productId: string, delta: number) => updateCheckoutQuantity(storefront.products, productId, delta),
+    (productId: string, delta: number) => {
+      const product = storefront.products.find((candidate) => candidate.id === productId);
+      updateCheckoutQuantity(storefront.products, productId, delta);
+      if (delta > 0 && product) setCartFeedback(`เพิ่ม ${displayProductName(product.name)} ลงตะกร้าแล้ว`);
+    },
     [updateCheckoutQuantity, storefront.products],
   );
+
+  useEffect(() => {
+    if (!cartFeedback) return;
+    const timeout = window.setTimeout(() => setCartFeedback(null), 2600);
+    return () => window.clearTimeout(timeout);
+  }, [cartFeedback]);
 
   const changeCheckoutField = useCallback((field: "customerName" | "phone" | "address" | "note" | "addressLine" | "subdistrict" | "district" | "province" | "postalCode", value: string) => {
     setCheckoutField(field, value);
@@ -351,7 +363,7 @@ export function Shop() {
       // screen can show the customer a recap of their order.
       setOrderRecap({
         items: cartItems.map((product) => ({
-          name: product.name,
+          name: displayProductName(product.name),
           quantity: quantities[product.id] ?? 0,
           lineTotal: (product.price ?? 0) * (quantities[product.id] ?? 0),
         })),
@@ -394,7 +406,6 @@ export function Shop() {
 
   return (
     <main id="top">
-      <TributeNotice />
       <SiteHeader
         cartCount={cartCount}
         onOpenCart={() => setCartOpen(true)}
@@ -410,6 +421,9 @@ export function Shop() {
         rounds={storefront.rounds}
         nextRound={storefront.nextRound}
         content={storefront.content}
+        shippingFee={storefront.shippingFee}
+        freeShippingMinimum={storefront.freeShippingMinimum}
+        pickupAvailable={Boolean(storefront.pickupAddress)}
       />
 
       <section className="order-flow" id="how-to-order">
@@ -544,6 +558,13 @@ export function Shop() {
             onReset: resetOrder,
           }}
         />
+      )}
+      {cartFeedback && !cartOpen && (
+        <div className="cart-feedback" role="status" aria-live="polite">
+          <span aria-hidden="true">✓</span>
+          <span>{cartFeedback}</span>
+          <button type="button" onClick={() => setCartOpen(true)}>ดูตะกร้า</button>
+        </div>
       )}
       {storefront.notice && !cartOpen && (
         <div className={`storefront-notice${cartCount > 0 ? " with-cart" : ""}`} role="status">

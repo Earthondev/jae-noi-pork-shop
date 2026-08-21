@@ -8,9 +8,12 @@ export type HeroProps = Readonly<{
   rounds: readonly PreorderRound[];
   nextRound: PreorderRound | null;
   content: StorefrontContent;
+  shippingFee: number | null;
+  freeShippingMinimum: number | null;
+  pickupAvailable: boolean;
 }>;
 
-export function Hero({ storeLoading, orderingOpen, rounds, nextRound, content }: HeroProps) {
+export function Hero({ storeLoading, orderingOpen, rounds, nextRound, content, shippingFee, freeShippingMinimum, pickupAvailable }: HeroProps) {
   // Hover already pauses the marquee; touch devices have no hover, so a tap
   // toggles the pause instead.
   const [marqueePaused, setMarqueePaused] = useState(false);
@@ -19,6 +22,10 @@ export function Hero({ storeLoading, orderingOpen, rounds, nextRound, content }:
   const [interestTapped, setInterestTapped] = useState(false);
   const [interestPending, setInterestPending] = useState(false);
   const showInterestPrompt = !storeLoading && !orderingOpen;
+  const heroDescription = content.heroDescription.replace(
+    "แคปหมูสูตรร้านเจ๊น้อย",
+    "กากหมูโบราณ (แคปหมูติดมัน) สูตรร้านเจ๊น้อย",
+  );
 
   // Only fetched while there's nothing to buy — this is the number shown in
   // place of the dead-end "ยังไม่เปิดรับออเดอร์" button.
@@ -54,7 +61,7 @@ export function Hero({ storeLoading, orderingOpen, rounds, nextRound, content }:
             {content.heroTitle}<br />
             <span>{content.heroHighlight}</span>
           </h1>
-          <p className="hero-lead">{content.heroDescription}</p>
+          <p className="hero-lead">{heroDescription}</p>
           <div
             className={`hero-ordering-panel${storeLoading ? " is-loading" : orderingOpen ? " is-open" : " is-closed"}`}
             aria-busy={storeLoading}
@@ -108,7 +115,7 @@ export function Hero({ storeLoading, orderingOpen, rounds, nextRound, content }:
             </div>
             <div className="hero-actions">
               {orderingOpen ? (
-                <a className="primary-action" href="#products">เลือกสินค้า</a>
+                <a className="primary-action" href="#products" aria-label="เลือกสินค้า">เลือกของอร่อยในรอบนี้</a>
               ) : storeLoading ? (
                 <button className="primary-action" type="button" disabled>กำลังตรวจสอบรอบ</button>
               ) : (
@@ -119,7 +126,7 @@ export function Hero({ storeLoading, orderingOpen, rounds, nextRound, content }:
                     onClick={tapInterest}
                     disabled={interestPending || interestTapped}
                   >
-                    {interestTapped ? "รับทราบแล้ว ขอบคุณค่ะ" : "🔔 กดสนใจรอบหน้า"}
+                    {interestTapped ? "รับทราบแล้ว ขอบคุณค่ะ" : "กดสนใจรอบหน้า"}
                   </button>
                   {interestCount !== null && interestCount > 0 && (
                     <span className="hero-interest-count">มีคนกดสนใจรอบหน้าแล้ว {interestCount} คน</span>
@@ -127,6 +134,11 @@ export function Hero({ storeLoading, orderingOpen, rounds, nextRound, content }:
                 </div>
               )}
             </div>
+          </div>
+          <div className="hero-shipping-summary" aria-label="ข้อมูลการรับสินค้าและค่าจัดส่ง">
+            <span><strong>จัดส่งไปรษณีย์</strong> {shippingFee === null ? "รอข้อมูลค่าส่ง" : `${shippingFee.toLocaleString("th-TH")} บาท`}</span>
+            {freeShippingMinimum !== null && <span>ครบ {freeShippingMinimum.toLocaleString("th-TH")} บาท ส่งฟรี</span>}
+            {pickupAvailable && <span>รับเองหน้าร้านฟรี</span>}
           </div>
           <div className="hero-features-container">
             <div

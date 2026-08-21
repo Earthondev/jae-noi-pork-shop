@@ -1,6 +1,6 @@
 import Image from "next/image";
 import { useState } from "react";
-import { PRODUCT_IMAGE_PLACEHOLDER } from "../../../lib/product-catalog";
+import { displayProductName, PRODUCT_IMAGE_PLACEHOLDER } from "../../../lib/product-catalog";
 import type { Product } from "../../_hooks/use-storefront";
 
 export type ProductCardProps = Readonly<{
@@ -22,6 +22,7 @@ export function ProductCard({ product, quantity, index, onUpdateQuantity, orderi
   const outOfRound = orderingOpen && productReady && !inRound;
   const badge = outOfRound ? "ไม่มีในรอบนี้" : product.status === "ปิดชั่วคราว" ? "ปิดรับชั่วคราว" : product.status === "รอข้อมูล" ? "รอข้อมูล" : product.unit;
   const statusClass = outOfRound ? "out-of-round" : product.status === "เปิดขาย" ? "open" : product.status === "ปิดชั่วคราว" ? "closed" : "waiting";
+  const customerProductName = displayProductName(product.name);
   const [imageSrc, setImageSrc] = useState(product.image);
   const [trackedImage, setTrackedImage] = useState(product.image);
   if (product.image !== trackedImage) {
@@ -34,7 +35,7 @@ export function ProductCard({ product, quantity, index, onUpdateQuantity, orderi
       <div className="product-image-wrap">
         <Image
           src={imageSrc}
-          alt={product.name}
+          alt={customerProductName}
           width={760}
           height={680}
           sizes="(max-width: 600px) 50vw, 380px"
@@ -46,14 +47,15 @@ export function ProductCard({ product, quantity, index, onUpdateQuantity, orderi
       </div>
       <div className="product-info">
         <div>
-          <h3>{product.name}</h3>
+          <h3>{customerProductName}</h3>
           <p>{product.detail}</p>
         </div>
         {quantity === 0 ? (
           <div className="product-purchase-row">
             <p className={product.price === null ? "price pending" : "price"}>{product.price === null ? "รอข้อมูลราคา" : product.price}</p>
             {isPurchasable ? (
-              <button className="product-add-button" type="button" onClick={() => onUpdateQuantity(product.id, 1)} aria-label={`เพิ่ม ${product.name} ลงตะกร้า`}>
+              <button className="product-add-button" type="button" onClick={() => onUpdateQuantity(product.id, 1)} aria-label={`เพิ่ม ${customerProductName} ลงตะกร้า`}
+>
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" style={{ width: 18, height: 18 }}>
                   <line x1="12" y1="5" x2="12" y2="19"></line>
                   <line x1="5" y1="12" x2="19" y2="12"></line>
@@ -68,8 +70,10 @@ export function ProductCard({ product, quantity, index, onUpdateQuantity, orderi
         ) : (
           <div className="product-purchase-row">
             <p className="price">{product.price}</p>
-            <div className="stepper" aria-label={`จำนวน ${product.name}`}>
-              <button className="decrease-button" type="button" onClick={() => onUpdateQuantity(product.id, -1)} aria-label={`ลดจำนวน ${product.name}`}>
+            <div className="stepper" aria-label={`จำนวน ${customerProductName}`}
+>
+              <button className="decrease-button" type="button" onClick={() => onUpdateQuantity(product.id, -1)} aria-label={`ลดจำนวน ${customerProductName}`}
+>
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" style={{ width: 14, height: 14 }}>
                   <line x1="5" y1="12" x2="19" y2="12"></line>
                 </svg>
@@ -79,7 +83,7 @@ export function ProductCard({ product, quantity, index, onUpdateQuantity, orderi
                 className="increase-button"
                 type="button"
                 onClick={() => onUpdateQuantity(product.id, 1)}
-                aria-label={outOfRound ? `${product.name} ไม่ได้เปิดขายในรอบนี้` : orderingOpen ? `เพิ่มจำนวน ${product.name}` : `ยังเพิ่ม ${product.name} ไม่ได้จนกว่าจะเปิดรอบ`}
+                aria-label={outOfRound ? `${customerProductName} ไม่ได้เปิดขายในรอบนี้` : orderingOpen ? `เพิ่มจำนวน ${customerProductName}` : `ยังเพิ่ม ${customerProductName} ไม่ได้จนกว่าจะเปิดรอบ`}
                 disabled={!orderingOpen || outOfRound}
               >
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" style={{ width: 14, height: 14 }}>

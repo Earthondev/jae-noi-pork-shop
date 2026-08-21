@@ -26,8 +26,11 @@ export const KEYWORDS = [
   "เจ๊น้อย เขียงหมูตะคร้อ",
   "เขียงหมูตะคร้อ",
   "แหนมหมูบัวใหญ่",
+  "แหนมหมูโคราช",
   "ของฝากนครราชสีมา",
-  "สั่งแหนมออนไลน์",
+  "แหนมหมูออนไลน์",
+  "แคปหมูออนไลน์",
+  "ไส้กรอกอีสานออนไลน์",
   "แหนมหมูส่งไปรษณีย์",
   "พรีออเดอร์แหนมหมู",
 ] as const;
@@ -38,7 +41,7 @@ export const SITE_TITLE = "แหนมหมู ไส้กรอกอีส�
 // an assistant answering "ซื้อแหนมหมูที่ไหน" has the product, the place, and
 // the way to buy in one sentence.
 export const SITE_DESCRIPTION =
-  "สั่งแหนมหมู ไส้กรอกอีสาน แคปหมู และกากหมูโบราณ ทำสดใหม่ทุกวันจากร้านเจ๊น้อย เขียงหมูตะคร้อ อ.บัวใหญ่ จ.นครราชสีมา สั่งออนไลน์ แพ็กสูญญากาศ ส่งไปรษณีย์ทั่วไทย";
+  "สั่งแหนมหมู ไส้กรอกอีสาน และแคปหมูติดมันจากเจ๊น้อย เขียงหมูตะคร้อ อ.บัวใหญ่ จ.นครราชสีมา ทำสด แพ็กสูญญากาศ ส่งไปรษณีย์ทั่วไทย";
 
 export function fullAddress(): string {
   return `${SHOP.legalName} ${SHOP.street} ${SHOP.subdistrict} ${SHOP.district} ${SHOP.province} ${SHOP.postalCode}`;
@@ -63,6 +66,7 @@ export function shopJsonLd(): string {
     priceRange: "฿฿",
     currenciesAccepted: "THB",
     paymentAccepted: "PromptPay, โอนเงินผ่านธนาคาร",
+    servesCuisine: ["อาหารอีสาน", "อาหารแปรรูปจากหมู"],
     areaServed: { "@type": "Country", name: "ประเทศไทย" },
     address: {
       "@type": "PostalAddress",
