@@ -330,21 +330,101 @@ function drawStickerCanvas(order: AdminOrder): HTMLCanvasElement {
   return canvas;
 }
 
-function handleDownloadStickerImage(order: AdminOrder) {
+type StickerImageFile = { blob: Blob; filename: string };
+type StickerExportResult = "downloaded" | "shared" | "opened" | "cancelled";
+
+function createStickerImageFile(order: AdminOrder): StickerImageFile {
   const canvas = drawStickerCanvas(order);
   const dataUrl = canvas.toDataURL("image/png");
-  const link = document.createElement("a");
-  link.download = `shipping-label-${order.id}.png`;
-  link.href = dataUrl;
-  link.click();
+  const [, encoded] = dataUrl.split(",", 2);
+  if (!encoded) throw new Error("สร้างภาพ PNG ไม่สำเร็จ");
+
+  // Convert the data URL synchronously so the following share/download call
+  // still runs within the user's tap gesture. Safari on iPhone may block an
+  // anchor click that happens after a timer or an awaited canvas.toBlob().
+  const binary = atob(encoded);
+  const bytes = new Uint8Array(binary.length);
+  for (let index = 0; index < binary.length; index += 1) {
+    bytes[index] = binary.charCodeAt(index);
+  }
+
+  return {
+    blob: new Blob([bytes], { type: "image/png" }),
+    filename: `shipping-label-${order.id}.png`,
+  };
 }
 
-function handleDownloadBatchImages(orders: AdminOrder[]) {
-  orders.forEach((order, index) => {
-    setTimeout(() => {
-      handleDownloadStickerImage(order);
-    }, index * 250);
+function isAppleTouchDevice() {
+  return /iPad|iPhone|iPod/.test(navigator.userAgent)
+    || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+}
+
+function releaseStickerObjectUrl(url: string) {
+  window.setTimeout(() => URL.revokeObjectURL(url), 30_000);
+}
+
+function downloadStickerFile(file: StickerImageFile) {
+  const url = URL.createObjectURL(file.blob);
+  const link = document.createElement("a");
+  link.download = file.filename;
+  link.href = url;
+  link.click();
+  releaseStickerObjectUrl(url);
+}
+
+function canShareStickerFiles(files: File[]) {
+  if (typeof navigator.share !== "function") return false;
+  try {
+    return typeof navigator.canShare !== "function" || navigator.canShare({ files });
+  } catch {
+    return false;
+  }
+}
+
+async function shareStickerFiles(files: File[]): Promise<StickerExportResult> {
+  if (canShareStickerFiles(files)) {
+    try {
+      await navigator.share({ files, title: "สติ๊กเกอร์จัดส่งร้านเจ๊น้อย" });
+      return "shared";
+    } catch (error) {
+      if (error instanceof DOMException && error.name === "AbortError") return "cancelled";
+    }
+  }
+
+  if (files.length > 1) {
+    throw new Error("อุปกรณ์นี้ไม่รองรับการบันทึกหลายภาพพร้อมกัน กรุณาใช้ปุ่มพิมพ์หรือเลือกทีละภาพ");
+  }
+
+  const url = URL.createObjectURL(files[0]);
+  const popup = window.open(url, "_blank", "noopener,noreferrer");
+  releaseStickerObjectUrl(url);
+  if (popup) return "opened";
+
+  // Best-effort fallback for browsers that block a new tab. Desktop browsers
+  // still download the file, while iOS will show the guidance notice below.
+  downloadStickerFile({ blob: files[0], filename: files[0].name });
+  return "downloaded";
+}
+
+async function handleDownloadBatchImages(orders: AdminOrder[]): Promise<StickerExportResult> {
+  const files = orders.map((order) => {
+    const image = createStickerImageFile(order);
+    return new File([image.blob], image.filename, { type: "image/png" });
   });
+
+  if (isAppleTouchDevice()) return shareStickerFiles(files);
+
+  files.forEach((file, index) => {
+    window.setTimeout(() => downloadStickerFile({ blob: file, filename: file.name }), index * 250);
+  });
+  return "downloaded";
+}
+
+function stickerExportNotice(result: StickerExportResult, count: number) {
+  if (result === "shared") return `เปิดเมนูแชร์แล้ว เลือก “บันทึกภาพ” เพื่อเก็บ PNG${count > 1 ? ` จำนวน ${count} ภาพ` : ""}`;
+  if (result === "opened") return "เปิดภาพ PNG ในแท็บใหม่แล้ว กดค้างที่ภาพเพื่อบันทึกลงเครื่อง";
+  if (result === "cancelled") return "ยกเลิกการแชร์ไฟล์แล้ว ไฟล์ยังไม่ได้ถูกบันทึก";
+  return `เริ่มดาวน์โหลด PNG แล้ว ${count} ภาพ`;
 }
 
 function ShippingStickerPrintArea({ orders }: { orders: AdminOrder[] }) {
@@ -379,6 +459,7 @@ function StickerPanel({ orders }: { orders: AdminOrder[] }) {
   const [postalOnly, setPostalOnly] = useState(true);
   const [printTargetOrders, setPrintTargetOrders] = useState<AdminOrder[]>([]);
   const [busyRound, setBusyRound] = useState<string | null>(null);
+  const [exportNotice, setExportNotice] = useState("");
 
   const rounds = useMemo(() => {
     const grouped = new Map<string, AdminOrder[]>();
@@ -416,10 +497,15 @@ function StickerPanel({ orders }: { orders: AdminOrder[] }) {
   async function exportRound(roundId: string, targets: AdminOrder[]) {
     if (targets.length === 0) return;
     setBusyRound(roundId);
-    handleDownloadBatchImages(targets);
-    // Downloads are staggered by 250ms each inside the helper; keep the button
-    // disabled for that whole stretch so a second click cannot double-fire.
-    setTimeout(() => setBusyRound(null), targets.length * 250 + 200);
+    setExportNotice("");
+    try {
+      const result = await handleDownloadBatchImages(targets);
+      setExportNotice(stickerExportNotice(result, targets.length));
+    } catch (error) {
+      setExportNotice(error instanceof Error ? error.message : "บันทึก PNG ไม่สำเร็จ กรุณาลองใหม่");
+    } finally {
+      setBusyRound(null);
+    }
   }
 
   return <section className="admin-panel">
@@ -474,6 +560,7 @@ function StickerPanel({ orders }: { orders: AdminOrder[] }) {
         })}
       </div>
     )}
+    {exportNotice && <p className="admin-save-notice has-message" role="status" aria-live="polite">{exportNotice}</p>}
     <ShippingStickerPrintArea orders={printTargetOrders} />
   </section>;
 }
@@ -486,6 +573,8 @@ function OrdersPanel({ orders, setOrders, saving, setSaving, setNotice }: { orde
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
   const [selectedOrderIds, setSelectedOrderIds] = useState<Set<string>>(new Set());
   const [printTargetOrders, setPrintTargetOrders] = useState<AdminOrder[]>([]);
+  const [exporting, setExporting] = useState(false);
+  const [orderExportNotice, setOrderExportNotice] = useState("");
   const [trackingDrafts, setTrackingDrafts] = useState<Record<string, string>>(() => Object.fromEntries(orders.map((order) => [order.id, order.tracking_number ?? ""])));
   const [carrierDrafts, setCarrierDrafts] = useState<Record<string, CarrierCode>>(() => Object.fromEntries(orders.map((order) => [order.id, order.carrier_code ?? "flash"])));
   // Status dropdowns used to write straight to the server on every change.
@@ -516,6 +605,20 @@ function OrdersPanel({ orders, setOrders, saving, setSaving, setNotice }: { orde
       window.print();
       document.body.classList.remove("print-shipping-label");
     }, 150);
+  }
+
+  async function exportOrdersAsImages(targetOrders: AdminOrder[]) {
+    if (targetOrders.length === 0 || exporting) return;
+    setExporting(true);
+    setOrderExportNotice("");
+    try {
+      const result = await handleDownloadBatchImages(targetOrders);
+      setOrderExportNotice(stickerExportNotice(result, targetOrders.length));
+    } catch (error) {
+      setOrderExportNotice(error instanceof Error ? error.message : "บันทึก PNG ไม่สำเร็จ กรุณาลองใหม่");
+    } finally {
+      setExporting(false);
+    }
   }
 
   function toggleSelectOrder(orderId: string) {
@@ -724,15 +827,17 @@ function OrdersPanel({ orders, setOrders, saving, setSaving, setNotice }: { orde
             <button
               type="button"
               className="admin-print-sticker-btn"
-              onClick={() => handleDownloadBatchImages(filtered.filter((order) => selectedOrderIds.has(order.id)))}
+              disabled={exporting}
+              onClick={() => void exportOrdersAsImages(filtered.filter((order) => selectedOrderIds.has(order.id)))}
             >
-              <AdminIcon name="download" /> บันทึกเป็นรูปภาพ PNG ({selectedOrderIds.size})
+              <AdminIcon name="download" /> {exporting ? "กำลังบันทึก…" : `บันทึกเป็นรูปภาพ PNG (${selectedOrderIds.size})`}
             </button>
           </div>
         )}
       </div>
     )}
 
+    {orderExportNotice && <p className="admin-save-notice has-message" role="status" aria-live="polite">{orderExportNotice}</p>}
     <div className="order-cards">
       {filtered.length === 0 && <div className="admin-empty"><AdminIcon name="orders" /><h3>ยังไม่พบออเดอร์</h3><p>ลองเปลี่ยนช่วงเวลา ตัวกรอง หรือคำค้นหา</p></div>}
       {filtered.map((order) => {
@@ -772,9 +877,10 @@ function OrdersPanel({ orders, setOrders, saving, setSaving, setNotice }: { orde
                   <button
                     type="button"
                     className="admin-print-sticker-btn"
-                    onClick={() => handleDownloadStickerImage(order)}
+                    disabled={exporting}
+                    onClick={() => void exportOrdersAsImages([order])}
                   >
-                    <AdminIcon name="download" /> บันทึกรูป PNG
+                    <AdminIcon name="download" /> {exporting ? "กำลังบันทึก…" : "บันทึกรูป PNG"}
                   </button>
                 </div>
                 <small>ตรวจเงินเข้าในแอปธนาคารก่อนกดยืนยัน</small>
