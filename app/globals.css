@@ -3547,8 +3547,8 @@ footer .footer-phone-links a:active { background: rgba(255, 255, 255, 0.1); }
   align-items: flex-start;
 }
 .product-card-image-wrap {
-  width: 96px;
-  height: 96px;
+  width: 116px;
+  height: 116px;
   flex-shrink: 0;
   position: relative;
   border-radius: 16px;
@@ -3620,12 +3620,6 @@ footer .footer-phone-links a:active { background: rgba(255, 255, 255, 0.1); }
   margin: 0;
   line-height: 1.2;
 }
-.product-card-meta {
-  color: var(--admin-muted);
-  font-size: 0.85rem;
-  font-weight: 600;
-  margin: 4px 0 0;
-}
 .product-card-desc {
   color: var(--admin-muted);
   font-size: 0.78rem;
@@ -3636,6 +3630,31 @@ footer .footer-phone-links a:active { background: rgba(255, 255, 255, 0.1); }
   -webkit-box-orient: vertical;
   overflow: hidden;
 }
+.product-card-price-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 8px;
+}
+.product-card-price {
+  color: var(--admin-red);
+  font-size: 1.15rem;
+  font-weight: 800;
+}
+.product-card-unit-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 9px;
+  border-radius: 999px;
+  background: var(--admin-bg);
+  border: 1px solid var(--admin-line);
+  color: var(--admin-muted);
+  font-size: 0.7rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+.product-card-unit-pill svg { width: 12px; height: 12px; flex: 0 0 auto; }
 .product-card-status {
   padding: 4px 10px;
   border-radius: 99px;
@@ -3860,8 +3879,11 @@ footer .footer-phone-links a:active { background: rgba(255, 255, 255, 0.1); }
   .admin-product-list.view-grid .product-card-info h3 {
     font-size: 0.95rem;
   }
-  .admin-product-list.view-grid .product-card-meta {
-    font-size: 0.75rem;
+  .admin-product-list.view-grid .product-card-price {
+    font-size: 1rem;
+  }
+  .admin-product-list.view-grid .product-card-unit-pill {
+    font-size: 0.65rem;
   }
   .admin-product-list.view-grid .product-card-desc {
     display: none !important;

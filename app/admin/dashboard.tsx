@@ -1524,7 +1524,7 @@ function productCardBody(product: AdminProduct, handlers: ProductCardHandlers, d
   return <div className="product-card-body">
     {dragHandle}
     <div className="product-card-image-wrap">
-      {firstImage ? <Image src={adminImageSrc(firstImage)} alt={`รูปสินค้า ${product.name}`} fill sizes="96px" /> : <div className="product-card-no-image"><AdminIcon name="image" /></div>}
+      {firstImage ? <Image src={adminImageSrc(firstImage)} alt={`รูปสินค้า ${product.name}`} fill sizes="116px" /> : <div className="product-card-no-image"><AdminIcon name="image" /></div>}
       {product.badge && <span className="product-card-badge">{product.badge}</span>}
     </div>
     <div className="product-card-info">
@@ -1537,8 +1537,20 @@ function productCardBody(product: AdminProduct, handlers: ProductCardHandlers, d
           </span>
         </div>
       </div>
-      <p className="product-card-meta">{product.unit} • {product.price === null ? "รอราคา" : `${product.price.toLocaleString("th-TH")} บาท`}</p>
       {product.detail && <p className="product-card-desc">{product.detail}</p>}
+      <div className="product-card-price-row">
+        <strong className="product-card-price">{product.price === null ? "รอราคา" : `${product.price.toLocaleString("th-TH")} บาท`}</strong>
+        {product.unit && (
+          <span className="product-card-unit-pill">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M21 8 12 3 3 8l9 5 9-5Z" />
+              <path d="M3 8v8l9 5 9-5V8" />
+              <path d="M12 13v8" />
+            </svg>
+            {product.unit}
+          </span>
+        )}
+      </div>
 
       <div className="product-card-actions-row">
         <button type="button" className="action-btn edit-btn" disabled={busy} onClick={handlers.onEdit}><AdminIcon name="edit" /><span>แก้ไข</span></button>
