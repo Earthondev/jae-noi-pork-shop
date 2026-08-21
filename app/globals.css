@@ -3974,3 +3974,138 @@ footer .footer-phone-links a:active { background: rgba(255, 255, 255, 0.1); }
   .admin-order-summary .status-stack svg { transition: none; }
   .admin-product-drag-overlay { animation: none; transform: none; }
 }
+
+/* Orders reference layout: compact, touch-first controls for printing labels. */
+.admin-orders-panel {
+  --orders-card-radius: 22px;
+  --orders-action-red: var(--admin-red, #9c2a2a);
+  --orders-action-red-dark: var(--admin-red-dark, #681718);
+  --orders-action-line: color-mix(in srgb, var(--orders-action-red) 26%, var(--admin-line, #e7d9c8));
+}
+.admin-orders-panel .admin-sales-breakdown,
+.admin-orders-panel .admin-round-summary-card,
+.admin-orders-panel .admin-batch-bar-card {
+  border-color: color-mix(in srgb, var(--admin-line, #e7d9c8) 82%, white);
+  border-radius: var(--orders-card-radius);
+  box-shadow: 0 12px 30px rgb(75 36 27 / 7%);
+}
+.admin-orders-panel .admin-sales-breakdown {
+  padding: 16px;
+  background: color-mix(in srgb, var(--admin-surface, #fffdf9) 93%, white);
+}
+.admin-orders-panel .admin-sales-figures-cards {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+.admin-orders-panel .admin-stat-card {
+  min-width: 0;
+  min-height: 86px;
+  padding: 11px 12px;
+  border-color: color-mix(in srgb, var(--admin-line, #e7d9c8) 74%, white);
+  border-radius: 18px;
+  background: var(--admin-surface, #fffdf9);
+  box-shadow: none;
+}
+.admin-orders-panel .admin-stat-info { min-width: 0; }
+.admin-orders-panel .admin-stat-value { overflow: hidden; text-overflow: ellipsis; }
+.admin-orders-panel .admin-best-sellers-card { margin: 14px 0 0; border: 0; padding: 0; background: transparent; box-shadow: none; }
+.admin-orders-panel .admin-best-seller-item {
+  min-height: 58px;
+  padding: 10px 14px;
+  border: 1px solid color-mix(in srgb, var(--admin-line, #e7d9c8) 70%, white);
+  background: color-mix(in srgb, var(--admin-bg, #f7f0e5) 38%, white);
+}
+.admin-orders-panel .admin-round-summary-card { padding: 17px 18px; }
+.admin-orders-panel .admin-round-item-card {
+  min-height: 78px;
+  border-color: #c7d9f4;
+  border-radius: 17px;
+  background: #f7fbff;
+}
+.admin-orders-panel .admin-round-item-card:hover,
+.admin-orders-panel .admin-round-item-card:focus-visible,
+.admin-orders-panel .admin-round-item-card.active {
+  border-color: #8fb4e8;
+  background: #eef6ff;
+  box-shadow: 0 0 0 3px rgb(37 99 235 / 9%);
+}
+.admin-orders-panel .admin-batch-bar-card { padding: 17px 18px; }
+.admin-orders-panel .admin-batch-card-header { cursor: default; }
+.admin-select-all-btn {
+  min-height: 38px;
+  padding: 0 12px;
+  border: 1px solid var(--orders-action-line);
+  border-radius: 999px;
+  background: var(--admin-surface, #fffdf9);
+  color: var(--orders-action-red);
+  font-size: .72rem;
+  font-weight: 900;
+}
+.admin-select-all-btn:hover,
+.admin-select-all-btn:focus-visible {
+  border-color: var(--orders-action-red);
+  background: color-mix(in srgb, var(--orders-action-red) 8%, white);
+}
+.admin-batch-actions-grid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+.admin-batch-btn {
+  min-height: 104px;
+  border-radius: 18px;
+  padding: 14px 10px;
+  gap: 9px;
+  justify-content: center;
+  transition: transform .18s ease, box-shadow .18s ease, background-color .18s ease;
+}
+.admin-batch-btn:hover,
+.admin-batch-btn:focus-visible { transform: translateY(-2px); box-shadow: 0 9px 20px rgb(104 23 24 / 12%); }
+.admin-batch-btn.solid-red { background: var(--orders-action-red); border-color: var(--orders-action-red); }
+.admin-batch-btn.outline-red { border-color: var(--orders-action-line); background: var(--admin-surface, #fffdf9); color: var(--orders-action-red-dark); }
+.admin-batch-btn-icon-wrap,
+.admin-batch-icon { width: 42px; height: 42px; flex: 0 0 auto; }
+.admin-batch-btn-icon-wrap { display: grid; place-items: center; border-radius: 50%; background: rgb(255 255 255 / 14%); }
+.admin-batch-btn-icon-wrap svg,
+.admin-batch-icon { width: 22px; height: 22px; }
+.admin-batch-btn.outline-red .admin-batch-icon { padding: 9px; width: 42px; height: 42px; border-radius: 50%; background: color-mix(in srgb, var(--orders-action-red) 8%, white); color: var(--orders-action-red); }
+.admin-batch-btn-text { font-size: .78rem; line-height: 1.35; text-align: left; }
+.admin-orders-panel .admin-order-card {
+  border-color: color-mix(in srgb, var(--admin-line, #e7d9c8) 82%, white);
+  border-radius: var(--orders-card-radius);
+  box-shadow: 0 10px 26px rgb(75 36 27 / 6%);
+}
+.admin-order-custom-checkbox input:focus-visible ~ .admin-checkbox-mark { outline: 3px solid var(--admin-gold, #c4932d); outline-offset: 3px; }
+.admin-orders-panel .admin-print-sticker-btn {
+  min-height: 42px;
+  border-color: var(--orders-action-line);
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--orders-action-red) 6%, white);
+  color: var(--orders-action-red-dark);
+  font-weight: 900;
+}
+.admin-orders-panel .admin-print-sticker-btn:hover,
+.admin-orders-panel .admin-print-sticker-btn:focus-visible { border-color: var(--orders-action-red); background: var(--orders-action-red); color: white; }
+
+@media (max-width: 560px) {
+  .admin-orders-panel .admin-sales-figures-cards { gap: 6px; }
+  .admin-orders-panel .admin-stat-card { min-height: 78px; padding: 9px 7px; gap: 6px; border-radius: 15px; }
+  .admin-orders-panel .admin-stat-icon-badge { width: 30px; height: 30px; min-width: 30px; }
+  .admin-orders-panel .admin-stat-icon-badge svg { width: 15px; height: 15px; }
+  .admin-orders-panel .admin-stat-label { font-size: .62rem; }
+  .admin-orders-panel .admin-stat-value { font-size: .92rem; }
+  .admin-batch-actions-grid { gap: 7px; }
+  .admin-batch-btn { min-height: 96px; padding: 10px 5px; border-radius: 15px; }
+  .admin-batch-btn-text { font-size: .68rem; }
+  .admin-batch-btn-icon-wrap, .admin-batch-btn.outline-red .admin-batch-icon { width: 36px; height: 36px; }
+  .admin-batch-btn.outline-red .admin-batch-icon { padding: 8px; }
+  .admin-orders-panel .admin-order-card { padding: 13px 12px; }
+  .admin-order-card-row { gap: 8px; }
+  .admin-order-status-col { max-width: 42%; }
+  .admin-order-id-text { font-size: .82rem; }
+  .admin-order-customer-total { font-size: .76rem; }
+  .admin-status-badge { max-width: 100%; overflow: hidden; text-overflow: ellipsis; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .admin-batch-btn { transition: none; }
+}

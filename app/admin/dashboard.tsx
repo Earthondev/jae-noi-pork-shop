@@ -922,11 +922,19 @@ function OrdersPanel({ orders, setOrders, saving, setSaving, setNotice, onPrintS
     
     {filtered.length > 0 && (
       <div className="admin-batch-bar-card">
-        <div className="admin-batch-card-header" onClick={toggleSelectAll}>
+        <div className="admin-batch-card-header">
           <div className="admin-batch-title-wrap">
             <AdminIcon name="fileText" className="admin-header-icon" />
             <h3>เลือกทั้งหมด ({filtered.length} รายการ)</h3>
           </div>
+          <button
+            type="button"
+            className="admin-select-all-btn"
+            aria-pressed={selectedOrderIds.size === filtered.length}
+            onClick={toggleSelectAll}
+          >
+            {selectedOrderIds.size === filtered.length ? "ยกเลิกทั้งหมด" : "เลือกทั้งหมด"}
+          </button>
         </div>
         {selectedOrderIds.size > 0 && (
           <div className="admin-batch-actions-grid">
@@ -1042,7 +1050,7 @@ function OrdersPanel({ orders, setOrders, saving, setSaving, setNotice, onPrintS
                     className="admin-print-sticker-btn"
                     onClick={() => handleDownloadStickerPdf(order)}
                   >
-                    <AdminIcon name="download" /> ดาวน์โหลด PDF
+                    <AdminIcon name="filePdf" /> ดาวน์โหลด PDF
                   </button>
                   <button
                     type="button"
