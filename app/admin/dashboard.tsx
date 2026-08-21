@@ -275,15 +275,19 @@ function drawStickerCanvas(order: AdminOrder): HTMLCanvasElement {
   ctx.fillStyle = "#ffffff";
   ctx.fillRect(0, 0, width, height);
 
+  // 1. Header (Shop Name + Order ID)
   ctx.fillStyle = "#000000";
   ctx.font = `bold ${Math.round(6.5 * 3.7795 * scale / 2.8)}px system-ui, -apple-system, sans-serif`;
   ctx.textBaseline = "top";
-  ctx.fillText("ร้านเจ๊น้อย เขียงหมู", marginLeft, Math.round(1.5 * 3.7795 * scale));
+  const shopTitle = "ร้านเจ๊น้อย เขียงหมู";
+  ctx.fillText(shopTitle, marginLeft, Math.round(1.5 * 3.7795 * scale), contentWidth * 0.45);
 
   ctx.font = `bold ${Math.round(6.5 * 3.7795 * scale / 2.8)}px monospace`;
   const orderIdWidth = ctx.measureText(order.id).width;
-  ctx.fillText(order.id, width - marginRight - orderIdWidth, Math.round(1.5 * 3.7795 * scale));
+  const orderIdX = Math.max(marginLeft + contentWidth * 0.46, width - marginRight - orderIdWidth);
+  ctx.fillText(order.id, orderIdX, Math.round(1.5 * 3.7795 * scale), contentWidth * 0.52);
 
+  // Solid Divider Line
   ctx.strokeStyle = "#000000";
   ctx.lineWidth = Math.round(0.8 * scale);
   ctx.beginPath();
@@ -291,10 +295,12 @@ function drawStickerCanvas(order: AdminOrder): HTMLCanvasElement {
   ctx.lineTo(width - marginRight, Math.round(7 * 3.7795 * scale));
   ctx.stroke();
 
+  // 2. Recipient
   ctx.font = `bold ${Math.round(8.5 * 3.7795 * scale / 2.8)}px system-ui, -apple-system, sans-serif`;
   const recipientText = `ผู้รับ: ${order.customer_name} (${order.phone})`;
   ctx.fillText(recipientText, marginLeft, Math.round(8.5 * 3.7795 * scale), contentWidth);
 
+  // 3. Address (2 lines wrap with auto-fit)
   ctx.font = `${Math.round(7 * 3.7795 * scale / 2.8)}px system-ui, -apple-system, sans-serif`;
   const addressText = `ที่อยู่: ${order.address || "รับเองหน้าร้าน"}`;
   
@@ -308,7 +314,7 @@ function drawStickerCanvas(order: AdminOrder): HTMLCanvasElement {
     const testLine = line + (line ? " " : "") + words[i];
     const metrics = ctx.measureText(testLine);
     if (metrics.width > contentWidth && i > 0) {
-      ctx.fillText(line, marginLeft, yPos);
+      ctx.fillText(line, marginLeft, yPos, contentWidth);
       line = words[i];
       yPos += lineHeight;
       lineCount++;
@@ -318,9 +324,10 @@ function drawStickerCanvas(order: AdminOrder): HTMLCanvasElement {
     }
   }
   if (lineCount < 2 && line) {
-    ctx.fillText(line, marginLeft, yPos);
+    ctx.fillText(line, marginLeft, yPos, contentWidth);
   }
 
+  // Dashed Divider Line
   ctx.setLineDash([Math.round(2 * scale), Math.round(2 * scale)]);
   ctx.beginPath();
   ctx.moveTo(marginLeft, Math.round(22.5 * 3.7795 * scale));
@@ -328,6 +335,7 @@ function drawStickerCanvas(order: AdminOrder): HTMLCanvasElement {
   ctx.stroke();
   ctx.setLineDash([]);
 
+  // 4. Items List
   ctx.font = `${Math.round(6.5 * 3.7795 * scale / 2.8)}px system-ui, -apple-system, sans-serif`;
   const itemsText = `สินค้า: ${order.items ? order.items.replace(/\n+/g, ", ") : "—"}`;
   ctx.fillText(itemsText, marginLeft, Math.round(24 * 3.7795 * scale), contentWidth);
