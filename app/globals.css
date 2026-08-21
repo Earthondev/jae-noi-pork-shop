@@ -2295,70 +2295,28 @@ footer .footer-phone-links a:active { background: rgba(255, 255, 255, 0.1); }
     page: shippingLabel;
     width: 77mm !important;
     height: 30mm !important;
-    padding-left: 10mm !important;
-    padding-right: 10mm !important;
-    padding-top: 1.5mm !important;
-    padding-bottom: 1.5mm !important;
+    margin: 0 !important;
+    padding: 0 !important;
     box-sizing: border-box !important;
     page-break-after: always !important;
     break-after: page !important;
     page-break-inside: avoid !important;
     break-inside: avoid !important;
     display: flex !important;
-    flex-direction: column !important;
-    justify-content: space-between !important;
-    font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", sans-serif !important;
-    color: #000000 !important;
+    align-items: center !important;
+    justify-content: center !important;
     background: #ffffff !important;
     overflow: hidden !important;
   }
 
-  .sticker-header {
-    display: flex !important;
-    justify-content: space-between !important;
-    align-items: center !important;
-    border-bottom: 1px solid #000000 !important;
-    padding-bottom: 1px !important;
-    margin-bottom: 1px !important;
-    font-size: 6.5pt !important;
-    line-height: 1 !important;
-  }
-
-  .sticker-shop-title {
-    font-weight: 700 !important;
-  }
-
-  .sticker-order-id {
-    font-family: monospace !important;
-    font-weight: 700 !important;
-  }
-
-  .sticker-recipient {
-    font-size: 8.5pt !important;
-    line-height: 1.15 !important;
-    font-weight: 700 !important;
-    margin-bottom: 1px !important;
-  }
-
-  .sticker-address {
-    font-size: 7pt !important;
-    line-height: 1.1 !important;
-    max-height: 10.5mm !important;
-    overflow: hidden !important;
-    display: -webkit-box !important;
-    -webkit-line-clamp: 2 !important;
-    -webkit-box-orient: vertical !important;
-    margin-bottom: 1px !important;
-  }
-
-  .sticker-items {
-    font-size: 6.5pt !important;
-    line-height: 1.1 !important;
-    border-top: 1px dashed #000000 !important;
-    padding-top: 1px !important;
-    white-space: nowrap !important;
-    overflow: hidden !important;
-    text-overflow: ellipsis !important;
+  .shipping-sticker-img {
+    width: 77mm !important;
+    height: 30mm !important;
+    max-width: 77mm !important;
+    max-height: 30mm !important;
+    object-fit: contain !important;
+    display: block !important;
+    margin: 0 auto !important;
   }
 }
 

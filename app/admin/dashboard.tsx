@@ -534,23 +534,19 @@ function ShippingStickerPrintArea({ orders }: { orders: AdminOrder[] }) {
   if (orders.length === 0) return null;
   return (
     <div className="shipping-label-print-area">
-      {orders.map((order) => (
-        <div className="shipping-sticker-page" key={order.id}>
-          <div className="sticker-header">
-            <span className="sticker-shop-title">ร้านเจ๊น้อย เขียงหมู</span>
-            <span className="sticker-order-id">{order.id}</span>
+      {orders.map((order) => {
+        const canvas = drawStickerCanvas(order);
+        const dataUrl = canvas.toDataURL("image/png");
+        return (
+          <div className="shipping-sticker-page" key={order.id}>
+            <img
+              src={dataUrl}
+              alt={`สติ๊กเกอร์ ${order.id}`}
+              className="shipping-sticker-img"
+            />
           </div>
-          <div className="sticker-recipient">
-            <span className="sticker-label">ผู้รับ:</span> {order.customer_name} ({order.phone})
-          </div>
-          <div className="sticker-address">
-            <span className="sticker-label">ที่อยู่:</span> {order.address || "รับเองหน้าร้าน"}
-          </div>
-          <div className="sticker-items">
-            <span className="sticker-label">สินค้า:</span> {order.items ? order.items.replace(/\n+/g, ", ") : "—"}
-          </div>
-        </div>
-      ))}
+        );
+      })}
     </div>
   );
 }
