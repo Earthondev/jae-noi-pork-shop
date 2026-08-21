@@ -2202,21 +2202,41 @@ footer .footer-phone-links a:active { background: rgba(255, 255, 255, 0.1); }
 
 .admin-batch-bar {
   display: flex;
-  align-items: center;
-  justify-content: space-between;
+  flex-direction: column;
+  align-items: stretch;
   gap: 12px;
-  padding: 10px 16px;
+  padding: 12px 14px;
   background: #f8fafc;
   border: 1px solid #e2e8f0;
-  border-radius: 8px;
+  border-radius: 12px;
   margin-bottom: 16px;
   font-size: 0.875rem;
 }
+
+@media (min-width: 768px) {
+  .admin-batch-bar {
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+  }
+}
+
 .admin-batch-actions {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
-  gap: 10px;
+  gap: 8px;
 }
+
+.admin-batch-actions .admin-print-sticker-btn {
+  flex: 1 1 130px;
+  justify-content: center;
+  padding: 9px 12px;
+  font-size: 0.8125rem;
+  text-align: center;
+  min-height: 42px;
+}
+
 .admin-order-checkbox {
   width: 18px;
   height: 18px;
