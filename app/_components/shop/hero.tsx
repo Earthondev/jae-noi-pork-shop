@@ -153,9 +153,45 @@ export function Hero({ storeLoading, orderingOpen, rounds, nextRound, content, s
             </div>
           </div>
           <div className="hero-shipping-summary" aria-label="ข้อมูลการรับสินค้าและค่าจัดส่ง">
-            <span><strong>จัดส่งไปรษณีย์</strong> {shippingFee === null ? "รอข้อมูลค่าส่ง" : `${shippingFee.toLocaleString("th-TH")} บาท`}</span>
-            {freeShippingMinimum !== null && <span>ครบ {freeShippingMinimum.toLocaleString("th-TH")} บาท ส่งฟรี</span>}
-            {pickupAvailable && <span>รับเองหน้าร้านฟรี</span>}
+            <div className="shipping-card">
+              <svg className="shipping-card-icon" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M12.5 3.5 20 11l-8.5 8.5a2 2 0 0 1-2.8 0L4 15a2 2 0 0 1 0-2.8L12.5 3.5Z" />
+                <path d="M4 12.2 11.8 4" />
+                <circle cx="15.5" cy="8.5" r="1.3" />
+              </svg>
+              <div className="shipping-card-text">
+                <span>จัดส่งไปรษณีย์</span>
+                <strong>{shippingFee === null ? "รอข้อมูลค่าส่ง" : `${shippingFee.toLocaleString("th-TH")} บาท`}</strong>
+              </div>
+            </div>
+            {freeShippingMinimum !== null && (
+              <div className="shipping-card">
+                <svg className="shipping-card-icon" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <rect x="1" y="6" width="13" height="10"></rect>
+                  <polygon points="14 10 18 10 21.5 13 21.5 16 14 16 14 10"></polygon>
+                  <circle cx="5" cy="17.5" r="2"></circle>
+                  <circle cx="17" cy="17.5" r="2"></circle>
+                </svg>
+                <div className="shipping-card-text">
+                  <span>ครบ {freeShippingMinimum.toLocaleString("th-TH")} บาท</span>
+                  <strong>ส่งฟรี</strong>
+                </div>
+              </div>
+            )}
+            {pickupAvailable && (
+              <div className="shipping-card">
+                <svg className="shipping-card-icon" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M4 9.5 5 4h14l1 5.5" />
+                  <path d="M4 9.5a2.3 2.3 0 0 0 4.4 1 2.3 2.3 0 0 0 4.4 0 2.3 2.3 0 0 0 4.4 0 2.3 2.3 0 0 0 4.4-1" />
+                  <path d="M5.5 11v9h13v-9" />
+                  <path d="M10 20v-5h4v5" />
+                </svg>
+                <div className="shipping-card-text">
+                  <span>รับเองที่หน้าร้าน</span>
+                  <strong>ฟรี</strong>
+                </div>
+              </div>
+            )}
           </div>
           <div className="hero-highlights">
             <span>

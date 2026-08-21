@@ -320,25 +320,31 @@ img { display: block; }
 .hero-ordering-copy span { color: var(--muted); font-size: .8rem; line-height: 1.45; }
 .hero-actions { grid-column: 1 / -1; display: flex; align-items: center; }
 .hero-shipping-summary {
-  display: flex;
-  flex-wrap: wrap;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
   gap: 8px;
   margin-top: 12px;
 }
-.hero-shipping-summary span {
-  min-height: 34px;
-  padding: 7px 11px;
-  display: inline-flex;
+.shipping-card {
+  min-width: 0;
+  padding: 10px 8px;
+  display: flex;
   align-items: center;
+  gap: 8px;
   border: 1px solid rgba(235, 214, 200, 0.9);
-  border-radius: 999px;
-  background: rgba(255, 255, 255, 0.76);
-  color: var(--muted);
-  font-size: 0.76rem;
-  font-weight: 700;
-  line-height: 1.35;
+  border-radius: var(--radius-sm);
+  background: rgba(255, 255, 255, 0.86);
+  box-shadow: var(--shadow-sm);
 }
-.hero-shipping-summary strong { color: var(--red-800); }
+.shipping-card-icon { width: 20px; height: 20px; flex: 0 0 auto; color: var(--red-700); }
+.shipping-card-text { min-width: 0; display: grid; gap: 1px; }
+.shipping-card-text span {
+  color: var(--muted);
+  font-size: 0.66rem;
+  font-weight: 700;
+  line-height: 1.25;
+}
+.shipping-card-text strong { color: var(--red-800); font-size: 0.84rem; font-weight: 900; line-height: 1.25; }
 .hero-interest { width: 100%; display: grid; gap: 8px; justify-items: center; }
 .hero-interest-count { color: var(--muted); font-size: 0.8rem; font-weight: 700; }
 .primary-action {
