@@ -13,6 +13,9 @@ export type MonitoringEventName =
   | "order_storage_unavailable"
   | "order_write_failed"
   | "order_tracking_failed"
+  | "round_interest_read_failed"
+  | "round_interest_storage_unavailable"
+  | "round_interest_tap_failed"
   | "slipok_unavailable"
   | "admin_cms_read_failed"
   | "admin_cms_write_failed"
@@ -87,6 +90,9 @@ const safeDescriptions: Record<MonitoringEventName, string> = {
   order_storage_unavailable: "Order storage binding is unavailable",
   order_write_failed: "An order could not be written",
   order_tracking_failed: "Order tracking could not be completed",
+  round_interest_read_failed: "Round-interest count could not be read",
+  round_interest_storage_unavailable: "Round-interest storage is unavailable",
+  round_interest_tap_failed: "Round-interest tap could not be recorded",
   slipok_unavailable: "Slip verification service is unavailable",
   admin_cms_read_failed: "Admin CMS data could not be loaded",
   admin_cms_write_failed: "Admin CMS data could not be saved",

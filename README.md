@@ -103,7 +103,7 @@ docs/                คู่มือ production, monitoring และ SlipOK
 
 ### ความต้องการ
 
-- Node.js `>=22.13.0`
+- Node.js `>=22.15.0` (ใช้ `.nvmrc` เป็นตัวอ้างอิง)
 - npm
 - Wrangler CLI login เฉพาะเมื่อต้องใช้ D1 staging หรือ deploy
 
