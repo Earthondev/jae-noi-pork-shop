@@ -14,10 +14,6 @@ export type HeroProps = Readonly<{
 }>;
 
 export function Hero({ storeLoading, orderingOpen, rounds, nextRound, content, shippingFee, freeShippingMinimum, pickupAvailable }: HeroProps) {
-  // Hover already pauses the marquee; touch devices have no hover, so a tap
-  // toggles the pause instead.
-  const [marqueePaused, setMarqueePaused] = useState(false);
-
   const [interestCount, setInterestCount] = useState<number | null>(null);
   const [interestTapped, setInterestTapped] = useState(false);
   const [interestPending, setInterestPending] = useState(false);
@@ -56,7 +52,19 @@ export function Hero({ storeLoading, orderingOpen, rounds, nextRound, content, s
     <>
       <section className="hero" id="top">
         <div className="hero-copy">
-          <p className="eyebrow"><span aria-hidden="true" />แหนมหมูและของอร่อยจากตะคร้อ · ทำสดทุกวัน</p>
+          <p className="eyebrow">
+            <svg className="eyebrow-icon" aria-hidden="true" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+              <ellipse cx="7.4" cy="7.6" rx="1.7" ry="2.5" transform="rotate(-24 7.4 7.6)" fill="currentColor" />
+              <ellipse cx="16.6" cy="7.6" rx="1.7" ry="2.5" transform="rotate(24 16.6 7.6)" fill="currentColor" />
+              <circle cx="12" cy="12.6" r="6.4" fill="none" stroke="currentColor" strokeWidth="1.7" />
+              <rect x="9" y="13.6" width="6" height="3.6" rx="1.8" fill="none" stroke="currentColor" strokeWidth="1.7" />
+              <circle cx="10.5" cy="15.4" r="0.6" fill="currentColor" />
+              <circle cx="13.5" cy="15.4" r="0.6" fill="currentColor" />
+              <circle cx="9.3" cy="11" r="0.7" fill="currentColor" />
+              <circle cx="14.7" cy="11" r="0.7" fill="currentColor" />
+            </svg>
+            แหนมหมูและของอร่อยจากตะคร้อ · ทำสดทุกวัน
+          </p>
           <h1>
             {content.heroTitle}<br />
             <span>{content.heroHighlight}</span>
@@ -115,7 +123,16 @@ export function Hero({ storeLoading, orderingOpen, rounds, nextRound, content, s
             </div>
             <div className="hero-actions">
               {orderingOpen ? (
-                <a className="primary-action" href="#products" aria-label="เลือกสินค้า">เลือกของอร่อยในรอบนี้</a>
+                <a className="primary-action" href="#products" aria-label="เลือกสินค้า">
+                  <svg className="primary-action-icon" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M3 9h18l-1.5 11a2 2 0 0 1-2 1.8H6.5a2 2 0 0 1-2-1.8L3 9Z" />
+                    <path d="M8 9V7a4 4 0 0 1 8 0v2" />
+                  </svg>
+                  <span className="primary-action-label">เลือกของอร่อยในรอบนี้</span>
+                  <svg className="primary-action-chevron" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                    <polyline points="9 6 15 12 9 18" />
+                  </svg>
+                </a>
               ) : storeLoading ? (
                 <button className="primary-action" type="button" disabled>กำลังตรวจสอบรอบ</button>
               ) : (
@@ -140,63 +157,31 @@ export function Hero({ storeLoading, orderingOpen, rounds, nextRound, content, s
             {freeShippingMinimum !== null && <span>ครบ {freeShippingMinimum.toLocaleString("th-TH")} บาท ส่งฟรี</span>}
             {pickupAvailable && <span>รับเองหน้าร้านฟรี</span>}
           </div>
-          <div className="hero-features-container">
-            <div
-              className={`hero-features${marqueePaused ? " paused" : ""}`}
-              onClick={() => setMarqueePaused((paused) => !paused)}
-              title={marqueePaused ? "แตะเพื่อเลื่อนต่อ" : "แตะเพื่อหยุดเลื่อน"}
-            >
-              {/* Set 1 */}
-              <span>
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ width: 14, height: 14, marginRight: 4 }}>
-                  <rect x="1" y="3" width="15" height="13"></rect>
-                  <polygon points="16 8 20 8 23 11 23 16 16 16 16 8"></polygon>
-                  <circle cx="5.5" cy="18.5" r="2.5"></circle>
-                  <circle cx="18.5" cy="18.5" r="2.5"></circle>
-                </svg>
-                ส่งด่วนทั่วประเทศ
-              </span>
-              <span>
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ width: 14, height: 14, marginRight: 4 }}>
-                  <line x1="16.5" y1="9.4" x2="7.5" y2="4.21"></line>
-                  <polygon points="12 22.08 12 12 3 6.92 3 17.08 12 22.08"></polygon>
-                  <polygon points="12 22.08 21 17.08 21 6.92 12 12 12 22.08"></polygon>
-                  <polygon points="12 12 21 6.92 12 1.84 3 6.92 12 12"></polygon>
-                </svg>
-                แพ็กสูญญากาศปลอดภัย
-              </span>
-              <span>
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ width: 14, height: 14, marginRight: 4 }}>
-                  <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"></path>
-                </svg>
-                ทำสดใหม่ทุกวัน
-              </span>
-              {/* Set 2 (Duplicate for seamless loop) */}
-              <span>
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ width: 14, height: 14, marginRight: 4 }}>
-                  <rect x="1" y="3" width="15" height="13"></rect>
-                  <polygon points="16 8 20 8 23 11 23 16 16 16 16 8"></polygon>
-                  <circle cx="5.5" cy="18.5" r="2.5"></circle>
-                  <circle cx="18.5" cy="18.5" r="2.5"></circle>
-                </svg>
-                ส่งด่วนทั่วประเทศ
-              </span>
-              <span>
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ width: 14, height: 14, marginRight: 4 }}>
-                  <line x1="16.5" y1="9.4" x2="7.5" y2="4.21"></line>
-                  <polygon points="12 22.08 12 12 3 6.92 3 17.08 12 22.08"></polygon>
-                  <polygon points="12 22.08 21 17.08 21 6.92 12 12 12 22.08"></polygon>
-                  <polygon points="12 12 21 6.92 12 1.84 3 6.92 12 12"></polygon>
-                </svg>
-                แพ็กสูญญากาศปลอดภัย
-              </span>
-              <span>
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ width: 14, height: 14, marginRight: 4 }}>
-                  <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"></path>
-                </svg>
-                ทำสดใหม่ทุกวัน
-              </span>
-            </div>
+          <div className="hero-highlights">
+            <span>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"></path>
+              </svg>
+              ทำสดใหม่ทุกวัน
+            </span>
+            <span>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <rect x="1" y="3" width="15" height="13"></rect>
+                <polygon points="16 8 20 8 23 11 23 16 16 16 16 8"></polygon>
+                <circle cx="5.5" cy="18.5" r="2.5"></circle>
+                <circle cx="18.5" cy="18.5" r="2.5"></circle>
+              </svg>
+              ส่งด่วนทั่วประเทศ
+            </span>
+            <span>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <line x1="16.5" y1="9.4" x2="7.5" y2="4.21"></line>
+                <polygon points="12 22.08 12 12 3 6.92 3 17.08 12 22.08"></polygon>
+                <polygon points="12 22.08 21 17.08 21 6.92 12 12 12 22.08"></polygon>
+                <polygon points="12 12 21 6.92 12 1.84 3 6.92 12 12"></polygon>
+              </svg>
+              แพ็กดี ปลอดภัย
+            </span>
           </div>
         </div>
         <div className="hero-image-wrap">
