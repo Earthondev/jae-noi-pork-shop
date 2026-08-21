@@ -55,6 +55,22 @@ const roundStatusLabels: Record<(typeof ROUND_STATUSES)[number], string> = {
   "จัดส่งแล้ว": "จัดส่งเรียบร้อยแล้ว",
   "ยกเลิก": "ยกเลิกรอบนี้แล้ว",
 };
+/**
+ * A round's `status` column only changes when the admin edits it — nothing
+ * flips "เปิดรับ" to "ปิดรับ" automatically once `closesAt` passes, so a
+ * round left untouched past its window still reads "เปิดรับ" from the
+ * database. Badging straight off that enum would then claim "เปิดขายอยู่
+ * ตอนนี้" (open now) right next to displayState's own honest "ปิดรับแล้ว" —
+ * this reconciles the two so the badge always matches the real-time state.
+ */
+function roundStatusBadge(round: Pick<AdminRound, "status" | "displayState">): { label: string; tone: "open" | "muted" } {
+  if (round.status === "เปิดรับ") {
+    if (round.displayState === "แสดงใน dropdown") return { label: roundStatusLabels["เปิดรับ"], tone: "open" };
+    if (round.displayState === "ยังไม่ถึงเวลาเปิด") return { label: "ตั้งเวลาไว้ ยังไม่เปิด", tone: "muted" };
+    return { label: "เลยเวลาปิดรับแล้ว", tone: "muted" };
+  }
+  return { label: roundStatusLabels[round.status], tone: "muted" };
+}
 const productStatusLabels: Record<(typeof PRODUCT_STATUSES)[number], string> = {
   "เปิดขาย": "เปิดขาย",
   "ปิดชั่วคราว": "ปิดชั่วคราว",
@@ -1089,7 +1105,7 @@ function RoundsPanel({ rounds, products, saving, mutate, onFormActive, onFormDir
         <div className="admin-section-heading"><div><p className="eyebrow">กำหนดวันเปิดและปิดตะกร้า</p><h2>รอบขาย</h2></div><button className="admin-primary-button" type="button" onClick={() => { setCreating(true); setEditing(null); setDraft(EMPTY_ROUND_INPUT); }}><AdminIcon name="plus" />เพิ่มรอบ</button></div>
         <div className="admin-card-list admin-round-list">{sorted.map((round) => (
           <article className={`admin-cms-card admin-round-card priority-${roundPriority(round)}`} key={round.id}>
-            <div className="admin-card-top"><div><span className={`cms-status status-${round.status === "เปิดรับ" ? "open" : "muted"}`}>{roundStatusLabels[round.status]}</span><h3>{round.label || round.id}</h3><small>{round.displayState}</small></div><button type="button" onClick={() => { setDraft(roundInputFrom(round)); setEditing(round.id); setCreating(false); }}><AdminIcon name="edit" />แก้ไข</button></div>
+            <div className="admin-card-top"><div><span className={`cms-status status-${roundStatusBadge(round).tone}`}>{roundStatusBadge(round).label}</span><h3>{round.label || round.id}</h3></div><button type="button" onClick={() => { setDraft(roundInputFrom(round)); setEditing(round.id); setCreating(false); }}><AdminIcon name="edit" />แก้ไข</button></div>
             <div className="admin-round-sales"><span>ยอดชำระแล้วรอบนี้</span><strong>{formatMoney(round.sales)}</strong></div>
             <dl className="admin-mini-stats"><div><dt>เปิดรับ</dt><dd>{formatInputDateTime(round.opensAt)}</dd></div><div><dt>ปิดรับ</dt><dd>{formatInputDateTime(round.closesAt)}</dd></div><div><dt>ออเดอร์</dt><dd>{round.orderCount}</dd></div><div><dt>เฉลี่ยชำระแล้ว</dt><dd>{formatMoney(round.paidOrderCount ? round.sales / round.paidOrderCount : 0)}</dd></div></dl>
             <p className="admin-round-scope">{round.productScope === "selected" ? `เปิดเฉพาะ ${round.productIds.length} รายการ · ${roundProductNames(round, products)}` : "เปิดขายทั้งร้าน"}</p>
