@@ -61,9 +61,13 @@ test("sitemap.xml uses the real sitemaps.org namespace", async () => {
   // A one-letter slip here ("sitemap.org") silently invalidates the whole file.
   assert.match(sitemap, /xmlns="http:\/\/www\.sitemaps\.org\/schemas\/sitemap\/0\.9"/);
   const listed = [...sitemap.matchAll(/<loc>([^<]+)<\/loc>/g)].map((match) => match[1]);
-  assert.deepEqual(listed, ["https://jaenoishop.com/"]);
+  assert.deepEqual(listed, [
+    "https://jaenoishop.com/",
+    "https://jaenoishop.com/products",
+    "https://jaenoishop.com/how-to-order",
+  ]);
   // Checked against the listed URLs rather than the file text, so a comment
-  // explaining why those pages are excluded does not trip the assertion.
+  // explaining why customer-data pages are excluded does not trip the assertion.
   assert.ok(listed.every((url) => !url.includes("/admin") && !url.includes("/track")));
 });
 

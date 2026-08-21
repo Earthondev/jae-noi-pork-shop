@@ -1,7 +1,6 @@
-<?xml version="1.0" encoding="UTF-8"?>
 <!--
-  Only the two pages worth indexing. /admin needs a login and /track only
-  answers for someone who already has an order number, so neither belongs in
+  Indexable public pages only. /admin needs a login and /track only answers
+  questions for someone who already has an order number, so neither belongs in
   search results.
 -->
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
@@ -9,5 +8,15 @@
     <loc>https://jaenoishop.com/</loc>
     <changefreq>daily</changefreq>
     <priority>1.0</priority>
+  </url>
+  <url>
+    <loc>https://jaenoishop.com/products</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://jaenoishop.com/how-to-order</loc>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
   </url>
 </urlset>

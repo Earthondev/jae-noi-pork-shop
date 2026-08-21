@@ -94,7 +94,7 @@ export type RoundInput = {
 export class AdminCmsValidationError extends Error {}
 
 export const DEFAULT_STOREFRONT_CONTENT = {
-  heroTitle: "อร่อยถึงเครื่อง",
+  heroTitle: "แหนมหมูจากตะคร้อ",
   heroHighlight: "สั่งง่ายถึงบ้าน",
   heroDescription: "แหนมหมู ไส้กรอกอีสาน และกากหมูโบราณ (แคปหมูติดมัน) สูตรร้านเจ๊น้อย เลือกของอร่อย ใส่ตะกร้า แล้วสั่งได้เลย",
   announcementText: "ทำสดทุกวัน ◆ สูตรดั้งเดิมตะคร้อ ◆ แพ็กพร้อมส่ง ◆ อร่อยถึงเครื่อง",

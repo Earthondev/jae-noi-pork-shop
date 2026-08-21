@@ -163,7 +163,9 @@ npm run dev
 หมายเหตุ: `ALLOW_DEV_WRITES` เป็น safety gate สำหรับการเปิดโหมด remote staging
 ไม่ใช่ firewall ของทุก API ส่วน `PRODUCT_MEDIA` ใน local ถูกตั้งให้ใช้ R2 แบบ remote
 เพื่อให้ทดสอบรูปจริงได้ ดังนั้นการอัปโหลดรูปจากหลังบ้าน local จะเขียนเข้า bucket
-ที่กำหนดใน environment จริง แม้ D1 จะเป็น Miniflare
+ที่กำหนดใน environment จริง แม้ D1 จะเป็น Miniflare หากต้องการทดสอบ UI แบบไม่พึ่ง
+เครือข่าย R2 ให้รัน `LOCAL_PRODUCT_MEDIA_REMOTE=false npm run dev` ซึ่งจะใช้ binding
+สื่อสินค้าในเครื่องแทนและไม่ควรใช้สำหรับทดสอบรูปจริงหรืออัปโหลดข้อมูล
 
 หากเป็นเครื่องใหม่และ local D1 ยังไม่มี schema ให้ build config แล้ว apply
 migration จาก source of truth:

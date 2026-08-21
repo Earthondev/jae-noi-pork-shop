@@ -56,7 +56,7 @@ export function Hero({ storeLoading, orderingOpen, rounds, nextRound, content, s
     <>
       <section className="hero" id="top">
         <div className="hero-copy">
-          <p className="eyebrow"><span aria-hidden="true" />ของอร่อยจากตะคร้อ · ทำสดทุกวัน</p>
+          <p className="eyebrow"><span aria-hidden="true" />แหนมหมูและของอร่อยจากตะคร้อ · ทำสดทุกวัน</p>
           <h1>
             {content.heroTitle}<br />
             <span>{content.heroHighlight}</span>
@@ -201,7 +201,7 @@ export function Hero({ storeLoading, orderingOpen, rounds, nextRound, content, s
         </div>
         <div className="hero-image-wrap">
           <div className="hero-image-inner">
-            <Image className="hero-image" src={content.storeCoverUrl} alt="ภาพปกหน้าร้านเจ๊น้อย" width={900} height={900} priority />
+            <Image className="hero-image" src={content.storeCoverUrl} alt="หน้าร้านเจ๊น้อย เขียงหมูตะคร้อ พร้อมแหนมหมูและของฝาก" width={900} height={900} priority />
           </div>
           <p className="hero-stamp">สดจริง<br /><strong>จากร้าน</strong></p>
         </div>

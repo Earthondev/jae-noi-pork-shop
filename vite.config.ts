@@ -40,6 +40,11 @@ export default defineConfig(async ({ command }) => {
 
   const isLocalDevelopment = command === "serve";
   const useRemoteStagingD1 = isLocalDevelopment && isRemoteStagingD1Enabled();
+  // Local UI work should not depend on Cloudflare R2 connectivity. Keep the
+  // existing remote-media behavior by default, but allow an explicit local
+  // override for offline/mobile regression runs.
+  const useRemoteProductMedia =
+    isLocalDevelopment && process.env.LOCAL_PRODUCT_MEDIA_REMOTE !== "false";
   const isCloudflareDeployment =
     command === "build" && process.env.DEPLOY_TARGET === "cloudflare";
   const customDomain = process.env.CLOUDFLARE_CUSTOM_DOMAIN?.trim();
@@ -127,7 +132,7 @@ export default defineConfig(async ({ command }) => {
       {
         binding: "PRODUCT_MEDIA",
         bucket_name: cloudflareProductMediaBucketName,
-        remote: isLocalDevelopment,
+        remote: useRemoteProductMedia,
       },
     ],
     // A single binding handles both storefront optimization and security

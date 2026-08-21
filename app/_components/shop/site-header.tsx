@@ -66,6 +66,8 @@ export function SiteHeader({
             </div>
           </details>
         )}
+        <Link href="/products">เมนูสินค้า</Link>
+        <Link href="/how-to-order">วิธีสั่งซื้อ</Link>
         <Link href="/track">ติดตามออเดอร์</Link>
       </nav>
       <button className="cart-button" type="button" onClick={onOpenCart} aria-label={`เปิดตะกร้า มีสินค้า ${cartCount} ชิ้น`}>

@@ -25,6 +25,7 @@ import type { CarrierCode } from "../../lib/carriers";
 import { ConfirmDialog } from "./confirm-dialog";
 import { AdminIcon, type AdminIconName } from "./icons";
 import { TrackingImportPanel } from "./tracking-import-panel";
+import { downloadCanvasesAsPdf } from "../../lib/sticker-pdf";
 
 type AdminTab = "orders" | "stickers" | "rounds" | "products" | "storefront";
 type OrderRange = "today" | "7days" | "all";
@@ -354,6 +355,18 @@ function createStickerImageFile(order: AdminOrder): StickerImageFile {
   };
 }
 
+function handleDownloadStickerPdf(order: AdminOrder) {
+  const canvas = drawStickerCanvas(order);
+  downloadCanvasesAsPdf([canvas], `shipping-label-${order.id}.pdf`);
+}
+
+function handleDownloadBatchPdf(orders: AdminOrder[], filename?: string) {
+  if (orders.length === 0) return;
+  const canvases = orders.map((order) => drawStickerCanvas(order));
+  const defaultFilename = orders.length === 1 ? `shipping-label-${orders[0].id}.pdf` : `shipping-labels-${orders.length}-orders.pdf`;
+  downloadCanvasesAsPdf(canvases, filename || defaultFilename);
+}
+
 function isAppleTouchDevice() {
   return /iPad|iPhone|iPod/.test(navigator.userAgent)
     || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
@@ -427,6 +440,28 @@ function stickerExportNotice(result: StickerExportResult, count: number) {
   return `เริ่มดาวน์โหลด PNG แล้ว ${count} ภาพ`;
 }
 
+function triggerShippingStickersPrint(targetOrders: AdminOrder[], setPrintTargetOrders: (orders: AdminOrder[]) => void) {
+  if (targetOrders.length === 0) return;
+  setPrintTargetOrders(targetOrders);
+  document.body.classList.add("print-shipping-label");
+
+  let cleanedUp = false;
+  const cleanup = () => {
+    if (cleanedUp) return;
+    cleanedUp = true;
+    document.body.classList.remove("print-shipping-label");
+    window.removeEventListener("afterprint", cleanup);
+  };
+  window.addEventListener("afterprint", cleanup);
+
+  // Give React time to commit DOM nodes before opening the print sheet
+  setTimeout(() => {
+    window.print();
+    // Safety fallback: wait 5s to clean up in case afterprint is not supported or canceled immediately
+    setTimeout(cleanup, 5000);
+  }, 250);
+}
+
 function ShippingStickerPrintArea({ orders }: { orders: AdminOrder[] }) {
   if (orders.length === 0) return null;
   return (
@@ -482,16 +517,8 @@ function StickerPanel({ orders }: { orders: AdminOrder[] }) {
   }
 
   function printRound(roundId: string, targets: AdminOrder[]) {
-    if (targets.length === 0) return;
-    setPrintTargetOrders(targets);
-    document.body.classList.add("print-shipping-label");
-    // The print area has to exist in the DOM before the dialog opens, so the
-    // state update above needs a frame to land first.
-    setTimeout(() => {
-      window.print();
-      document.body.classList.remove("print-shipping-label");
-    }, 150);
     void roundId;
+    triggerShippingStickersPrint(targets, setPrintTargetOrders);
   }
 
   async function exportRound(roundId: string, targets: AdminOrder[]) {
@@ -550,6 +577,9 @@ function StickerPanel({ orders }: { orders: AdminOrder[] }) {
                   <button type="button" className="admin-print-sticker-btn" onClick={() => printRound(round.roundId, targets)}>
                     <AdminIcon name="printer" /> พิมพ์ทั้งรอบ ({targets.length})
                   </button>
+                  <button type="button" className="admin-print-sticker-btn" onClick={() => handleDownloadBatchPdf(targets, `shipping-labels-${round.roundId}.pdf`)}>
+                    <AdminIcon name="download" /> ดาวน์โหลด PDF ({targets.length})
+                  </button>
                   <button type="button" className="admin-print-sticker-btn" disabled={busyRound === round.roundId} onClick={() => void exportRound(round.roundId, targets)}>
                     <AdminIcon name="download" /> {busyRound === round.roundId ? "กำลังบันทึก…" : `บันทึก PNG (${targets.length})`}
                   </button>
@@ -598,13 +628,7 @@ function OrdersPanel({ orders, setOrders, saving, setSaving, setNotice }: { orde
   }), [filter, orders, query, range, selectedRound]);
 
   function handlePrintStickers(targetOrders: AdminOrder[]) {
-    if (targetOrders.length === 0) return;
-    setPrintTargetOrders(targetOrders);
-    document.body.classList.add("print-shipping-label");
-    setTimeout(() => {
-      window.print();
-      document.body.classList.remove("print-shipping-label");
-    }, 150);
+    triggerShippingStickersPrint(targetOrders, setPrintTargetOrders);
   }
 
   async function exportOrdersAsImages(targetOrders: AdminOrder[]) {
@@ -822,7 +846,14 @@ function OrdersPanel({ orders, setOrders, saving, setSaving, setNotice }: { orde
               className="admin-print-sticker-btn"
               onClick={() => handlePrintStickers(filtered.filter((order) => selectedOrderIds.has(order.id)))}
             >
-              <AdminIcon name="printer" /> พิมพ์ / บันทึก PDF ({selectedOrderIds.size})
+              <AdminIcon name="printer" /> พิมพ์สติ๊กเกอร์ ({selectedOrderIds.size})
+            </button>
+            <button
+              type="button"
+              className="admin-print-sticker-btn"
+              onClick={() => handleDownloadBatchPdf(filtered.filter((order) => selectedOrderIds.has(order.id)))}
+            >
+              <AdminIcon name="download" /> ดาวน์โหลด PDF ({selectedOrderIds.size})
             </button>
             <button
               type="button"
@@ -872,7 +903,14 @@ function OrdersPanel({ orders, setOrders, saving, setSaving, setNotice }: { orde
                     className="admin-print-sticker-btn"
                     onClick={() => handlePrintStickers([order])}
                   >
-                    <AdminIcon name="printer" /> พิมพ์ / บันทึก PDF
+                    <AdminIcon name="printer" /> พิมพ์สติ๊กเกอร์
+                  </button>
+                  <button
+                    type="button"
+                    className="admin-print-sticker-btn"
+                    onClick={() => handleDownloadStickerPdf(order)}
+                  >
+                    <AdminIcon name="download" /> ดาวน์โหลด PDF
                   </button>
                   <button
                     type="button"
