@@ -2226,6 +2226,10 @@ footer .footer-phone-links a:active { background: rgba(255, 255, 255, 0.1); }
 
 @media print {
   @page {
+    size: auto;
+    margin: 10mm;
+  }
+  @page shippingLabel {
     size: 77mm 30mm;
     margin: 0;
   }
@@ -2287,6 +2291,7 @@ footer .footer-phone-links a:active { background: rgba(255, 255, 255, 0.1); }
   }
 
   .shipping-sticker-page {
+    page: shippingLabel;
     width: 77mm !important;
     height: 30mm !important;
     padding-left: 10mm !important;

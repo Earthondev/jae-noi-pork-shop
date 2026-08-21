@@ -121,14 +121,38 @@ async function saveReceiptPng(order: PublicOrderTracking, storeName: string): Pr
   context.font = "500 24px 'Noto Sans Thai', sans-serif";
   context.fillText("เอกสารนี้ออกโดยระบบร้านเจ๊น้อย กรุณาเก็บเลขออเดอร์ไว้ติดตามสินค้า", 78, totalY + 135);
 
-  const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, "image/png"));
-  if (!blob) throw new Error("สร้างรูปใบยืนยันไม่สำเร็จ");
+  const filename = `jae-noi-receipt-${order.orderId}.png`;
+  const dataUrl = canvas.toDataURL("image/png");
+  const [, encoded] = dataUrl.split(",", 2);
+  if (!encoded) throw new Error("สร้างรูปใบยืนยันไม่สำเร็จ");
+  const binary = atob(encoded);
+  const bytes = new Uint8Array(binary.length);
+  for (let index = 0; index < binary.length; index += 1) bytes[index] = binary.charCodeAt(index);
+  const blob = new Blob([bytes], { type: "image/png" });
+  const file = new File([blob], filename, { type: "image/png" });
+  const shareFiles = { files: [file] };
+
+  if (typeof navigator.share === "function" && navigator.canShare?.(shareFiles)) {
+    try {
+      await navigator.share({
+        ...shareFiles,
+        title: `ใบยืนยันการชำระเงิน ${order.orderId}`,
+        text: `เลขออเดอร์ ${order.orderId} ยอดชำระ ${order.total.toLocaleString("th-TH")} บาท`,
+      });
+      return;
+    } catch (error) {
+      if (error instanceof DOMException && error.name === "AbortError") return;
+    }
+  }
+
   const url = URL.createObjectURL(blob);
   const anchor = document.createElement("a");
   anchor.href = url;
-  anchor.download = `jae-noi-receipt-${order.orderId}.png`;
+  anchor.download = filename;
+  document.body.appendChild(anchor);
   anchor.click();
-  URL.revokeObjectURL(url);
+  anchor.remove();
+  window.setTimeout(() => URL.revokeObjectURL(url), 30_000);
 }
 
 function OrderHistoryCard({ order, expanded, onToggle, storeName, phoneLast4, phonePrimary, phoneSecondary, promptPayId, promptPayName, onConfirmed, onSlipReplaced }: { order: PublicOrderTracking; expanded: boolean; onToggle: () => void; storeName: string; phoneLast4: string; phonePrimary: string; phoneSecondary: string; promptPayId: string | null; promptPayName: string | null; onConfirmed: (orderId: string) => void; onSlipReplaced: (orderId: string, paymentStatus: PublicOrderTracking["paymentStatus"]) => void }) {
