@@ -35,13 +35,13 @@ export const KEYWORDS = [
   "พรีออเดอร์แหนมหมู",
 ] as const;
 
-export const SITE_TITLE = "แหนมหมู ไส้กรอกอีสาน แคปหมู | เจ๊น้อย เขียงหมูตะคร้อ บัวใหญ่";
+export const SITE_TITLE = "แหนมหมู ไส้กรอกอีสาน กากหมูโบราณ (แคปหมูติดมัน) | เจ๊น้อย บัวใหญ่";
 
 // Long enough for Google to show in full (~155 chars) and specific enough that
 // an assistant answering "ซื้อแหนมหมูที่ไหน" has the product, the place, and
 // the way to buy in one sentence.
 export const SITE_DESCRIPTION =
-  "สั่งแหนมหมู ไส้กรอกอีสาน และแคปหมูติดมันจากเจ๊น้อย เขียงหมูตะคร้อ อ.บัวใหญ่ จ.นครราชสีมา ทำสด แพ็กสูญญากาศ ส่งไปรษณีย์ทั่วไทย";
+  "สั่งแหนมหมู ไส้กรอกอีสาน และกากหมูโบราณ (แคปหมูติดมัน) จากเจ๊น้อย เขียงหมูตะคร้อ อ.บัวใหญ่ จ.นครราชสีมา ทำสด แพ็กสูญญากาศ ส่งไปรษณีย์ทั่วไทย";
 
 export function fullAddress(): string {
   return `${SHOP.legalName} ${SHOP.street} ${SHOP.subdistrict} ${SHOP.district} ${SHOP.province} ${SHOP.postalCode}`;
