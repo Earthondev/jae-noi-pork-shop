@@ -1439,7 +1439,7 @@ function ProductsPanel({ products, categoryOrder, saving, mutate, setNotice, onF
         <div className="admin-product-toolbar">
           <div className="admin-category-chips-row">
             <button type="button" className={`admin-category-chip-btn ${activeCategory === "ทั้งหมด" ? "active" : ""}`} onClick={() => setCategory("ทั้งหมด")}>ทั้งหมด</button>
-            <DndContext sensors={categoryDragSensors} collisionDetection={closestCenter} onDragStart={handleCategoryDragStart} onDragEnd={handleCategoryDragEnd} onDragCancel={() => setActiveCategoryDrag(null)}>
+            <DndContext id="admin-category-dnd" sensors={categoryDragSensors} collisionDetection={closestCenter} onDragStart={handleCategoryDragStart} onDragEnd={handleCategoryDragEnd} onDragCancel={() => setActiveCategoryDrag(null)}>
               <SortableContext items={categoryNames} strategy={horizontalListSortingStrategy}>
                 {categoryNames.map((value) => <SortableCategoryChip key={value} category={value} active={activeCategory === value} disabled={isCategoryReordering} onSelect={() => setCategory(value)} />)}
               </SortableContext>
@@ -1463,6 +1463,7 @@ function ProductsPanel({ products, categoryOrder, saving, mutate, setNotice, onF
           <>
             {activeVisible.length > 1 && <p className="admin-sort-hint">กดค้างที่จุดจับ <AdminIcon name="grip" /> แล้วลากขึ้นลงเพื่อจัดเรียงลำดับสินค้าใหม่</p>}
             <DndContext
+              id="admin-product-dnd"
               sensors={dragSensors}
               collisionDetection={closestCenter}
               autoScroll
