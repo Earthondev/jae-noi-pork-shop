@@ -152,6 +152,37 @@ export function createStickersPdf(images: StickerImageSource[]): Uint8Array {
 }
 
 /**
+ * Cleans round identifier for safe filesystem / download filenames
+ */
+export function cleanRoundForFilename(roundId: string | null | undefined): string {
+  if (!roundId || roundId === "ไม่ระบุรอบ") return "";
+  return roundId.replace(/[^a-zA-Z0-9_-]/g, "");
+}
+
+/**
+ * Builds a descriptive PDF filename indicating the delivery round and order count
+ */
+export function buildStickerPdfFilename(
+  orders: Array<{ id: string; round_id?: string | null }>,
+  customFilename?: string
+): string {
+  if (customFilename) return customFilename;
+  if (orders.length === 0) return "shipping-labels.pdf";
+  if (orders.length === 1) {
+    const order = orders[0];
+    const roundPart = cleanRoundForFilename(order.round_id);
+    return `shipping-label-${roundPart ? `${roundPart}-` : ""}${order.id}.pdf`;
+  }
+  const rounds = Array.from(
+    new Set(orders.map((o) => cleanRoundForFilename(o.round_id)).filter(Boolean))
+  );
+  if (rounds.length === 1) {
+    return `shipping-labels-${rounds[0]}-${orders.length}-orders.pdf`;
+  }
+  return `shipping-labels-${orders.length}-orders.pdf`;
+}
+
+/**
  * Helper to download an array of canvases as a single PDF file
  */
 export function downloadCanvasesAsPdf(canvases: HTMLCanvasElement[], filename: string): void {
@@ -174,3 +205,4 @@ export function downloadCanvasesAsPdf(canvases: HTMLCanvasElement[], filename: s
   link.click();
   setTimeout(() => URL.revokeObjectURL(url), 60_000);
 }
+

@@ -1,6 +1,10 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { createStickersPdf } from "../lib/sticker-pdf.ts";
+import {
+  createStickersPdf,
+  buildStickerPdfFilename,
+  cleanRoundForFilename,
+} from "../lib/sticker-pdf.ts";
 
 test("creates a valid multi-page PDF for shipping stickers", () => {
   // Mock JPEG byte stream (minimal dummy JPEG payload)
@@ -27,3 +31,48 @@ test("handles empty image list gracefully", () => {
   const pdfBytes = createStickersPdf([]);
   assert.equal(pdfBytes.length, 0);
 });
+
+test("builds descriptive sticker filenames with round identification", () => {
+
+  assert.equal(cleanRoundForFilename("RD-20260716"), "RD-20260716");
+  assert.equal(cleanRoundForFilename("ไม่ระบุรอบ"), "");
+  assert.equal(cleanRoundForFilename(null), "");
+
+  // Single order with round
+  assert.equal(
+    buildStickerPdfFilename([{ id: "JN-20260716-1234567890", round_id: "RD-20260716" }]),
+    "shipping-label-RD-20260716-JN-20260716-1234567890.pdf"
+  );
+
+  // Single order without round
+  assert.equal(
+    buildStickerPdfFilename([{ id: "JN-20260716-1234567890", round_id: null }]),
+    "shipping-label-JN-20260716-1234567890.pdf"
+  );
+
+  // Multiple orders in the same round
+  assert.equal(
+    buildStickerPdfFilename([
+      { id: "JN-1", round_id: "RD-20260716" },
+      { id: "JN-2", round_id: "RD-20260716" },
+      { id: "JN-3", round_id: "RD-20260716" },
+    ]),
+    "shipping-labels-RD-20260716-3-orders.pdf"
+  );
+
+  // Multiple orders across mixed rounds
+  assert.equal(
+    buildStickerPdfFilename([
+      { id: "JN-1", round_id: "RD-20260716" },
+      { id: "JN-2", round_id: "RD-20260720" },
+    ]),
+    "shipping-labels-2-orders.pdf"
+  );
+
+  // Custom filename override
+  assert.equal(
+    buildStickerPdfFilename([{ id: "JN-1" }], "custom.pdf"),
+    "custom.pdf"
+  );
+});
+

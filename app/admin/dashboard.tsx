@@ -25,7 +25,11 @@ import type { CarrierCode } from "../../lib/carriers";
 import { ConfirmDialog } from "./confirm-dialog";
 import { AdminIcon, type AdminIconName } from "./icons";
 import { TrackingImportPanel } from "./tracking-import-panel";
-import { downloadCanvasesAsPdf } from "../../lib/sticker-pdf";
+import {
+  downloadCanvasesAsPdf,
+  buildStickerPdfFilename,
+  cleanRoundForFilename,
+} from "../../lib/sticker-pdf";
 
 type AdminTab = "orders" | "stickers" | "rounds" | "products" | "storefront";
 type OrderRange = "today" | "7days" | "all";
@@ -349,22 +353,24 @@ function createStickerImageFile(order: AdminOrder): StickerImageFile {
     bytes[index] = binary.charCodeAt(index);
   }
 
+  const roundPart = cleanRoundForFilename(order.round_id);
   return {
     blob: new Blob([bytes], { type: "image/png" }),
-    filename: `shipping-label-${order.id}.png`,
+    filename: `shipping-label-${roundPart ? `${roundPart}-` : ""}${order.id}.png`,
   };
 }
 
 function handleDownloadStickerPdf(order: AdminOrder) {
   const canvas = drawStickerCanvas(order);
-  downloadCanvasesAsPdf([canvas], `shipping-label-${order.id}.pdf`);
+  const filename = buildStickerPdfFilename([order]);
+  downloadCanvasesAsPdf([canvas], filename);
 }
 
 function handleDownloadBatchPdf(orders: AdminOrder[], filename?: string) {
   if (orders.length === 0) return;
   const canvases = orders.map((order) => drawStickerCanvas(order));
-  const defaultFilename = orders.length === 1 ? `shipping-label-${orders[0].id}.pdf` : `shipping-labels-${orders.length}-orders.pdf`;
-  downloadCanvasesAsPdf(canvases, filename || defaultFilename);
+  const finalFilename = buildStickerPdfFilename(orders, filename);
+  downloadCanvasesAsPdf(canvases, finalFilename);
 }
 
 function isAppleTouchDevice() {
