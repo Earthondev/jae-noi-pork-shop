@@ -422,7 +422,7 @@ function canShareStickerFiles(files: File[]) {
 async function shareStickerFiles(files: File[]): Promise<StickerExportResult> {
   if (canShareStickerFiles(files)) {
     try {
-      await navigator.share({ files, title: "สติ๊กเกอร์จัดส่งร้านเจ๊น้อย" });
+      await navigator.share({ files });
       return "shared";
     } catch (error) {
       if (error instanceof DOMException && error.name === "AbortError") return "cancelled";

@@ -134,11 +134,7 @@ async function saveReceiptPng(order: PublicOrderTracking, storeName: string): Pr
 
   if (typeof navigator.share === "function" && navigator.canShare?.(shareFiles)) {
     try {
-      await navigator.share({
-        ...shareFiles,
-        title: `ใบยืนยันการชำระเงิน ${order.orderId}`,
-        text: `เลขออเดอร์ ${order.orderId} ยอดชำระ ${order.total.toLocaleString("th-TH")} บาท`,
-      });
+      await navigator.share(shareFiles);
       return;
     } catch (error) {
       if (error instanceof DOMException && error.name === "AbortError") return;

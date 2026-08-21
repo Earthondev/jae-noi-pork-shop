@@ -211,11 +211,7 @@ export function CartDrawer({ drawerRef, onClose, cart, checkout, storefront, ord
       const shareFiles = { files: [new File([blob], filename, { type: "image/png" })] };
       if (navigator.share && navigator.canShare?.(shareFiles)) {
         try {
-          await navigator.share({
-            ...shareFiles,
-            title: `${confirmationContent(order.paymentStatus).documentTitle} ${order.id}`,
-            text: `เลขออเดอร์ ${order.id}`,
-          });
+          await navigator.share(shareFiles);
         } catch (shareError) {
           if (shareError instanceof DOMException && shareError.name === "AbortError") {
             setReceiptSaveStatus("idle");
@@ -341,11 +337,7 @@ export function CartDrawer({ drawerRef, onClose, cart, checkout, storefront, ord
       const shareFiles = { files: [file] };
 
       if (navigator.share && navigator.canShare?.(shareFiles)) {
-        void navigator.share({
-          ...shareFiles,
-          title: `QR พร้อมเพย์ ${storefront.storeName}`,
-          text: `ยอดชำระ ${order.orderTotal.toLocaleString("th-TH")} บาท`,
-        }).then(() => {
+        void navigator.share(shareFiles).then(() => {
           showQrSaveSuccess(setQrSaveStatus);
         }).catch((error: unknown) => {
           if (error instanceof DOMException && error.name === "AbortError") {
