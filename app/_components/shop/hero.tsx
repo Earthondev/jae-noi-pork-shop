@@ -51,25 +51,37 @@ export function Hero({ storeLoading, orderingOpen, rounds, nextRound, content, s
   return (
     <>
       <section className="hero" id="top">
+        <div className="hero-photo" aria-hidden="true">
+          <Image
+            className="hero-photo-img"
+            src="/images/products/hero-basket-spread.jpg"
+            alt=""
+            width={1100}
+            height={846}
+            priority
+          />
+        </div>
         <div className="hero-copy">
-          <p className="eyebrow">
-            <svg className="eyebrow-icon" aria-hidden="true" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-              <ellipse cx="7.4" cy="7.6" rx="1.7" ry="2.5" transform="rotate(-24 7.4 7.6)" fill="currentColor" />
-              <ellipse cx="16.6" cy="7.6" rx="1.7" ry="2.5" transform="rotate(24 16.6 7.6)" fill="currentColor" />
-              <circle cx="12" cy="12.6" r="6.4" fill="none" stroke="currentColor" strokeWidth="1.7" />
-              <rect x="9" y="13.6" width="6" height="3.6" rx="1.8" fill="none" stroke="currentColor" strokeWidth="1.7" />
-              <circle cx="10.5" cy="15.4" r="0.6" fill="currentColor" />
-              <circle cx="13.5" cy="15.4" r="0.6" fill="currentColor" />
-              <circle cx="9.3" cy="11" r="0.7" fill="currentColor" />
-              <circle cx="14.7" cy="11" r="0.7" fill="currentColor" />
-            </svg>
-            แหนมหมูและของอร่อยจากตะคร้อ · ทำสดทุกวัน
-          </p>
-          <h1>
-            {content.heroTitle}<br />
-            <span>{content.heroHighlight}</span>
-          </h1>
-          <p className="hero-lead">{heroDescription}</p>
+          <div className="hero-copy-top">
+            <p className="eyebrow">
+              <svg className="eyebrow-icon" aria-hidden="true" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                <ellipse cx="7.4" cy="7.6" rx="1.7" ry="2.5" transform="rotate(-24 7.4 7.6)" fill="currentColor" />
+                <ellipse cx="16.6" cy="7.6" rx="1.7" ry="2.5" transform="rotate(24 16.6 7.6)" fill="currentColor" />
+                <circle cx="12" cy="12.6" r="6.4" fill="none" stroke="currentColor" strokeWidth="1.7" />
+                <rect x="9" y="13.6" width="6" height="3.6" rx="1.8" fill="none" stroke="currentColor" strokeWidth="1.7" />
+                <circle cx="10.5" cy="15.4" r="0.6" fill="currentColor" />
+                <circle cx="13.5" cy="15.4" r="0.6" fill="currentColor" />
+                <circle cx="9.3" cy="11" r="0.7" fill="currentColor" />
+                <circle cx="14.7" cy="11" r="0.7" fill="currentColor" />
+              </svg>
+              แหนมหมูและของอร่อยจากตะคร้อ · ทำสดทุกวัน
+            </p>
+            <h1>
+              {content.heroTitle}<br />
+              <span>{content.heroHighlight}</span>
+            </h1>
+            <p className="hero-lead">{heroDescription}</p>
+          </div>
           <div
             className={`hero-ordering-panel${storeLoading ? " is-loading" : orderingOpen ? " is-open" : " is-closed"}`}
             aria-busy={storeLoading}
@@ -219,12 +231,6 @@ export function Hero({ storeLoading, orderingOpen, rounds, nextRound, content, s
               แพ็กดี ปลอดภัย
             </span>
           </div>
-        </div>
-        <div className="hero-image-wrap">
-          <div className="hero-image-inner">
-            <Image className="hero-image" src={content.storeCoverUrl} alt="หน้าร้านเจ๊น้อย เขียงหมูตะคร้อ พร้อมแหนมหมูและของฝาก" width={900} height={900} priority />
-          </div>
-          <p className="hero-stamp">สดจริง<br /><strong>จากร้าน</strong></p>
         </div>
       </section>
     </>
