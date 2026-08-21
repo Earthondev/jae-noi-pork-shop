@@ -509,11 +509,11 @@ function triggerShippingStickersPrint(targetOrders: AdminOrder[], setPrintTarget
   window.addEventListener("afterprint", cleanup);
 
   // Give React time to commit DOM nodes before opening the print sheet
-  setTimeout(() => {
-    window.print();
-    // Safety fallback: wait 5s to clean up in case afterprint is not supported or canceled immediately
-    setTimeout(cleanup, 5000);
-  }, 250);
+  requestAnimationFrame(() => {
+    setTimeout(() => {
+      window.print();
+    }, 200);
+  });
 }
 
 function ShippingStickerPrintArea({ orders }: { orders: AdminOrder[] }) {

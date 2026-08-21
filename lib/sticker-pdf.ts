@@ -198,11 +198,30 @@ export function downloadCanvasesAsPdf(canvases: HTMLCanvasElement[], filename: s
 
   const pdfBytes = createStickersPdf(images);
   const blob = new Blob([pdfBytes as BlobPart], { type: "application/pdf" });
+  const file = new File([blob], filename, { type: "application/pdf" });
+
+  if (typeof navigator !== "undefined" && typeof navigator.share === "function" && navigator.canShare?.({ files: [file] })) {
+    void navigator.share({
+      files: [file],
+      title: filename,
+    }).catch((error) => {
+      if (error instanceof DOMException && error.name === "AbortError") return;
+      fallbackDownloadPdf(blob, filename);
+    });
+    return;
+  }
+
+  fallbackDownloadPdf(blob, filename);
+}
+
+function fallbackDownloadPdf(blob: Blob, filename: string): void {
   const url = URL.createObjectURL(blob);
   const link = document.createElement("a");
   link.href = url;
   link.download = filename;
+  document.body.appendChild(link);
   link.click();
+  link.remove();
   setTimeout(() => URL.revokeObjectURL(url), 60_000);
 }
 
