@@ -1,8 +1,17 @@
 /**
- * Multi-page PDF Generator for Shipping Stickers (77mm x 30mm)
+ * Multi-page PDF Generator for Shipping Stickers (48mm printable width for
+ * continuous-roll thermal printers e.g. PeriPage A6; height varies per label).
  * Pure TypeScript, zero external dependencies.
  * Produces compliant PDF-1.4 binary blobs from Canvas elements.
  */
+
+/**
+ * Pixels per millimetre used when rasterizing sticker canvases. Must match
+ * the canvas drawing code's STICKER_WIDTH_PX / 48mm (384px at 203dpi) so a
+ * canvas's pixel size converts back to its correct physical mm size when
+ * building the PDF page for it.
+ */
+export const STICKER_PX_PER_MM = 384 / 48;
 
 export interface StickerImageSource {
   width: number;
@@ -25,18 +34,18 @@ export function dataUrlToUint8Array(dataUrl: string): Uint8Array {
 }
 
 /**
- * Generates a PDF-1.4 file with each sticker as a 77mm x 30mm page.
+ * Generates a PDF-1.4 file with each sticker as its own page, sized to match
+ * that sticker's canvas exactly (48mm printable width, height varies with
+ * label content since these print to a continuous roll rather than a fixed
+ * die-cut label).
  */
 export function createStickersPdf(images: StickerImageSource[]): Uint8Array {
   if (images.length === 0) {
     return new Uint8Array(0);
   }
 
-  // 77mm x 30mm in PostScript points (72 points/inch, 25.4 mm/inch)
-  // 77 * 72 / 25.4 = 218.2677... pt
-  // 30 * 72 / 25.4 = 85.0393... pt
-  const pageWidth = 218.27;
-  const pageHeight = 85.04;
+  // PostScript points: 72 points/inch, 25.4 mm/inch, mm = px / STICKER_PX_PER_MM
+  const ptPerPx = (72 / 25.4) / STICKER_PX_PER_MM;
 
   const objects: Uint8Array[] = [];
   const offsets: number[] = [];
@@ -91,6 +100,8 @@ export function createStickersPdf(images: StickerImageSource[]): Uint8Array {
     const contentObjId = pageObjId + 1;
     const imageObjId = pageObjId + 2;
     const img = images[i];
+    const pageWidth = img.width * ptPerPx;
+    const pageHeight = img.height * ptPerPx;
 
     // Page object
     registerObject(
@@ -98,7 +109,7 @@ export function createStickersPdf(images: StickerImageSource[]): Uint8Array {
       `<< /Type /Page /Parent ${pagesObjId} 0 R /MediaBox [0 0 ${pageWidth} ${pageHeight}] /Contents ${contentObjId} 0 R /Resources << /XObject << /Im1 ${imageObjId} 0 R >> /ProcSet [/PDF /ImageC] >> >>`
     );
 
-    // Content stream (scales the image to fit the 77x30mm page exactly)
+    // Content stream (scales the image to fit its own page exactly)
     const streamContent = `q ${pageWidth} 0 0 ${pageHeight} 0 0 cm /Im1 Do Q`;
     const streamBytes = encoder.encode(streamContent);
     registerObject(

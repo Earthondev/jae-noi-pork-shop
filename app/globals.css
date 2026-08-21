@@ -2695,10 +2695,13 @@ footer .footer-phone-links a:active { background: rgba(255, 255, 255, 0.1); }
     size: auto;
     margin: 10mm;
   }
-  @page shippingLabel {
-    size: 77mm 30mm;
-    margin: 0;
-  }
+  /*
+   * The 48mm sticker page size below is applied by injecting a plain
+   * (unnamed) `@page` rule via a <style> tag right before window.print() —
+   * see triggerShippingStickersPrint. A *named* `@page selector {}` rule
+   * here would be ignored on iOS/iPadOS Safari (no named-page support),
+   * silently falling back to this default and printing on A4.
+   */
   body {
     background: white !important;
     margin: 0 !important;
@@ -2744,11 +2747,13 @@ footer .footer-phone-links a:active { background: rgba(255, 255, 255, 0.1); }
     display: none !important;
   }
 
-  /* Thermal Shipping Sticker Print (77x30mm) */
+  /* Thermal Shipping Sticker Print (48mm printable width, continuous roll —
+     height follows content, torn off at a perforation, not a fixed die-cut
+     label). */
   body.print-shipping-label .shipping-label-print-area {
     display: block !important;
     position: static !important;
-    width: 77mm !important;
+    width: 48mm !important;
     margin: 0 !important;
     padding: 0 !important;
     visibility: visible !important;
@@ -2758,9 +2763,8 @@ footer .footer-phone-links a:active { background: rgba(255, 255, 255, 0.1); }
   }
 
   .shipping-sticker-page {
-    page: shippingLabel;
-    width: 77mm !important;
-    height: 30mm !important;
+    width: 48mm !important;
+    height: auto !important;
     margin: 0 !important;
     padding: 0 !important;
     box-sizing: border-box !important;
@@ -2776,10 +2780,9 @@ footer .footer-phone-links a:active { background: rgba(255, 255, 255, 0.1); }
   }
 
   .shipping-sticker-img {
-    width: 77mm !important;
-    height: 30mm !important;
-    max-width: 77mm !important;
-    max-height: 30mm !important;
+    width: 48mm !important;
+    height: auto !important;
+    max-width: 48mm !important;
     object-fit: contain !important;
     display: block !important;
     margin: 0 auto !important;

@@ -269,87 +269,104 @@ export function AdminDashboard({ initialOrders, initialCms, userName, serverNow,
 
 type StatusDraft = { orderStatus: OrderStatus; paymentStatus: PaymentStatus };
 
-function drawStickerCanvas(order: AdminOrder): HTMLCanvasElement {
-  const scale = 4;
-  const width = Math.round(77 * 3.7795 * scale);
-  const height = Math.round(30 * 3.7795 * scale);
-  const marginLeft = Math.round(10 * 3.7795 * scale);
-  const marginRight = Math.round(10 * 3.7795 * scale);
-  const contentWidth = width - marginLeft - marginRight;
+/**
+ * 48mm printable width @ 203dpi (e.g. PeriPage A6 and similar continuous-roll
+ * thermal printers whose 56-58mm paper prints in a ~48mm-wide area). Height
+ * is not fixed: these tear off at a perforation rather than a die-cut label,
+ * so the canvas grows with however much text a given order needs.
+ */
+const STICKER_WIDTH_PX = 384;
+const STICKER_MARGIN_PX = 14;
 
-  const canvas = document.createElement("canvas");
-  canvas.width = width;
-  canvas.height = height;
-  const ctx = canvas.getContext("2d");
-  if (!ctx) return canvas;
-
-  ctx.fillStyle = "#ffffff";
-  ctx.fillRect(0, 0, width, height);
-
-  // 1. Header (Shop Name + Order ID)
-  ctx.fillStyle = "#000000";
-  ctx.font = `bold ${Math.round(6.5 * 3.7795 * scale / 2.8)}px system-ui, -apple-system, sans-serif`;
-  ctx.textBaseline = "top";
-  const shopTitle = "ร้านเจ๊น้อย เขียงหมู";
-  ctx.fillText(shopTitle, marginLeft, Math.round(1.5 * 3.7795 * scale), contentWidth * 0.45);
-
-  ctx.font = `bold ${Math.round(6.5 * 3.7795 * scale / 2.8)}px monospace`;
-  const orderIdWidth = ctx.measureText(order.id).width;
-  const orderIdX = Math.max(marginLeft + contentWidth * 0.46, width - marginRight - orderIdWidth);
-  ctx.fillText(order.id, orderIdX, Math.round(1.5 * 3.7795 * scale), contentWidth * 0.52);
-
-  // Solid Divider Line
-  ctx.strokeStyle = "#000000";
-  ctx.lineWidth = Math.round(0.8 * scale);
-  ctx.beginPath();
-  ctx.moveTo(marginLeft, Math.round(7 * 3.7795 * scale));
-  ctx.lineTo(width - marginRight, Math.round(7 * 3.7795 * scale));
-  ctx.stroke();
-
-  // 2. Recipient
-  ctx.font = `bold ${Math.round(8.5 * 3.7795 * scale / 2.8)}px system-ui, -apple-system, sans-serif`;
-  const recipientText = `ผู้รับ: ${order.customer_name} (${order.phone})`;
-  ctx.fillText(recipientText, marginLeft, Math.round(8.5 * 3.7795 * scale), contentWidth);
-
-  // 3. Address (2 lines wrap with auto-fit)
-  ctx.font = `${Math.round(7 * 3.7795 * scale / 2.8)}px system-ui, -apple-system, sans-serif`;
-  const addressText = `ที่อยู่: ${order.address || "รับเองหน้าร้าน"}`;
-  
-  const words = addressText.split(" ");
+function wrapLines(ctx: CanvasRenderingContext2D, text: string, maxWidth: number, maxLines: number): string[] {
+  const words = text.split(" ");
+  const lines: string[] = [];
   let line = "";
-  let yPos = Math.round(14 * 3.7795 * scale);
-  const lineHeight = Math.round(3.5 * 3.7795 * scale);
-  let lineCount = 0;
-
-  for (let i = 0; i < words.length; i++) {
-    const testLine = line + (line ? " " : "") + words[i];
-    const metrics = ctx.measureText(testLine);
-    if (metrics.width > contentWidth && i > 0) {
-      ctx.fillText(line, marginLeft, yPos, contentWidth);
-      line = words[i];
-      yPos += lineHeight;
-      lineCount++;
-      if (lineCount >= 2) break;
+  for (const word of words) {
+    const testLine = line ? `${line} ${word}` : word;
+    if (line && ctx.measureText(testLine).width > maxWidth) {
+      lines.push(line);
+      if (lines.length >= maxLines) return lines;
+      line = word;
     } else {
       line = testLine;
     }
   }
-  if (lineCount < 2 && line) {
-    ctx.fillText(line, marginLeft, yPos, contentWidth);
+  if (line) lines.push(line);
+  return lines;
+}
+
+type StickerBlock =
+  | { kind: "text"; font: string; lines: string[]; lineHeight: number }
+  | { kind: "divider"; dashed: boolean; gapBefore: number; gapAfter: number };
+
+function drawStickerCanvas(order: AdminOrder): HTMLCanvasElement {
+  const width = STICKER_WIDTH_PX;
+  const marginX = STICKER_MARGIN_PX;
+  const contentWidth = width - marginX * 2;
+
+  const fontShop = "20px system-ui, -apple-system, sans-serif";
+  const fontOrderId = "bold 26px monospace";
+  const fontRecipient = "bold 24px system-ui, -apple-system, sans-serif";
+  const fontBody = "20px system-ui, -apple-system, sans-serif";
+
+  const measureCtx = document.createElement("canvas").getContext("2d");
+  if (!measureCtx) return document.createElement("canvas");
+
+  measureCtx.font = fontRecipient;
+  const recipientLines = wrapLines(measureCtx, `ผู้รับ: ${order.customer_name} (${order.phone})`, contentWidth, 2);
+
+  measureCtx.font = fontBody;
+  const addressLines = wrapLines(measureCtx, `ที่อยู่: ${order.address || "รับเองหน้าร้าน"}`, contentWidth, 4);
+  const itemLines = wrapLines(measureCtx, `สินค้า: ${order.items ? order.items.replace(/\n+/g, ", ") : "—"}`, contentWidth, 4);
+
+  const blocks: StickerBlock[] = [
+    { kind: "text", font: fontShop, lines: ["ร้านเจ๊น้อย เขียงหมูตะคร้อ"], lineHeight: 24 },
+    { kind: "text", font: fontOrderId, lines: [order.id], lineHeight: 30 },
+    { kind: "divider", dashed: false, gapBefore: 4, gapAfter: 12 },
+    { kind: "text", font: fontRecipient, lines: recipientLines, lineHeight: 26 },
+    { kind: "text", font: fontBody, lines: addressLines, lineHeight: 24 },
+    { kind: "divider", dashed: true, gapBefore: 10, gapAfter: 12 },
+    { kind: "text", font: fontBody, lines: itemLines, lineHeight: 24 },
+  ];
+
+  let height = marginX * 2;
+  for (const block of blocks) {
+    height += block.kind === "text" ? block.lines.length * block.lineHeight : block.gapBefore + block.gapAfter;
   }
 
-  // Dashed Divider Line
-  ctx.setLineDash([Math.round(2 * scale), Math.round(2 * scale)]);
-  ctx.beginPath();
-  ctx.moveTo(marginLeft, Math.round(22.5 * 3.7795 * scale));
-  ctx.lineTo(width - marginRight, Math.round(22.5 * 3.7795 * scale));
-  ctx.stroke();
-  ctx.setLineDash([]);
+  const canvas = document.createElement("canvas");
+  canvas.width = width;
+  canvas.height = Math.round(height);
+  const ctx = canvas.getContext("2d");
+  if (!ctx) return canvas;
 
-  // 4. Items List
-  ctx.font = `${Math.round(6.5 * 3.7795 * scale / 2.8)}px system-ui, -apple-system, sans-serif`;
-  const itemsText = `สินค้า: ${order.items ? order.items.replace(/\n+/g, ", ") : "—"}`;
-  ctx.fillText(itemsText, marginLeft, Math.round(24 * 3.7795 * scale), contentWidth);
+  ctx.fillStyle = "#ffffff";
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+  ctx.fillStyle = "#000000";
+  ctx.textBaseline = "top";
+
+  let y = marginX;
+  for (const block of blocks) {
+    if (block.kind === "text") {
+      ctx.font = block.font;
+      for (const line of block.lines) {
+        ctx.fillText(line, marginX, y, contentWidth);
+        y += block.lineHeight;
+      }
+    } else {
+      y += block.gapBefore;
+      ctx.strokeStyle = "#000000";
+      ctx.lineWidth = 2;
+      ctx.setLineDash(block.dashed ? [6, 6] : []);
+      ctx.beginPath();
+      ctx.moveTo(marginX, y);
+      ctx.lineTo(width - marginX, y);
+      ctx.stroke();
+      ctx.setLineDash([]);
+      y += block.gapAfter;
+    }
+  }
 
   return canvas;
 }
@@ -513,14 +530,43 @@ function triggerShippingStickersPrint(targetOrders: AdminOrder[], setPrintTarget
   setPrintTargetOrders(targetOrders);
   document.body.classList.add("print-shipping-label");
 
+  // A named `@page selector { size: ... }` rule is silently ignored on
+  // iOS/iPadOS Safari (no named-page support), which falls back to the
+  // default `@page` size and prints on A4. Injecting a plain @page rule here
+  // instead — and removing it again after — reliably sets the page size for
+  // just this print, everywhere including iOS.
+  const pageSizeStyle = document.createElement("style");
+  pageSizeStyle.textContent = "@page { size: 48mm auto; margin: 0; }";
+  document.head.appendChild(pageSizeStyle);
+
+  // The print stylesheet collapses almost the entire admin UI to
+  // `display: none` so the browser can lay out just the sticker. iOS Safari
+  // does not restore the scroll position once that print view is torn down
+  // (including when the sheet is cancelled), so it has to be saved and put
+  // back by hand.
+  const scrollY = window.scrollY;
+
   let cleanedUp = false;
   const cleanup = () => {
     if (cleanedUp) return;
     cleanedUp = true;
     document.body.classList.remove("print-shipping-label");
+    pageSizeStyle.remove();
+    window.scrollTo(0, scrollY);
     window.removeEventListener("afterprint", cleanup);
+    printMediaQuery.removeEventListener("change", onPrintMediaChange);
   };
   window.addEventListener("afterprint", cleanup);
+
+  // `afterprint` is known to be unreliable on iOS/iPadOS Safari — it does
+  // not always fire when the print sheet is dismissed via Cancel. Watching
+  // the `print` media query directly is the cross-browser-reliable way to
+  // notice the print view has closed, so cleanup still runs in that case.
+  const printMediaQuery = window.matchMedia("print");
+  const onPrintMediaChange = (event: MediaQueryListEvent) => {
+    if (!event.matches) cleanup();
+  };
+  printMediaQuery.addEventListener("change", onPrintMediaChange);
 
   // Give React time to commit DOM nodes before opening the print sheet
   requestAnimationFrame(() => {
@@ -598,7 +644,7 @@ function StickerPanel({ orders, onPrintStickers }: { orders: AdminOrder[]; onPri
   return <section className="admin-panel">
     <div className="admin-section-heading">
       <div>
-        <p className="eyebrow">สติ๊กเกอร์ 77 × 30 มม. สำหรับแปะหน้ากล่อง</p>
+        <p className="eyebrow">สติ๊กเกอร์กว้าง 48 มม. ม้วนต่อเนื่อง ตัดตามรอยปะ</p>
         <h2>พิมพ์สติ๊กเกอร์ตามรอบ</h2>
       </div>
     </div>
