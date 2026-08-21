@@ -13,6 +13,7 @@ export type AdminProduct = {
   name: string;
   unit: string;
   detail: string;
+  badge: string;
   price: number | null;
   status: ProductStatus;
   imageUrl: string;
@@ -43,7 +44,6 @@ export type AdminStorefrontSettings = {
   heroTitle: string;
   heroHighlight: string;
   heroDescription: string;
-  announcementText: string;
   storyTitle: string;
   storyDescription: string;
   phonePrimary: string;
@@ -73,6 +73,7 @@ export type ProductInput = {
   name: string;
   unit: string;
   detail: string;
+  badge: string;
   price: number | null;
   status: ProductStatus;
   imageUrl: string;
@@ -97,7 +98,6 @@ export const DEFAULT_STOREFRONT_CONTENT = {
   heroTitle: "แหนมหมูจากตะคร้อ",
   heroHighlight: "สั่งง่ายถึงบ้าน",
   heroDescription: "แหนมหมู ไส้กรอกอีสาน และกากหมูโบราณ (แคปหมูติดมัน) สูตรร้านเจ๊น้อย เลือกของอร่อย ใส่ตะกร้า แล้วสั่งได้เลย",
-  announcementText: "ทำสดทุกวัน ◆ สูตรดั้งเดิมตะคร้อ ◆ แพ็กพร้อมส่ง ◆ อร่อยถึงเครื่อง",
   storyTitle: "ของดีจากเขียงหมูตะคร้อ",
   storyDescription: "รสชาติคุ้นเคยจากร้านท้องถิ่น ส่งต่อด้วยวัตถุดิบที่คัดแล้วและความตั้งใจในทุกแพ็ก จากมือเจ๊น้อยถึงมือลูกค้า",
 } as const;
@@ -153,6 +153,7 @@ export function validateProductInput(input: ProductInput): ProductInput {
   const name = cleanText(input.name, 100);
   const unit = cleanText(input.unit, 80);
   const detail = cleanText(input.detail, 500);
+  const badge = cleanText(input.badge ?? "", 24);
   const imageUrl = input.imageUrl.trim().slice(0, 2500);
   const category = cleanText(input.category, 80) || "อื่น ๆ";
   if (!/^[A-Z0-9_-]{2,40}$/.test(id)) throw new AdminCmsValidationError("รหัสสินค้าต้องมี 2-40 ตัว ใช้อักษรอังกฤษ ตัวเลข - หรือ _");
@@ -161,7 +162,7 @@ export function validateProductInput(input: ProductInput): ProductInput {
   const price = input.price === null ? null : Number(input.price);
   if (price !== null && (!Number.isFinite(price) || price <= 0 || price > 1_000_000)) throw new AdminCmsValidationError("ราคาสินค้าไม่ถูกต้อง");
   if (input.status === "เปิดขาย" && (!unit || !detail || price === null)) throw new AdminCmsValidationError("สินค้าที่เปิดขายต้องมีหน่วย รายละเอียด และราคาให้ครบ");
-  return { ...input, id, name, unit, detail, price, imageUrl, category };
+  return { ...input, id, name, unit, detail, badge, price, imageUrl, category };
 }
 
 export function validateRoundInput(input: RoundInput): RoundInput {
@@ -223,7 +224,6 @@ export function cleanStorefrontSettings(input: Omit<AdminStorefrontSettings, "fi
     heroTitle: requiredText(input.heroTitle, 100, "หัวข้อหน้าร้าน"),
     heroHighlight: requiredText(input.heroHighlight, 100, "ข้อความเน้นหน้าร้าน"),
     heroDescription: requiredText(input.heroDescription, 500, "คำแนะนำร้าน"),
-    announcementText: requiredText(input.announcementText, 300, "ข้อความประกาศ"),
     storyTitle: requiredText(input.storyTitle, 120, "หัวข้อเรื่องของร้าน"),
     storyDescription: requiredText(input.storyDescription, 1_000, "เรื่องของร้าน"),
     phonePrimary: normalizePhone(input.phonePrimary),

@@ -10,6 +10,7 @@ export type Product = {
   name: string;
   unit: string;
   detail: string;
+  badge: string;
   price: number | null;
   image: string;
   status: VisibleProductStatus;
@@ -32,7 +33,6 @@ export type StorefrontContent = {
   heroTitle: string;
   heroHighlight: string;
   heroDescription: string;
-  announcementText: string;
   storyTitle: string;
   storyDescription: string;
   phonePrimary: string;
@@ -117,7 +117,6 @@ export function useStorefront({
     heroTitle: "แหนมหมูจากตะคร้อ",
     heroHighlight: "สั่งง่ายถึงบ้าน",
     heroDescription: "แหนมหมู ไส้กรอกอีสาน และกากหมูโบราณ (แคปหมูติดมัน) สูตรร้านเจ๊น้อย เลือกของอร่อย ใส่ตะกร้า แล้วสั่งได้เลย",
-    announcementText: "ทำสดทุกวัน ◆ สูตรดั้งเดิมตะคร้อ ◆ แพ็กพร้อมส่ง ◆ อร่อยถึงเครื่อง",
     storyTitle: "ของดีจากเขียงหมูตะคร้อ",
     storyDescription: "รสชาติคุ้นเคยจากร้านท้องถิ่น ส่งต่อด้วยวัตถุดิบที่คัดแล้วและความตั้งใจในทุกแพ็ก จากมือเจ๊น้อยถึงมือลูกค้า",
     phonePrimary: "087-2416773",

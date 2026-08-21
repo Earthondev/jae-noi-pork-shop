@@ -69,7 +69,7 @@ const tabs: Array<{ id: AdminTab; icon: AdminIconName; label: string }> = [
   { id: "storefront", icon: "store", label: "หน้าร้าน" },
 ];
 const EMPTY_ROUND_INPUT: RoundInput = { deliveryDate: "", opensAt: "", closesAt: "", status: "เตรียมเปิด", note: "", productScope: "all", productIds: [] };
-const EMPTY_PRODUCT_INPUT: ProductInput = { id: "", name: "", unit: "", detail: "", price: null, status: "รอข้อมูล", imageUrl: "", category: "" };
+const EMPTY_PRODUCT_INPUT: ProductInput = { id: "", name: "", unit: "", detail: "", badge: "", price: null, status: "รอข้อมูล", imageUrl: "", category: "" };
 
 export function AdminDashboard({ initialOrders, initialCms, userName, serverNow, serverClockLabel, initialTab }: { initialOrders: AdminOrder[]; initialCms: AdminCmsData; userName: string; serverNow: string; serverClockLabel: string; initialTab: AdminTab }) {
   const [activeTab, setActiveTab] = useState<AdminTab>(initialTab);
@@ -1333,6 +1333,7 @@ function ProductsPanel({ products, categoryOrder, saving, mutate, setNotice, onF
         name: activeProduct.name,
         unit: activeProduct.unit || "",
         detail: activeProduct.detail || "",
+        badge: activeProduct.badge || "",
         price: activeProduct.price,
         status: activeProduct.status,
         imageUrl: activeProduct.imageUrl || "",
@@ -1382,7 +1383,7 @@ function ProductsPanel({ products, categoryOrder, saving, mutate, setNotice, onF
 
   function productHandlers(product: AdminProduct): ProductCardHandlers {
     return {
-      onEdit: () => { setDraft({ id: product.id, name: product.name, unit: product.unit || "", detail: product.detail || "", price: product.price, status: product.status, imageUrl: product.imageUrl || "", category: product.category || "" }); setEditing(product.id); setCreating(false); },
+      onEdit: () => { setDraft({ id: product.id, name: product.name, unit: product.unit || "", detail: product.detail || "", badge: product.badge || "", price: product.price, status: product.status, imageUrl: product.imageUrl || "", category: product.category || "" }); setEditing(product.id); setCreating(false); },
       onArchive: () => setConfirm({ title: `ปิดขาย ${product.name}?`, description: "สินค้าจะหายจากหน้าร้าน แต่ประวัติออเดอร์เก่าจะยังอยู่ครบและนำกลับมาได้", confirmLabel: "ปิดขายสินค้า", tone: "danger", action: async () => { await mutate("product.update", { product: { ...product, status: "ซ่อนสินค้า" } }, "ปิดขายสินค้าแล้ว"); } }),
       onRestore: () => setConfirm({ title: `เปิดขาย ${product.name} อีกครั้ง?`, description: "สินค้าจะกลับมาแสดงบนหน้าร้านทันที", confirmLabel: "เปิดขายสินค้า", tone: "primary", action: async () => { await mutate("product.update", { product: { ...product, status: "ปิดชั่วคราว" } }, "เปิดขายสินค้าอีกครั้ง"); } }),
     };
@@ -1583,6 +1584,7 @@ function ProductForm({ title, value, disabled, uploading, lockId = false, onChan
       <label><span>ชื่อสินค้า</span><input required disabled={disabled} maxLength={100} value={value.name} onChange={(event) => onChange({ ...value, name: event.target.value })} placeholder="เช่น แหนมหมู" /></label>
       <label><span>หมวดหมู่</span><input disabled={disabled} maxLength={80} value={value.category} onChange={(event) => onChange({ ...value, category: event.target.value })} placeholder="เช่น แหนมหมู" /></label>
       <label><span>หน่วยขาย</span><input disabled={disabled} maxLength={80} value={value.unit} onChange={(event) => onChange({ ...value, unit: event.target.value })} placeholder="เช่น 1 แพ็ค" /></label>
+      <label><span>ป้ายบนการ์ด (ไม่บังคับ)</span><input disabled={disabled} maxLength={24} value={value.badge} onChange={(event) => onChange({ ...value, badge: event.target.value })} placeholder="เช่น ยอดนิยม, แพ็คสุดคุ้ม" /></label>
       <label><span>ราคา (บาท)</span><input disabled={disabled} min="1" max="1000000" step="1" type="number" value={value.price ?? ""} onChange={(event) => onChange({ ...value, price: event.target.value ? Number(event.target.value) : null })} /></label>
       <label><span>สถานะ</span><select disabled={disabled} value={value.status} onChange={(event) => onChange({ ...value, status: event.target.value as ProductInput["status"] })}>{PRODUCT_STATUSES.map((status) => <option key={status} value={status}>{productStatusLabels[status]}</option>)}</select></label>
       <label className="full"><span>คำอธิบายสินค้า</span><textarea disabled={disabled} maxLength={500} rows={3} value={value.detail} onChange={(event) => onChange({ ...value, detail: event.target.value })} /></label>
@@ -1692,7 +1694,6 @@ function StorefrontPanel({ settings, saving, mutate, setNotice, onFormActive, on
             <label><span>หัวข้อหลัก</span><input required maxLength={100} value={draft.heroTitle} onChange={(event) => field("heroTitle", event.target.value)} /></label>
             <label><span>ข้อความสีแดง</span><input required maxLength={100} value={draft.heroHighlight} onChange={(event) => field("heroHighlight", event.target.value)} /></label>
             <label className="full"><span>คำแนะนำร้าน</span><textarea required maxLength={500} rows={4} value={draft.heroDescription} onChange={(event) => field("heroDescription", event.target.value)} /></label>
-            <label className="full"><span>ข้อความแถบประกาศ</span><textarea required maxLength={300} rows={3} value={draft.announcementText} onChange={(event) => field("announcementText", event.target.value)} /></label>
           </div>
         </div>
       )}

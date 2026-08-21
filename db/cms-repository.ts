@@ -34,7 +34,7 @@ function bindings(): { db: D1Database; mediaOrigin: string } {
 export async function getAdminCmsData(): Promise<AdminCmsData> {
   const { db } = bindings();
   const [productsResult, roundsResult, settingsResult, totalsResult, roundProductsResult] = await db.batch([
-    db.prepare("SELECT id,name,unit,detail,price,status,image_url,category,sort_order,version,updated_at FROM products ORDER BY sort_order"),
+    db.prepare("SELECT id,name,unit,detail,badge,price,status,image_url,category,sort_order,version,updated_at FROM products ORDER BY sort_order"),
     db.prepare("SELECT id,delivery_date,opens_at,closes_at,status,label,note,product_scope,version FROM delivery_rounds ORDER BY delivery_date"),
     db.prepare("SELECT key,value,version FROM storefront_settings"),
     db.prepare(`SELECT round_id,
@@ -46,7 +46,7 @@ export async function getAdminCmsData(): Promise<AdminCmsData> {
   ]);
   const totals = new Map((totalsResult.results as Array<{ round_id: string; order_count: number; paid_order_count: number; sales: number }>).map((row) => [row.round_id, row]));
   const products = (productsResult.results as unknown as ProductRow[]).map((row) => ({
-    id: row.id, name: row.name, unit: row.unit, detail: row.detail, price: row.price, status: row.status,
+    id: row.id, name: row.name, unit: row.unit, detail: row.detail, badge: row.badge, price: row.price, status: row.status,
     imageUrl: row.image_url, category: row.category, updatedAt: row.updated_at, fingerprint: String(row.version),
   }));
   const productIdsByRound = new Map<string, string[]>();
@@ -77,7 +77,6 @@ export async function getAdminCmsData(): Promise<AdminCmsData> {
     heroTitle: value("hero_title", DEFAULT_STOREFRONT_CONTENT.heroTitle),
     heroHighlight: value("hero_highlight", DEFAULT_STOREFRONT_CONTENT.heroHighlight),
     heroDescription: value("hero_description", DEFAULT_STOREFRONT_CONTENT.heroDescription),
-    announcementText: value("announcement_text", DEFAULT_STOREFRONT_CONTENT.announcementText),
     storyTitle: value("story_title", DEFAULT_STOREFRONT_CONTENT.storyTitle),
     storyDescription: value("story_description", DEFAULT_STOREFRONT_CONTENT.storyDescription),
     phonePrimary: value("phone_primary", "087-2416773"), phoneSecondary: value("phone_secondary", "087-8755479"),
@@ -100,8 +99,8 @@ export async function createAdminProduct(input: ProductInput): Promise<CmsMutati
   const { db } = bindings();
   if (await db.prepare("SELECT 1 FROM products WHERE id=?").bind(product.id).first()) return "duplicate";
   const next = await db.prepare("SELECT COALESCE(MAX(sort_order),0)+1 AS value FROM products").first<{ value: number }>();
-  await db.prepare(`INSERT INTO products (id,name,unit,detail,price,status,image_url,category,sort_order,version,updated_at)
-    VALUES (?,?,?,?,?,?,?,?,?,1,?)`).bind(product.id, product.name, product.unit, product.detail, product.price, product.status, product.imageUrl, product.category, next?.value ?? 1, new Date().toISOString()).run();
+  await db.prepare(`INSERT INTO products (id,name,unit,detail,badge,price,status,image_url,category,sort_order,version,updated_at)
+    VALUES (?,?,?,?,?,?,?,?,?,?,1,?)`).bind(product.id, product.name, product.unit, product.detail, product.badge, product.price, product.status, product.imageUrl, product.category, next?.value ?? 1, new Date().toISOString()).run();
   return "updated";
 }
 
@@ -111,8 +110,8 @@ export async function updateAdminProduct(id: string, input: ProductInput): Promi
   const current = await db.prepare("SELECT version FROM products WHERE id=?").bind(id).first<{ version: number }>();
   if (!current) return "not_found";
   if (input.fingerprint && input.fingerprint !== String(current.version)) return "conflict";
-  await db.prepare(`UPDATE products SET name=?,unit=?,detail=?,price=?,status=?,image_url=?,category=?,version=version+1,updated_at=? WHERE id=? AND version=?`)
-    .bind(product.name, product.unit, product.detail, product.price, product.status, product.imageUrl, product.category, new Date().toISOString(), id, current.version).run();
+  await db.prepare(`UPDATE products SET name=?,unit=?,detail=?,badge=?,price=?,status=?,image_url=?,category=?,version=version+1,updated_at=? WHERE id=? AND version=?`)
+    .bind(product.name, product.unit, product.detail, product.badge, product.price, product.status, product.imageUrl, product.category, new Date().toISOString(), id, current.version).run();
   return "updated";
 }
 
@@ -221,7 +220,7 @@ export async function updateAdminStorefrontSettings(input: Omit<AdminStorefrontS
   const settings = cleanStorefrontSettings(input); const now = new Date().toISOString();
   const values: Record<string, string> = {
     store_name: settings.storeName, hero_title: settings.heroTitle, hero_highlight: settings.heroHighlight,
-    hero_description: settings.heroDescription, announcement_text: settings.announcementText, story_title: settings.storyTitle,
+    hero_description: settings.heroDescription, story_title: settings.storyTitle,
     story_description: settings.storyDescription, phone_primary: settings.phonePrimary, phone_secondary: settings.phoneSecondary,
     postal_shipping_fee: settings.shippingFee === null ? "" : String(settings.shippingFee),
     free_shipping_minimum: settings.freeShippingMinimum === null ? "" : String(settings.freeShippingMinimum), pickup_address: settings.pickupAddress,

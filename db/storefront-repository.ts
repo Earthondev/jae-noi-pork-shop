@@ -40,7 +40,6 @@ export type StorefrontData = {
     heroTitle: string;
     heroHighlight: string;
     heroDescription: string;
-    announcementText: string;
     storyTitle: string;
     storyDescription: string;
     phonePrimary: string;
@@ -57,6 +56,7 @@ type ProductRow = {
   name: string;
   unit: string;
   detail: string;
+  badge: string;
   price: number | null;
   status: string;
   image_url: string;
@@ -84,7 +84,7 @@ export async function getD1StorefrontData(now = new Date()): Promise<StorefrontD
   const bindings = env as unknown as RuntimeBindings;
   if (!bindings.DB) throw new Error("Cloudflare D1 binding `DB` is unavailable");
   const [productResult, roundResult, settingResult, roundProductResult] = await bindings.DB.batch([
-    bindings.DB.prepare(`SELECT id, name, unit, detail, price, status, image_url, category
+    bindings.DB.prepare(`SELECT id, name, unit, detail, badge, price, status, image_url, category
       FROM products ORDER BY sort_order`),
     bindings.DB.prepare(`SELECT id, delivery_date, opens_at, closes_at, status, label, note, product_scope
       FROM delivery_rounds ORDER BY delivery_date`),
@@ -107,6 +107,7 @@ export async function getD1StorefrontData(now = new Date()): Promise<StorefrontD
       name: row.name,
       unit: row.unit || "รอข้อมูลหน่วยขาย",
       detail: row.detail || "รายละเอียดสินค้ารอข้อมูล",
+      badge: row.badge || "",
       price: row.price,
       status: status === "เปิดขาย" && !complete ? "รอข้อมูล" : status,
       image: safeProductImageUrl(row.image_url, mediaOrigin),
@@ -156,7 +157,6 @@ export async function getD1StorefrontData(now = new Date()): Promise<StorefrontD
       heroTitle: value("hero_title") || DEFAULT_STOREFRONT_CONTENT.heroTitle,
       heroHighlight: value("hero_highlight") || DEFAULT_STOREFRONT_CONTENT.heroHighlight,
       heroDescription: value("hero_description") || DEFAULT_STOREFRONT_CONTENT.heroDescription,
-      announcementText: value("announcement_text") || DEFAULT_STOREFRONT_CONTENT.announcementText,
       storyTitle: value("story_title") || DEFAULT_STOREFRONT_CONTENT.storyTitle,
       storyDescription: value("story_description") || DEFAULT_STOREFRONT_CONTENT.storyDescription,
       phonePrimary: value("phone_primary") || "087-2416773",

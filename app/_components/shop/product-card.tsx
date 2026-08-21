@@ -20,7 +20,16 @@ export function ProductCard({ product, quantity, index, onUpdateQuantity, orderi
   // its normal look and only loses the add button — unlike "ปิดชั่วคราว",
   // which is the shop pausing the product itself.
   const outOfRound = orderingOpen && productReady && !inRound;
-  const badge = outOfRound ? "ไม่มีในรอบนี้" : product.status === "ปิดชั่วคราว" ? "ปิดรับชั่วคราว" : product.status === "รอข้อมูล" ? "รอข้อมูล" : product.unit;
+  // The image ribbon carries a functional status first (paused / missing data
+  // / not in this round) since that outranks any marketing badge the admin
+  // set — a shopper needs to know a product can't be bought before "popular".
+  const functionalBadge = outOfRound
+    ? "ไม่มีในรอบนี้"
+    : product.status === "ปิดชั่วคราว"
+      ? "ปิดรับชั่วคราว"
+      : product.status === "รอข้อมูล"
+        ? "รอข้อมูล"
+        : null;
   const statusClass = outOfRound ? "out-of-round" : product.status === "เปิดขาย" ? "open" : product.status === "ปิดชั่วคราว" ? "closed" : "waiting";
   const customerProductName = displayProductName(product.name);
   const [imageSrc, setImageSrc] = useState(product.image);
@@ -38,11 +47,15 @@ export function ProductCard({ product, quantity, index, onUpdateQuantity, orderi
           alt={customerProductName}
           width={760}
           height={680}
-          sizes="(max-width: 600px) 50vw, 380px"
+          sizes="(max-width: 600px) 42vw, 380px"
           priority={index === 0}
           onError={() => setImageSrc(PRODUCT_IMAGE_PLACEHOLDER)}
         />
-        <span className={`product-badge${product.status === "ปิดชั่วคราว" ? " closed" : outOfRound ? " out-of-round" : ""}`}>{badge}</span>
+        {functionalBadge ? (
+          <span className={`product-badge${product.status === "ปิดชั่วคราว" ? " closed" : outOfRound ? " out-of-round" : ""}`}>{functionalBadge}</span>
+        ) : product.badge ? (
+          <span className="product-badge product-badge-custom">{product.badge}</span>
+        ) : null}
         {product.status === "ปิดชั่วคราว" && <span className="product-closed-overlay" aria-hidden="true">พักขาย</span>}
       </div>
       <div className="product-info">
@@ -52,14 +65,27 @@ export function ProductCard({ product, quantity, index, onUpdateQuantity, orderi
         </div>
         {quantity === 0 ? (
           <div className="product-purchase-row">
-            <p className={product.price === null ? "price pending" : "price"}>{product.price === null ? "รอข้อมูลราคา" : product.price}</p>
+            <div className="product-price-stack">
+              <p className={product.price === null ? "price pending" : "price"}>{product.price === null ? "รอข้อมูลราคา" : product.price}</p>
+              {product.unit && (
+                <span className="product-unit-pill">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M21 8 12 3 3 8l9 5 9-5Z" />
+                    <path d="M3 8v8l9 5 9-5V8" />
+                    <path d="M12 13v8" />
+                  </svg>
+                  {product.unit}
+                </span>
+              )}
+            </div>
             {isPurchasable ? (
-              <button className="product-add-button" type="button" onClick={() => onUpdateQuantity(product.id, 1)} aria-label={`เพิ่ม ${customerProductName} ลงตะกร้า`}
->
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" style={{ width: 18, height: 18 }}>
-                  <line x1="12" y1="5" x2="12" y2="19"></line>
-                  <line x1="5" y1="12" x2="19" y2="12"></line>
+              <button className="product-add-button" type="button" onClick={() => onUpdateQuantity(product.id, 1)} aria-label={`เพิ่ม ${customerProductName} ลงตะกร้า`}>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                  <circle cx="9" cy="21" r="1"></circle>
+                  <circle cx="20" cy="21" r="1"></circle>
+                  <path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"></path>
                 </svg>
+                เพิ่มลงตะกร้า
               </button>
             ) : (
               <span className={`product-unavailable${outOfRound ? " out-of-round" : !orderingOpen && productReady ? " round-closed" : product.status === "ปิดชั่วคราว" ? " closed" : ""}`}>
@@ -70,10 +96,8 @@ export function ProductCard({ product, quantity, index, onUpdateQuantity, orderi
         ) : (
           <div className="product-purchase-row">
             <p className="price">{product.price}</p>
-            <div className="stepper" aria-label={`จำนวน ${customerProductName}`}
->
-              <button className="decrease-button" type="button" onClick={() => onUpdateQuantity(product.id, -1)} aria-label={`ลดจำนวน ${customerProductName}`}
->
+            <div className="stepper" aria-label={`จำนวน ${customerProductName}`}>
+              <button className="decrease-button" type="button" onClick={() => onUpdateQuantity(product.id, -1)} aria-label={`ลดจำนวน ${customerProductName}`}>
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" style={{ width: 14, height: 14 }}>
                   <line x1="5" y1="12" x2="19" y2="12"></line>
                 </svg>

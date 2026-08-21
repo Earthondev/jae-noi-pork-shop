@@ -11,6 +11,7 @@ export type CatalogProduct = {
   name: string;
   unit: string;
   detail: string;
+  badge: string;
   price: number | null;
   status: VisibleProductStatus;
   image: string;
@@ -92,6 +93,7 @@ export function catalogProductsFromRows(rows: string[][], mediaOrigin = DEFAULT_
       name,
       unit: unit || "รอข้อมูลหน่วยขาย",
       detail: detail || "รายละเอียดสินค้ารอข้อมูล",
+      badge: "",
       price,
       status,
       image: safeProductImageUrl(row[8], mediaOrigin),
