@@ -458,22 +458,36 @@ async function handleDownloadBatchImages(orders: AdminOrder[]): Promise<StickerE
   return "downloaded";
 }
 
+const slipBlobCache = new Map<string, Promise<Blob>>();
+
+function preloadSlipBlob(orderId: string): Promise<Blob> {
+  let promise = slipBlobCache.get(orderId);
+  if (!promise) {
+    promise = fetch(`/api/admin/slips/${encodeURIComponent(orderId)}`).then((res) => {
+      if (!res.ok) throw new Error("ไม่สามารถโหลดรูปสลิปได้");
+      return res.blob();
+    });
+    slipBlobCache.set(orderId, promise);
+  }
+  return promise;
+}
+
 async function handleShareSlip(orderId: string) {
   try {
-    const res = await fetch(`/api/admin/slips/${encodeURIComponent(orderId)}`);
-    if (!res.ok) throw new Error("ไม่สามารถโหลดรูปสลิปได้");
-    const blob = await res.blob();
+    const blob = await preloadSlipBlob(orderId);
     const isJpeg = blob.type.includes("jpeg") || blob.type.includes("jpg");
     const ext = isJpeg ? "jpg" : "png";
     const file = new File([blob], `slip-${orderId}.${ext}`, { type: blob.type || "image/jpeg" });
-    if (typeof navigator.share === "function" && navigator.canShare?.({ files: [file] })) {
+
+    if (typeof navigator !== "undefined" && typeof navigator.share === "function" && navigator.canShare?.({ files: [file] })) {
       try {
-        await navigator.share({ files: [file], title: `สลิปออเดอร์ ${orderId}` });
+        await navigator.share({ files: [file] });
         return;
       } catch (err) {
         if (err instanceof DOMException && err.name === "AbortError") return;
       }
     }
+
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
@@ -935,7 +949,7 @@ function OrdersPanel({ orders, setOrders, saving, setSaving, setNotice, onPrintS
               onChange={() => toggleSelectOrder(order.id)}
               aria-label={`เลือกออเดอร์ ${order.id}`}
             />
-            <button className="admin-order-summary" style={{ flex: 1 }} type="button" aria-expanded={isExpanded} onClick={() => setExpanded((current) => toggleSet(current, order.id))}>
+            <button className="admin-order-summary" style={{ flex: 1 }} type="button" aria-expanded={isExpanded} onClick={() => { setExpanded((current) => toggleSet(current, order.id)); if (order.slip_key) void preloadSlipBlob(order.id); }}>
               <span><small>{safeThaiDateTime(order.created_at)} · {order.round_id || "ไม่ระบุรอบ"}</small><strong>{order.id}</strong><em>{order.customer_name} · {formatMoney(order.total)}</em></span>
               <span className="status-stack"><i className={`status-pill payment-${order.payment_status}`}>{paymentStatusLabels[order.payment_status]}</i><i className={`status-pill status-${order.order_status}`}>{statusLabels[order.order_status]}</i><AdminIcon name="chevron" /></span>
             </button>
@@ -944,7 +958,7 @@ function OrdersPanel({ orders, setOrders, saving, setSaving, setNotice, onPrintS
             <div className="admin-order-grid"><div><span>ลูกค้า</span><p>{order.customer_name}</p><a href={`tel:${phoneHref(order.phone)}`}><AdminIcon name="phone" />{order.phone}</a></div><div><span>รายการ</span><p>{order.items || "—"}</p><strong>{formatMoney(order.total)}</strong></div><div className="full"><span>{order.fulfilment === "pickup" ? "รับเองหน้าร้าน" : "ที่อยู่จัดส่ง"}</span><p>{order.address}</p>{order.note && <small>หมายเหตุ: {order.note}</small>}{order.admin_note && <small className="verification-note">ผลตรวจสลิป: {order.admin_note}</small>}</div></div>
             <div className="admin-controls">
               <div className="admin-slip-control">
-                {order.slip_key ? <div className="admin-slip-actions"><a className="slip-link" href={`/api/admin/slips/${encodeURIComponent(order.id)}`} target="_blank" rel="noreferrer"><AdminIcon name="image" />เปิดดูสลิป</a><button type="button" className="slip-link slip-download-link" onClick={() => void handleShareSlip(order.id)}><AdminIcon name="download" />บันทึก/แชร์สลิป</button></div> : <span className="no-slip">ยังไม่มีสลิป</span>}
+                {order.slip_key ? <div className="admin-slip-actions"><a className="slip-link" href={`/api/admin/slips/${encodeURIComponent(order.id)}`} target="_blank" rel="noreferrer"><AdminIcon name="image" />เปิดดูสลิป</a><button type="button" className="slip-link slip-download-link" onPointerDown={() => void preloadSlipBlob(order.id)} onMouseEnter={() => void preloadSlipBlob(order.id)} onClick={() => void handleShareSlip(order.id)}><AdminIcon name="download" />บันทึก/แชร์สลิป</button></div> : <span className="no-slip">ยังไม่มีสลิป</span>}
                 <div style={{ display: "flex", gap: "6px", flexWrap: "wrap", marginTop: "8px" }}>
                   <button
                     type="button"
