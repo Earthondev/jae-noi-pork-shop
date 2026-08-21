@@ -2154,11 +2154,6 @@ footer .footer-phone-links a:active { background: rgba(255, 255, 255, 0.1); }
   .site-header nav.has-category-menu .category-menu { display: block; }
 }
 
-/* Shipping Label Print Styles (77mm x 30mm with 10mm left/right margins) */
-.shipping-label-print-area {
-  display: none;
-}
-
 .admin-print-sticker-btn {
   display: inline-flex;
   align-items: center;
@@ -2695,41 +2690,16 @@ footer .footer-phone-links a:active { background: rgba(255, 255, 255, 0.1); }
     size: auto;
     margin: 10mm;
   }
-  /*
-   * The 48mm sticker page size below is applied by injecting a plain
-   * (unnamed) `@page` rule via a <style> tag right before window.print() —
-   * see triggerShippingStickersPrint. A *named* `@page selector {}` rule
-   * here would be ignored on iOS/iPadOS Safari (no named-page support),
-   * silently falling back to this default and printing on A4.
-   */
   body {
     background: white !important;
     margin: 0 !important;
     padding: 0 !important;
   }
 
-  /* When printing shipping labels: hide the dashboard layout to prevent phantom blank pages */
-  body.print-shipping-label .admin-shell,
-  body.print-shipping-label .admin-main,
-  body.print-shipping-label .admin-page,
-  body.print-shipping-label .site-header,
-  body.print-shipping-label .admin-header,
-  body.print-shipping-label .admin-nav,
-  body.print-shipping-label .admin-sidebar,
-  body.print-shipping-label .admin-tabs,
-  body.print-shipping-label .admin-filter-bar,
-  body.print-shipping-label .admin-batch-bar,
-  body.print-shipping-label .order-cards,
-  body.print-shipping-label .admin-panel,
-  body.print-shipping-label footer,
-  body.print-shipping-label dialog {
-    display: none !important;
-  }
-
-  body:not(.print-shipping-label) * {
+  body * {
     visibility: hidden !important;
   }
-  
+
   /* Customer Receipt Print */
   .track-receipt, .track-receipt * {
     visibility: visible !important;
@@ -2745,47 +2715,6 @@ footer .footer-phone-links a:active { background: rgba(255, 255, 255, 0.1); }
   }
   .receipt-actions {
     display: none !important;
-  }
-
-  /* Thermal Shipping Sticker Print (48mm printable width, continuous roll —
-     height follows content, torn off at a perforation, not a fixed die-cut
-     label). */
-  body.print-shipping-label .shipping-label-print-area {
-    display: block !important;
-    position: static !important;
-    width: 48mm !important;
-    margin: 0 !important;
-    padding: 0 !important;
-    visibility: visible !important;
-  }
-  body.print-shipping-label .shipping-label-print-area * {
-    visibility: visible !important;
-  }
-
-  .shipping-sticker-page {
-    width: 48mm !important;
-    height: auto !important;
-    margin: 0 !important;
-    padding: 0 !important;
-    box-sizing: border-box !important;
-    page-break-after: always !important;
-    break-after: page !important;
-    page-break-inside: avoid !important;
-    break-inside: avoid !important;
-    display: flex !important;
-    align-items: center !important;
-    justify-content: center !important;
-    background: #ffffff !important;
-    overflow: hidden !important;
-  }
-
-  .shipping-sticker-img {
-    width: 48mm !important;
-    height: auto !important;
-    max-width: 48mm !important;
-    object-fit: contain !important;
-    display: block !important;
-    margin: 0 auto !important;
   }
 }
 

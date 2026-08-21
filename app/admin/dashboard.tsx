@@ -174,10 +174,12 @@ export function AdminDashboard({ initialOrders, initialCms, userName, serverNow,
     } finally { setSaving(null); }
   }
 
-  const [printTargetOrders, setPrintTargetOrders] = useState<AdminOrder[]>([]);
-
+  // iOS's native print sheet only offers fixed paper sizes (A4, Letter, ...)
+  // with no way to select a custom width, and the shop's thermal printer
+  // isn't an AirPrint device to begin with — so "print" has to mean
+  // "produce the correctly-sized PDF", not open the browser print dialog.
   function handlePrintStickers(targetOrders: AdminOrder[]) {
-    triggerShippingStickersPrint(targetOrders, setPrintTargetOrders);
+    handleDownloadBatchPdf(targetOrders);
   }
 
   return (
@@ -262,7 +264,6 @@ export function AdminDashboard({ initialOrders, initialCms, userName, serverNow,
 
         <ConfirmDialog open={Boolean(confirm)} title={confirm?.title ?? ""} description={confirm?.description ?? ""} confirmLabel={confirm?.confirmLabel ?? "ยืนยัน"} tone={confirm?.tone} busy={saving !== null} onCancel={() => setConfirm(null)} onConfirm={() => { const action = confirm?.action; setConfirm(null); if (action) void action(); }} />
       </main>
-      <ShippingStickerPrintArea orders={printTargetOrders} />
     </>
   );
 }
@@ -523,78 +524,6 @@ function stickerExportNotice(result: StickerExportResult, count: number) {
   if (result === "opened") return "เปิดภาพ PNG ในแท็บใหม่แล้ว กดค้างที่ภาพเพื่อบันทึกลงเครื่อง";
   if (result === "cancelled") return "ยกเลิกการแชร์ไฟล์แล้ว ไฟล์ยังไม่ได้ถูกบันทึก";
   return `เริ่มดาวน์โหลด PNG แล้ว ${count} ภาพ`;
-}
-
-function triggerShippingStickersPrint(targetOrders: AdminOrder[], setPrintTargetOrders: (orders: AdminOrder[]) => void) {
-  if (targetOrders.length === 0) return;
-  setPrintTargetOrders(targetOrders);
-  document.body.classList.add("print-shipping-label");
-
-  // A named `@page selector { size: ... }` rule is silently ignored on
-  // iOS/iPadOS Safari (no named-page support), which falls back to the
-  // default `@page` size and prints on A4. Injecting a plain @page rule here
-  // instead — and removing it again after — reliably sets the page size for
-  // just this print, everywhere including iOS.
-  const pageSizeStyle = document.createElement("style");
-  pageSizeStyle.textContent = "@page { size: 48mm auto; margin: 0; }";
-  document.head.appendChild(pageSizeStyle);
-
-  // The print stylesheet collapses almost the entire admin UI to
-  // `display: none` so the browser can lay out just the sticker. iOS Safari
-  // does not restore the scroll position once that print view is torn down
-  // (including when the sheet is cancelled), so it has to be saved and put
-  // back by hand.
-  const scrollY = window.scrollY;
-
-  let cleanedUp = false;
-  const cleanup = () => {
-    if (cleanedUp) return;
-    cleanedUp = true;
-    document.body.classList.remove("print-shipping-label");
-    pageSizeStyle.remove();
-    window.scrollTo(0, scrollY);
-    window.removeEventListener("afterprint", cleanup);
-    printMediaQuery.removeEventListener("change", onPrintMediaChange);
-  };
-  window.addEventListener("afterprint", cleanup);
-
-  // `afterprint` is known to be unreliable on iOS/iPadOS Safari — it does
-  // not always fire when the print sheet is dismissed via Cancel. Watching
-  // the `print` media query directly is the cross-browser-reliable way to
-  // notice the print view has closed, so cleanup still runs in that case.
-  const printMediaQuery = window.matchMedia("print");
-  const onPrintMediaChange = (event: MediaQueryListEvent) => {
-    if (!event.matches) cleanup();
-  };
-  printMediaQuery.addEventListener("change", onPrintMediaChange);
-
-  // Give React time to commit DOM nodes before opening the print sheet
-  requestAnimationFrame(() => {
-    setTimeout(() => {
-      window.print();
-    }, 200);
-  });
-}
-
-function ShippingStickerPrintArea({ orders }: { orders: AdminOrder[] }) {
-  if (orders.length === 0) return null;
-  return (
-    <div className="shipping-label-print-area">
-      {orders.map((order) => {
-        const canvas = drawStickerCanvas(order);
-        const dataUrl = canvas.toDataURL("image/png");
-        return (
-          <div className="shipping-sticker-page" key={order.id}>
-            <img
-              src={dataUrl}
-              alt={`สติ๊กเกอร์ ${order.id}`}
-              className="shipping-sticker-img"
-            />
-          </div>
-        );
-      })}
-    </div>
-  );
 }
 
 function StickerPanel({ orders, onPrintStickers }: { orders: AdminOrder[]; onPrintStickers: (targets: AdminOrder[]) => void }) {
