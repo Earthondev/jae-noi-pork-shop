@@ -36,6 +36,18 @@ button { cursor: pointer; border: 0; background: transparent; }
 img { display: block; }
 :focus-visible { outline: 3px solid var(--gold-500); outline-offset: 3px; }
 
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
 /* Sticky Glassmorphic Header */
 .site-header {
   min-height: 68px;
@@ -498,6 +510,19 @@ img { display: block; }
 }
 .section-heading > p { color: var(--muted); font-size: 0.88rem; line-height: 1.6; margin: 0; }
 .product-grid { display: grid; gap: 20px; }
+.empty-catalog {
+  grid-column: 1 / -1;
+  display: grid;
+  gap: 6px;
+  justify-items: center;
+  padding: 40px 20px;
+  text-align: center;
+  border: 1.5px dashed var(--line);
+  border-radius: var(--radius-md);
+  background: rgba(255, 255, 255, 0.6);
+}
+.empty-catalog strong { color: var(--red-800); font-size: 1rem; }
+.empty-catalog span { color: var(--muted); font-size: 0.85rem; }
 
 /* Premium Product Cards */
 .product-card {
