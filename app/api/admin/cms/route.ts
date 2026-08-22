@@ -16,7 +16,6 @@ import {
   createAdminProduct,
   createAdminRound,
   getAdminCmsData,
-  moveAdminProduct,
   reorderAdminCategories,
   reorderAdminProducts,
   updateAdminProduct,
@@ -71,9 +70,6 @@ export async function POST(request: Request) {
         result = await updateAdminProduct(product.id, product);
         break;
       }
-      case "product.move":
-        result = await moveAdminProduct(requiredString(body.id, "รหัสสินค้า"), direction(body.direction), optionalString(body.fingerprint));
-        break;
       case "product.reorder":
         result = await reorderAdminProducts(stringArray(body.ids, "รายการรหัสสินค้า"));
         break;
@@ -178,11 +174,6 @@ function settingsInput(value: unknown): Omit<AdminStorefrontSettings, "fingerpri
 function stringArray(value: unknown, label: string): string[] {
   if (!Array.isArray(value) || value.some((item) => typeof item !== "string" || !item.trim())) throw new AdminInputError(`${label}ไม่ถูกต้อง`);
   return value as string[];
-}
-
-function direction(value: unknown): "up" | "down" {
-  if (value !== "up" && value !== "down") throw new AdminInputError("ทิศทางการเรียงสินค้าไม่ถูกต้อง");
-  return value;
 }
 
 function record(value: unknown, label: string): Record<string, unknown> {

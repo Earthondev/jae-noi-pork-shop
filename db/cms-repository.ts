@@ -115,32 +115,13 @@ export async function updateAdminProduct(id: string, input: ProductInput): Promi
   return "updated";
 }
 
-export async function moveAdminProduct(id: string, direction: "up" | "down", expectedFingerprint?: string): Promise<CmsMutationResult> {
-  const { db } = bindings();
-  const current = await db.prepare("SELECT sort_order,version FROM products WHERE id=?").bind(id).first<{ sort_order: number; version: number }>();
-  if (!current) return "not_found";
-  if (expectedFingerprint && expectedFingerprint !== String(current.version)) return "conflict";
-  const operator = direction === "up" ? "<" : ">"; const order = direction === "up" ? "DESC" : "ASC";
-  const target = await db.prepare(`SELECT id,sort_order FROM products WHERE sort_order ${operator} ? ORDER BY sort_order ${order} LIMIT 1`)
-    .bind(current.sort_order).first<{ id: string; sort_order: number }>();
-  if (!target) return "updated";
-  const now = new Date().toISOString();
-  await db.batch([
-    db.prepare("UPDATE products SET sort_order=-1,version=version+1,updated_at=? WHERE id=?").bind(now, id),
-    db.prepare("UPDATE products SET sort_order=?,version=version+1,updated_at=? WHERE id=?").bind(current.sort_order, now, target.id),
-    db.prepare("UPDATE products SET sort_order=?,updated_at=? WHERE id=?").bind(target.sort_order, now, id),
-  ]);
-  return "updated";
-}
-
 // Renumbers sort_order for the given (active) products in the order given,
 // then appends every other product (e.g. archived ones the caller didn't
 // include) after them in their existing relative order — so a drag-reorder
 // of the visible list can never collide with `products_sort_order_idx`'s
 // unique constraint on rows it didn't touch. Two passes (negative, then
-// final) for the same reason moveAdminProduct does it: renumbering in place
-// would collide with itself mid-batch since sort_order must stay unique at
-// every step, not just at the end.
+// final) because renumbering in place would collide with itself mid-batch:
+// sort_order must stay unique at every step, not just at the end.
 export async function reorderAdminProducts(orderedIds: string[]): Promise<CmsMutationResult> {
   const { db } = bindings();
   if (orderedIds.length === 0) return "updated";
@@ -240,10 +221,16 @@ function displayState(row: RoundRow): string {
   if (row.status === "เตรียมเปิด") return "ยังไม่แสดง"; if (row.status !== "เปิดรับ" || now > closes) return "ปิดรับแล้ว";
   return now < opens ? "ยังไม่ถึงเวลาเปิด" : "แสดงใน dropdown";
 }
+// A product whose stored image_url is not an absolute media-origin URL (an old
+// "/media/..." path, say) fails this check on *every* save, so the admin cannot
+// even fix its price without the message telling them what to actually do —
+// re-pick the photo, which rewrites image_url to the uploaded absolute URL.
 function assertProductImage(url: string): void {
   if (!url) return; const { mediaOrigin } = bindings();
   const urls = url.split(",");
   for (const u of urls) {
-    if (safeProductImageUrl(u.trim(), mediaOrigin) === PRODUCT_IMAGE_PLACEHOLDER) throw new AdminCmsValidationError("รูปสินค้าต้องมาจากพื้นที่รูปของร้านเท่านั้น");
+    if (safeProductImageUrl(u.trim(), mediaOrigin) === PRODUCT_IMAGE_PLACEHOLDER) {
+      throw new AdminCmsValidationError("รูปสินค้าต้องอัปโหลดผ่านปุ่มเลือกรูปในหน้านี้เท่านั้น กรุณาลบรูปเดิมแล้วอัปโหลดรูปใหม่ ก่อนกดบันทึกอีกครั้ง");
+    }
   }
 }

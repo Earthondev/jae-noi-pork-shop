@@ -668,8 +668,6 @@ function OrdersPanel({ orders, setOrders, saving, setSaving, setNotice, onPrintS
   const [selectedOrderIds, setSelectedOrderIds] = useState<Set<string>>(new Set());
   const [exporting, setExporting] = useState(false);
   const [orderExportNotice, setOrderExportNotice] = useState("");
-  const [trackingDrafts, setTrackingDrafts] = useState<Record<string, string>>(() => Object.fromEntries(orders.map((order) => [order.id, order.tracking_number ?? ""])));
-  const [carrierDrafts, setCarrierDrafts] = useState<Record<string, CarrierCode>>(() => Object.fromEntries(orders.map((order) => [order.id, order.carrier_code ?? "flash"])));
   // Status dropdowns used to write straight to the server on every change.
   // They now stage into this per-order draft instead, so nothing persists
   // until the admin presses "บันทึกสถานะ" — matching how every other panel
@@ -814,7 +812,6 @@ function OrdersPanel({ orders, setOrders, saving, setSaving, setNotice, onPrintS
         const update = byOrder.get(order.id);
         return update ? { ...order, tracking_number: update.trackingNumber, carrier_code: update.carrierCode, order_status: "shipped" } : order;
       }));
-      setTrackingDrafts((current) => ({ ...current, ...Object.fromEntries(updates.map((update) => [update.orderId, update.trackingNumber])) }));
     }} />
     <div className="admin-filter-stack">
       <div className="admin-segmented" aria-label="ช่วงเวลา">{(["today", "7days", "all"] as OrderRange[]).map((value) => <button key={value} type="button" className={range === value ? "active" : ""} onClick={() => setRange(value)}>{value === "today" ? "วันนี้" : value === "7days" ? "7 วัน" : "ทั้งหมด"}</button>)}</div>

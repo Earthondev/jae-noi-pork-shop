@@ -1,4 +1,5 @@
 import { env } from "cloudflare:workers";
+import { lastClosedRoundCutoff } from "../lib/round-interest";
 
 type RuntimeBindings = { DB?: D1Database };
 
@@ -8,23 +9,18 @@ function database(): D1Database {
   return db;
 }
 
-function thaiTime(value: string): number {
-  return Date.parse(`${value}:00+07:00`);
-}
-
 export async function recordRoundInterestTap(createdAt: string): Promise<void> {
   await database().prepare("INSERT INTO round_interest (created_at) VALUES (?)").bind(createdAt).run();
 }
 
 /**
- * Taps since the last round closed — the count naturally resets itself once a
- * new round is scheduled, with no cleanup job needed. Before any round has
- * ever existed, everything counts.
+ * Taps since the last round that has *already* closed. See
+ * `lib/round-interest.ts` for why a future round must not move the cutoff.
  */
-export async function countRoundInterestSinceLastRoundClosed(): Promise<number> {
+export async function countRoundInterestSinceLastRoundClosed(now = new Date()): Promise<number> {
   const db = database();
-  const lastClosedRow = await db.prepare("SELECT MAX(closes_at) as closes_at FROM delivery_rounds").first<{ closes_at: string | null }>();
-  const cutoffIso = lastClosedRow?.closes_at ? new Date(thaiTime(lastClosedRow.closes_at)).toISOString() : "1970-01-01T00:00:00.000Z";
+  const rounds = await db.prepare("SELECT closes_at FROM delivery_rounds").all<{ closes_at: string }>();
+  const cutoffIso = lastClosedRoundCutoff(rounds.results.map((row) => row.closes_at), now);
   const result = await db.prepare("SELECT COUNT(*) as count FROM round_interest WHERE created_at > ?").bind(cutoffIso).first<{ count: number }>();
   return result?.count ?? 0;
 }

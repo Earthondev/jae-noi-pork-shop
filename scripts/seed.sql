@@ -1,8 +1,13 @@
 -- Seed products
+-- image_url must be the absolute media-origin URL, not the /media/... path the
+-- storefront renders. lib/product-catalog.ts#safeProductImageUrl only accepts the
+-- absolute form; anything else falls back to the placeholder AND makes the admin
+-- product form unsaveable ("รูปสินค้าต้องมาจากพื้นที่รูปของร้าน") even for an edit
+-- that never touches the image.
 INSERT OR REPLACE INTO products (id, name, unit, detail, price, status, image_url, category, sort_order, version, updated_at) VALUES
-('SAUSAGE10', 'ไส้กรอกอีสาน', '1 แพ็ค', 'ไส้กรอกอีสานแพ็กละ 10 ชิ้น', 100, 'เปิดขาย', '/media/products/isan-sausage-pack10-v1.jpg', 'ไส้กรอกอีสาน', 1, 1, '2026-07-16T00:00:00.000Z'),
-('NAEM250', 'แหนมหมู', '250 กรัม', 'แหนมหมู 250 กรัม', 50, 'เปิดขาย', '/media/products/naem-pork-250g-v1.jpg', 'แหนมหมู', 2, 1, '2026-07-16T00:00:00.000Z'),
-('PORKRIND1', 'แคปหมู', '1 กล่อง', 'แคปหมู 1 กล่อง', 150, 'เปิดขาย', '/media/products/pork-rinds-box-v1.jpg', 'แคปหมู', 3, 1, '2026-07-16T00:00:00.000Z');
+('SAUSAGE10', 'ไส้กรอกอีสาน', '1 แพ็ค', 'ไส้กรอกอีสานแพ็กละ 10 ชิ้น', 100, 'เปิดขาย', 'https://pub-152b30e9e62f4e82aa0893fd90576e96.r2.dev/products/isan-sausage-pack10-v1.jpg', 'ไส้กรอกอีสาน', 1, 1, '2026-07-16T00:00:00.000Z'),
+('NAEM250', 'แหนมหมู', '250 กรัม', 'แหนมหมู 250 กรัม', 50, 'เปิดขาย', 'https://pub-152b30e9e62f4e82aa0893fd90576e96.r2.dev/products/naem-pork-250g-v1.jpg', 'แหนมหมู', 2, 1, '2026-07-16T00:00:00.000Z'),
+('PORKRIND1', 'แคปหมู', '1 กล่อง', 'แคปหมู 1 กล่อง', 150, 'เปิดขาย', 'https://pub-152b30e9e62f4e82aa0893fd90576e96.r2.dev/products/pork-rinds-box-v1.jpg', 'แคปหมู', 3, 1, '2026-07-16T00:00:00.000Z');
 
 -- Seed delivery_rounds
 -- Let's make an active round open from 2026-07-13 to 2026-07-20, delivery on 2026-07-21
