@@ -3432,8 +3432,6 @@ footer .footer-phone-links a:active { background: rgba(255, 255, 255, 0.1); }
 .category-drag-handle svg { width: 17px; height: 17px; }
 .admin-category-drag-overlay { padding-left: 14px; color: var(--admin-red-dark); box-shadow: 0 16px 35px color-mix(in srgb, var(--admin-ink) 28%, transparent); transform: scale(1.04); pointer-events: none; }
 .admin-category-drag-overlay svg { width: 18px; height: 18px; margin: 0 11px; color: var(--admin-red); }
-.admin-category-sort-hint { margin: -5px 0 12px; display: flex; align-items: center; gap: 5px; color: var(--admin-muted); font-size: .76rem; line-height: 1.5; }
-.admin-category-sort-hint svg { width: 14px; height: 14px; }
 
 /* Reorder mode button & banner */
 .admin-toolbar-actions {
@@ -3542,16 +3540,6 @@ footer .footer-phone-links a:active { background: rgba(255, 255, 255, 0.1); }
   align-items: center;
 }
 /* Product reordering — press-and-hold the grip on a card, drag with @dnd-kit */
-.admin-sort-hint {
-  margin: 4px 0 12px;
-  display: flex;
-  align-items: center;
-  gap: 5px;
-  color: var(--admin-muted);
-  font-size: 0.76rem;
-  line-height: 1.5;
-}
-.admin-sort-hint svg { width: 14px; height: 14px; flex-shrink: 0; }
 .admin-product-card.is-dragging {
   z-index: 5;
   position: relative;
@@ -4402,15 +4390,6 @@ footer .footer-phone-links a:active { background: rgba(255, 255, 255, 0.1); }
   }
 
   .admin-view-toggle button { min-height: 40px; }
-
-  .admin-category-sort-hint,
-  .admin-sort-hint {
-    margin-top: 0;
-    padding: 9px 11px;
-    border-radius: 11px;
-    background: color-mix(in srgb, var(--admin-bg) 76%, white);
-    font-size: .68rem;
-  }
 
   .add-product-mobile-btn {
     min-height: 52px;

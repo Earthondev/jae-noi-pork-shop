@@ -5,7 +5,7 @@ import { SortableContext, arrayMove, horizontalListSortingStrategy, sortableKeyb
 import { CSS } from "@dnd-kit/utilities";
 import Image from "next/image";
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import type { AdminOrder, OrderStatus, PaymentStatus } from "../../db/orders";
 import {
   PRODUCT_STATUSES,
@@ -76,6 +76,20 @@ const productStatusLabels: Record<(typeof PRODUCT_STATUSES)[number], string> = {
   "ปิดชั่วคราว": "ปิดชั่วคราว",
   "รอข้อมูล": "รอข้อมูล (ยังขายไม่ได้)",
   "ซ่อนสินค้า": "ปิดขาย",
+};
+// Keyed off PRODUCT_STATUSES so adding a status to lib/admin-cms.ts fails the
+// build here instead of silently leaving the product form out of sync.
+const productStatusOptionLabels: Record<(typeof PRODUCT_STATUSES)[number], string> = {
+  "เปิดขาย": "เปิดขาย — แสดงบนเว็บและรับออเดอร์ปกติ",
+  "ปิดชั่วคราว": "ปิดชั่วคราว — แสดงสินค้า แต่ไม่รับออเดอร์ชั่วคราว",
+  "รอข้อมูล": "รอข้อมูล — ซ่อนจากการซื้อจนกว่าจะกรอกครบ",
+  "ซ่อนสินค้า": "ซ่อนสินค้า — ปิดขาย เลิกขายหรือซ่อนจากหน้าร้าน",
+};
+const productStatusHints: Record<(typeof PRODUCT_STATUSES)[number], string> = {
+  "เปิดขาย": "ลูกค้าสามารถสั่งซื้อสินค้านี้ได้ทันที",
+  "ปิดชั่วคราว": "สินค้ายังโชว์บนเว็บ แต่ขึ้นป้ายไม่พร้อมขาย",
+  "รอข้อมูล": "สินค้าไม่แสดงให้ลูกค้าเห็นจนกว่าจะเปิดขาย",
+  "ซ่อนสินค้า": "สินค้าจะถูกย้ายไปในส่วนสินค้าปิดขายด้านล่าง",
 };
 const tabs: Array<{ id: AdminTab; icon: AdminIconName; label: string }> = [
   { id: "orders", icon: "orders", label: "ออเดอร์" },
@@ -1487,7 +1501,11 @@ function ProductsPanel({ products, categoryOrder, saving, mutate, setNotice, onF
           <div className="admin-reorder-banner">
             <div className="admin-reorder-banner-content">
               <span className="admin-reorder-badge">โหมดจัดเรียง</span>
-              <p className="admin-reorder-desc">กดค้างที่จุดจับ <AdminIcon name="grip" /> เพื่อลากสลับลำดับหมวดหมู่ด้านบนหรือสินค้าด้านล่าง</p>
+              {canReorder ? (
+                <p className="admin-reorder-desc">กดค้างที่จุดจับ <AdminIcon name="grip" /> เพื่อลากสลับลำดับหมวดหมู่ด้านบนหรือสินค้าด้านล่าง</p>
+              ) : (
+                <p className="admin-reorder-desc">ตอนนี้ลากได้เฉพาะหมวดหมู่ด้านบน — เลือกหมวด &ldquo;ทั้งหมด&rdquo; และล้างคำค้นหาเพื่อจัดเรียงลำดับสินค้าด้วย</p>
+              )}
             </div>
             <button type="button" className="admin-primary-button admin-reorder-done-btn" onClick={() => setReorderMode(false)}>
               เสร็จสิ้น
@@ -1650,13 +1668,25 @@ function ProductForm({
 }) {
   const [copied, setCopied] = useState(false);
   const images = value.imageUrl ? value.imageUrl.split(",").filter(Boolean) : [];
+  // Server-side (validateProductInput) only demands unit/detail/price once the
+  // product is actually on sale, so the asterisks follow the same rule.
+  const sellRequired = value.status === "เปิดขาย";
+
+  const copyResetTimer = useRef<number | null>(null);
+  useEffect(() => () => { if (copyResetTimer.current !== null) window.clearTimeout(copyResetTimer.current); }, []);
 
   const handleCopyId = () => {
     if (!value.id) return;
-    void navigator.clipboard?.writeText(value.id).then(() => {
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
-    });
+    // writeText rejects when the browser denies clipboard permission; swallow it
+    // so the form never trips an unhandled rejection over a convenience button.
+    void navigator.clipboard?.writeText(value.id).then(
+      () => {
+        setCopied(true);
+        if (copyResetTimer.current !== null) window.clearTimeout(copyResetTimer.current);
+        copyResetTimer.current = window.setTimeout(() => setCopied(false), 2000);
+      },
+      () => setCopied(false),
+    );
   };
 
   const removeImage = (indexToRemove: number) => {
@@ -1702,7 +1732,7 @@ function ProductForm({
                 <div className="admin-id-copy-row">
                   <input disabled value={value.id} className="admin-readonly-id" />
                   <button type="button" className="admin-copy-id-btn" onClick={handleCopyId} title="คัดลอกรหัสสินค้า">
-                    <AdminIcon name="edit" />
+                    <AdminIcon name={copied ? "check" : "copy"} />
                     <span>{copied ? "คัดลอกแล้ว!" : "คัดลอกรหัส"}</span>
                   </button>
                 </div>
@@ -1744,8 +1774,9 @@ function ProductForm({
             </label>
 
             <label>
-              <span className="admin-field-label">หน่วยขาย *</span>
+              <span className="admin-field-label">หน่วยขาย{sellRequired ? " *" : ""}</span>
               <input
+                required={sellRequired}
                 disabled={disabled}
                 maxLength={80}
                 value={value.unit}
@@ -1762,9 +1793,10 @@ function ProductForm({
           <h4 className="admin-form-section-title">2. ราคาและสถานะการขาย</h4>
           <div className="admin-form-grid">
             <label>
-              <span className="admin-field-label">ราคาขาย (บาท) *</span>
+              <span className="admin-field-label">ราคาขาย (บาท){sellRequired ? " *" : ""}</span>
               <div className="admin-price-input-row">
                 <input
+                  required={sellRequired}
                   disabled={disabled}
                   min="1"
                   max="1000000"
@@ -1786,17 +1818,9 @@ function ProductForm({
                 value={value.status}
                 onChange={(event) => onChange({ ...value, status: event.target.value as ProductInput["status"] })}
               >
-                <option value="เปิดขาย">เปิดขาย — แสดงบนเว็บและรับออเดอร์ปกติ</option>
-                <option value="ปิดชั่วคราว">ปิดชั่วคราว — แสดงสินค้า แต่ไม่รับออเดอร์ชั่วคราว</option>
-                <option value="รอข้อมูล">รอข้อมูล — ซ่อนจากการซื้อจนกว่าจะกรอกครบ</option>
-                <option value="ซ่อนสินค้า">ซ่อนสินค้า — ปิดขาย เลิกขายหรือซ่อนจากหน้าร้าน</option>
+                {PRODUCT_STATUSES.map((status) => <option key={status} value={status}>{productStatusOptionLabels[status]}</option>)}
               </select>
-              <span className="admin-field-hint">
-                {value.status === "เปิดขาย" && "ลูกค้าสามารถสั่งซื้อสินค้านี้ได้ทันที"}
-                {value.status === "ปิดชั่วคราว" && "สินค้ายังโชว์บนเว็บ แต่ขึ้นป้ายไม่พร้อมขาย"}
-                {value.status === "รอข้อมูล" && "สินค้าไม่แสดงให้ลูกค้าเห็นจนกว่าจะเปิดขาย"}
-                {value.status === "ซ่อนสินค้า" && "สินค้าจะถูกย้ายไปในส่วนสินค้าปิดขายด้านล่าง"}
-              </span>
+              <span className="admin-field-hint">{productStatusHints[value.status]}</span>
             </label>
           </div>
         </section>
@@ -1822,10 +1846,11 @@ function ProductForm({
 
             <label className="full">
               <div className="admin-field-header">
-                <span className="admin-field-label">คำอธิบายสินค้า</span>
+                <span className="admin-field-label">คำอธิบายสินค้า{sellRequired ? " *" : ""}</span>
                 <span className="admin-char-count">{value.detail.length}/500</span>
               </div>
               <textarea
+                required={sellRequired}
                 disabled={disabled}
                 maxLength={500}
                 rows={3}
@@ -1833,7 +1858,7 @@ function ProductForm({
                 onChange={(event) => onChange({ ...value, detail: event.target.value })}
                 placeholder="อธิบายรสชาติ วิธีการเก็บรักษา อายุสินค้า หรือข้อมูลแนะนำสำหรับลูกค้า..."
               />
-              <span className="admin-field-hint">ระบุวิธีเก็บรักษา เช่น 'เก็บในตู้เย็นได้ 30 วัน'</span>
+              <span className="admin-field-hint">ระบุวิธีเก็บรักษา เช่น &ldquo;เก็บในตู้เย็นได้ 30 วัน&rdquo;</span>
             </label>
           </div>
         </section>

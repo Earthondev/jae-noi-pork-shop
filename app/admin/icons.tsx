@@ -4,7 +4,7 @@ export type AdminIconName =
   | "orders" | "calendar" | "products" | "store" | "external" | "logout"
   | "search" | "plus" | "edit" | "hide" | "up" | "down" | "check"
   | "chevron" | "image" | "phone" | "clock" | "money" | "close" | "grid" | "list" | "sort" | "menu" | "download" | "grip" | "printer"
-  | "tag" | "coins" | "package" | "bag" | "truck" | "fileText" | "filePdf" | "send";
+  | "copy" | "tag" | "coins" | "package" | "bag" | "truck" | "fileText" | "filePdf" | "send";
 
 const paths: Record<AdminIconName, ReactNode> = {
   menu: <path d="M3 12h18M3 6h18M3 18h18"/>,
@@ -33,6 +33,7 @@ const paths: Record<AdminIconName, ReactNode> = {
   download: <><path d="M12 3v12m0 0 4-4m-4 4-4-4"/><path d="M5 19h14"/></>,
   grip: <><circle cx="9" cy="6" r="1.4" fill="currentColor" stroke="none"/><circle cx="15" cy="6" r="1.4" fill="currentColor" stroke="none"/><circle cx="9" cy="12" r="1.4" fill="currentColor" stroke="none"/><circle cx="15" cy="12" r="1.4" fill="currentColor" stroke="none"/><circle cx="9" cy="18" r="1.4" fill="currentColor" stroke="none"/><circle cx="15" cy="18" r="1.4" fill="currentColor" stroke="none"/></>,
   printer: <><path d="M6 9V4h12v5"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></>,
+  copy: <><rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15H4a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1h10a1 1 0 0 1 1 1v1"/></>,
   tag: <><path d="m20.59 13.41-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></>,
   coins: <><ellipse cx="12" cy="6" rx="8" ry="3"/><path d="M4 6v6c0 1.66 3.58 3 8 3s8-1.34 8-3V6"/><path d="M4 12v6c0 1.66 3.58 3 8 3s8-1.34 8-3v-6"/></>,
   package: <><path d="m16.5 9.4 4.5-2.8L12 2 3 6.6l4.5 2.8"/><path d="M3 6.6v10.8L12 22l9-4.6V6.6"/><path d="m12 12.8 9-4.6M12 12.8v9.2M12 12.8 3 8.2"/></>,
