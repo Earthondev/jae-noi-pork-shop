@@ -87,8 +87,8 @@ export default function KaepMooPage() {
             <span className="eyebrow">รายละเอียดสินค้า</span>
             <h2 id="product-detail-title">แคปหมูติดมันเจ๊น้อย ทำสดทุกวัน</h2>
           </div>
-          <div className="seo-card-grid">
-            <article className="seo-card">
+          <div className="seo-card-grid single-card">
+            <article className="seo-card seo-card-detail">
               <Image src={PRODUCT_IMAGE} alt="แคปหมูติดมัน หรือกากหมูโบราณ เจ๊น้อย เขียงหมูตะคร้อ" width={760} height={520} />
               <div>
                 <h3>แคปหมูติดมัน</h3>

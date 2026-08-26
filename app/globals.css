@@ -1865,6 +1865,8 @@ footer .footer-phone-links a:active { background: rgba(255, 255, 255, 0.1); }
   min-height: 100dvh;
   padding-bottom: 40px;
   background: var(--cream-50);
+  display: flex;
+  flex-direction: column;
 }
 
 
@@ -2147,7 +2149,12 @@ footer .footer-phone-links a:active { background: rgba(255, 255, 255, 0.1); }
 .receipt-actions button:last-child { border: 1px solid var(--line); background: white; color: var(--red-700); }
 
 .track-footer {
-  margin-top: 24px;
+  /* .track-page is now a flex column (min-height: 100dvh) specifically so
+     this auto margin can pin the footer to the viewport bottom when there's
+     little content above it (e.g. before a search, or a single-order
+     result) — otherwise it floats mid-page on anything taller than mobile,
+     leaving a large blank gap beneath it. */
+  margin-top: auto;
   padding: 28px 16px;
   display: grid;
   justify-items: center;
@@ -2199,6 +2206,15 @@ footer .footer-phone-links a:active { background: rgba(255, 255, 255, 0.1); }
   .seo-page-shell { padding-inline: 32px; }
   .seo-page-hero { padding: 64px; }
   .seo-card-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  /* A single-product page reuses .seo-card-grid with exactly one card —
+     without this override it sits in the first of three empty columns,
+     stranding the other two-thirds of the row as dead whitespace. */
+  .seo-card-grid.single-card { grid-template-columns: minmax(0, 1fr); }
+  .seo-card-detail { display: flex; flex-direction: row; align-items: stretch; }
+  .seo-card-detail > img { width: 44%; height: auto; min-height: 340px; flex: 0 0 auto; }
+  .seo-card-detail > div { flex: 1 1 auto; padding: 36px 40px; display: flex; flex-direction: column; justify-content: center; }
+  .seo-card-detail h3 { font-size: 1.8rem; }
+  .seo-card-detail p { max-width: 480px; font-size: 1rem; }
   .seo-step-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); }
   .seo-info-panel { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); align-items: center; padding: 32px; }
 
