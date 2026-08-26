@@ -3160,9 +3160,31 @@ footer .footer-phone-links a:active { background: rgba(255, 255, 255, 0.1); }
 .admin-primary-button svg, .admin-preview-link svg { width: 17px; height: 17px; }
 .admin-result-count { padding: 7px 10px; border: 1px solid var(--admin-line); border-radius: 999px; background: var(--admin-surface); color: var(--admin-muted); font-size: .72rem; font-weight: 900; }
 .admin-filter-stack { display: grid; gap: 10px; }
-.admin-segmented { padding: 4px; display: grid; grid-template-columns: repeat(3, 1fr); border: 1px solid var(--admin-line); border-radius: 14px; background: #ede2d4; }
-.admin-segmented button { min-height: 42px; border: 0; border-radius: 10px; background: transparent; color: var(--admin-muted); font-weight: 900; }
-.admin-segmented button.active { background: var(--admin-surface); color: var(--admin-red); box-shadow: 0 3px 12px rgb(75 36 27 / 10%); }
+.admin-segmented { padding: 4px; display: grid; grid-template-columns: repeat(2, 1fr); border: 1px solid var(--admin-line); border-radius: 14px; background: #ede2d4; }
+.admin-segmented button { min-height: 42px; border: 0; border-radius: 10px; display: inline-flex; align-items: center; justify-content: center; gap: 6px; background: transparent; color: var(--admin-muted); font-weight: 900; }
+.admin-segmented button svg { width: 16px; height: 16px; }
+.admin-segmented button.active { background: var(--admin-red); color: #fff; box-shadow: 0 3px 12px rgb(75 36 27 / 18%); }
+
+/* Order date filter card (today / custom range) */
+.admin-date-filter-card { padding: 12px; display: grid; gap: 10px; border: 1px solid var(--admin-line); border-radius: var(--radius-sm); background: var(--admin-surface); }
+.admin-date-filter-title { margin: 0; display: flex; align-items: center; gap: 6px; color: var(--admin-muted); font-size: .72rem; font-weight: 800; }
+.admin-date-filter-title svg { width: 15px; height: 15px; color: var(--admin-red); }
+.admin-date-today-display { padding: 12px 14px; border: 1px solid var(--admin-line); border-radius: 12px; background: #f3e9db; }
+.admin-date-today-display span { display: flex; align-items: center; gap: 8px; color: var(--admin-muted); font-size: .78rem; font-weight: 700; }
+.admin-date-today-display svg { width: 17px; height: 17px; color: var(--admin-red); }
+.admin-date-today-display strong { color: var(--admin-red-dark); font-weight: 900; }
+.admin-date-range-fields { display: grid; gap: 10px; }
+.admin-date-field { display: grid; gap: 6px; color: var(--admin-muted); font-size: .72rem; font-weight: 800; }
+.admin-date-field-control { position: relative; min-height: 50px; padding: 0 14px; display: flex; align-items: center; gap: 8px; border: 1px solid var(--admin-line); border-radius: 12px; background: var(--admin-surface); cursor: pointer; }
+.admin-date-field-control svg { width: 17px; height: 17px; flex: 0 0 auto; color: var(--admin-red); }
+.admin-date-field-value { min-width: 0; overflow: hidden; color: var(--admin-ink); font-size: .84rem; font-weight: 800; white-space: nowrap; text-overflow: ellipsis; }
+.admin-date-field-control input[type="date"] { position: absolute; inset: 0; width: 100%; height: 100%; margin: 0; padding: 0; border: 0; box-sizing: border-box; background: transparent; color: transparent; opacity: 0; cursor: pointer; -webkit-appearance: none; }
+.admin-date-field-control input[type="date"]::-webkit-calendar-picker-indicator { position: absolute; inset: 0; width: 100%; height: 100%; margin: 0; opacity: 0; cursor: pointer; }
+.admin-date-field-control:focus-within { border-color: var(--admin-red); box-shadow: 0 0 0 3px color-mix(in srgb, var(--admin-red) 14%, transparent); }
+.admin-date-range-sep { justify-self: center; color: var(--admin-muted); font-weight: 800; }
+.admin-date-filter-apply { width: 100%; min-height: 50px; border: 0; border-radius: 12px; display: inline-flex; align-items: center; justify-content: center; gap: 8px; background: var(--admin-red); color: #fff; font-weight: 900; }
+.admin-date-filter-apply svg { width: 17px; height: 17px; }
+.admin-date-filter-apply:active { background: var(--admin-red-dark); }
 .admin-search { position: relative; }
 .admin-search svg { width: 19px; height: 19px; position: absolute; top: 50%; left: 14px; z-index: 1; transform: translateY(-50%); color: var(--admin-muted); }
 .admin-search input { padding-left: 44px; color: var(--admin-ink); }
@@ -3340,6 +3362,10 @@ footer .footer-phone-links a:active { background: rgba(255, 255, 255, 0.1); }
   .admin-header-meta { grid-column: 2; grid-row: 1; }
   .admin-filter-stack { grid-template-columns: 280px minmax(300px, 1fr); align-items: end; }
   .admin-filter-chips { grid-column: 1 / -1; margin: 0; padding-inline: 0; }
+  .admin-date-filter-card { grid-column: 1 / -1; }
+  .admin-date-filter-card .admin-segmented { max-width: 360px; }
+  .admin-date-range-fields { grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr) auto; align-items: end; }
+  .admin-date-filter-apply { width: auto; min-width: 160px; }
   .admin-kpi-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); }
   .admin-round-summary > div { grid-template-columns: repeat(3, minmax(0, 1fr)); }
   .admin-brand-assets { grid-template-columns: minmax(180px, .45fr) minmax(280px, 1fr); }
@@ -4543,6 +4569,23 @@ footer .footer-phone-links a:active { background: rgba(255, 255, 255, 0.1); }
 
   .admin-orders-panel .admin-segmented {
     border-radius: 13px;
+  }
+
+  .admin-orders-panel .admin-date-filter-card {
+    padding: 11px;
+    border-radius: 15px;
+  }
+
+  .admin-orders-panel .admin-date-field-control,
+  .admin-orders-panel .admin-date-filter-apply {
+    min-height: 48px;
+  }
+
+  /* Two stacked rows of date fields read cleaner than a lone "—" row when
+     space is tight, so the separator (kept for the desktop single-row layout)
+     is dropped here. */
+  .admin-orders-panel .admin-date-range-sep {
+    display: none;
   }
 
   .admin-orders-panel .admin-search input {

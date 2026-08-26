@@ -4,7 +4,7 @@ export type AdminIconName =
   | "orders" | "calendar" | "products" | "store" | "external" | "logout"
   | "search" | "plus" | "edit" | "hide" | "up" | "down" | "check"
   | "chevron" | "image" | "phone" | "clock" | "money" | "close" | "grid" | "list" | "sort" | "menu" | "download" | "grip" | "printer"
-  | "copy" | "tag" | "coins" | "package" | "bag" | "truck" | "fileText" | "filePdf" | "send";
+  | "copy" | "tag" | "coins" | "package" | "bag" | "truck" | "fileText" | "filePdf" | "send" | "filter";
 
 const paths: Record<AdminIconName, ReactNode> = {
   menu: <path d="M3 12h18M3 6h18M3 18h18"/>,
@@ -42,6 +42,7 @@ const paths: Record<AdminIconName, ReactNode> = {
   fileText: <><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></>,
   filePdf: <><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><path d="M10 12h-1v6h1a2 2 0 0 0 2-2v-2a2 2 0 0 0-2-2z"/></>,
   send: <><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></>,
+  filter: <path d="M3 4h18l-7 8v7l-4 2v-9z"/>,
 };
 
 export function AdminIcon({ name, ...props }: { name: AdminIconName } & SVGProps<SVGSVGElement>) {

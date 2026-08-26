@@ -32,7 +32,8 @@ import {
 } from "../../lib/sticker-pdf";
 
 type AdminTab = "orders" | "stickers" | "rounds" | "products" | "storefront";
-type OrderRange = "today" | "7days" | "all";
+type OrderRange = "today" | "custom";
+type OrderDateRange = { start: string; end: string };
 type OrderFilter = "all" | "attention" | "pending_slip" | "paid" | "shipped";
 type Mutation = (action: string, payload: Record<string, unknown>, successMessage: string) => Promise<boolean | void>;
 type ConfirmState = { title: string; description: string; confirmLabel: string; tone?: "danger" | "primary"; action: () => Promise<void> } | null;
@@ -662,6 +663,11 @@ function StickerPanel({ orders, onPrintStickers }: { orders: AdminOrder[]; onPri
 function OrdersPanel({ orders, setOrders, saving, setSaving, setNotice, onPrintStickers }: { orders: AdminOrder[]; setOrders: React.Dispatch<React.SetStateAction<AdminOrder[]>>; saving: string | null; setSaving: (value: string | null) => void; setNotice: (value: string) => void; onPrintStickers: (targets: AdminOrder[]) => void }) {
   const [query, setQuery] = useState("");
   const [range, setRange] = useState<OrderRange>("today");
+  // The custom range only takes effect once the admin presses "กรองข้อมูล" —
+  // draftDateRange holds the in-progress picks, dateRange holds what's applied.
+  const todayBangkokKey = useMemo(() => bangkokDateKey(new Date()), []);
+  const [dateRange, setDateRange] = useState<OrderDateRange>({ start: todayBangkokKey, end: todayBangkokKey });
+  const [draftDateRange, setDraftDateRange] = useState<OrderDateRange>({ start: todayBangkokKey, end: todayBangkokKey });
   const [filter, setFilter] = useState<OrderFilter>("all");
   const [selectedRound, setSelectedRound] = useState<string>("all");
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
@@ -675,10 +681,22 @@ function OrdersPanel({ orders, setOrders, saving, setSaving, setNotice, onPrintS
   const [statusDrafts, setStatusDrafts] = useState<Record<string, StatusDraft>>({});
   const [confirm, setConfirm] = useState<ConfirmState>(null);
 
+  // Picking a start date past the current draft end (or vice versa) snaps the
+  // other side to match, so the range can never invert.
+  function setDraftStart(value: string) {
+    setDraftDateRange((current) => ({ start: value, end: current.end < value ? value : current.end }));
+  }
+  function setDraftEnd(value: string) {
+    setDraftDateRange((current) => ({ start: current.start, end: value < current.start ? current.start : value }));
+  }
+  function applyDateRange() {
+    setDateRange(draftDateRange);
+  }
+
   const filtered = useMemo(() => orders.filter((order) => {
     const normalized = query.trim().toLowerCase();
     const matchesQuery = !normalized || `${order.id} ${order.customer_name} ${order.phone}`.toLowerCase().includes(normalized);
-    const matchesRange = inOrderRange(order.created_at, range);
+    const matchesRange = inOrderRange(order.created_at, range, dateRange);
     const matchesFilter = filter === "all"
       || (filter === "attention" && ["waiting_for_slip_review", "invalid_slip"].includes(order.payment_status))
       || (filter === "pending_slip" && order.payment_status === "waiting_for_slip_review")
@@ -686,7 +704,7 @@ function OrdersPanel({ orders, setOrders, saving, setSaving, setNotice, onPrintS
       || (filter === "shipped" && ["shipped", "completed"].includes(order.order_status));
     const matchesRound = selectedRound === "all" || (order.round_id || "ไม่ระบุรอบ") === selectedRound;
     return matchesQuery && matchesRange && matchesFilter && matchesRound;
-  }), [filter, orders, query, range, selectedRound]);
+  }), [dateRange, filter, orders, query, range, selectedRound]);
 
   function handlePrintStickers(targetOrders: AdminOrder[]) {
     onPrintStickers(targetOrders);
@@ -748,7 +766,7 @@ function OrdersPanel({ orders, setOrders, saving, setSaving, setNotice, onPrintS
   const byRound = useMemo(() => Array.from(orders.filter((order) => {
     const normalized = query.trim().toLowerCase();
     const matchesQuery = !normalized || `${order.id} ${order.customer_name} ${order.phone}`.toLowerCase().includes(normalized);
-    const matchesRange = inOrderRange(order.created_at, range);
+    const matchesRange = inOrderRange(order.created_at, range, dateRange);
     const matchesFilter = filter === "all"
       || (filter === "attention" && ["waiting_for_slip_review", "invalid_slip"].includes(order.payment_status))
       || (filter === "pending_slip" && order.payment_status === "waiting_for_slip_review")
@@ -761,7 +779,7 @@ function OrdersPanel({ orders, setOrders, saving, setSaving, setNotice, onPrintS
     current.count += 1;
     if (order.payment_status === "paid" && order.order_status !== "cancelled") current.sales += order.total ?? 0;
     map.set(key, current); return map;
-  }, new Map<string, { count: number; sales: number }>()).entries()), [filter, orders, query, range]);
+  }, new Map<string, { count: number; sales: number }>()).entries()), [dateRange, filter, orders, query, range]);
 
   async function updateOrder(id: string, patch: { orderStatus?: OrderStatus; paymentStatus?: PaymentStatus; trackingNumber?: string; carrierCode?: CarrierCode | null }, success: string) {
     setSaving(`order:${id}`); setNotice("");
@@ -814,7 +832,44 @@ function OrdersPanel({ orders, setOrders, saving, setSaving, setNotice, onPrintS
       }));
     }} />
     <div className="admin-filter-stack">
-      <div className="admin-segmented" aria-label="ช่วงเวลา">{(["today", "7days", "all"] as OrderRange[]).map((value) => <button key={value} type="button" className={range === value ? "active" : ""} onClick={() => setRange(value)}>{value === "today" ? "วันนี้" : value === "7days" ? "7 วัน" : "ทั้งหมด"}</button>)}</div>
+      <div className="admin-date-filter-card">
+        <p className="admin-date-filter-title"><AdminIcon name="calendar" />ตัวเลือกช่วงวันที่</p>
+        <div className="admin-segmented" aria-label="รูปแบบช่วงวันที่">
+          {(["today", "custom"] as OrderRange[]).map((value) => (
+            <button key={value} type="button" className={range === value ? "active" : ""} onClick={() => setRange(value)}>
+              <AdminIcon name="calendar" />{value === "today" ? "วันนี้" : "เลือกช่วงวันที่"}
+            </button>
+          ))}
+        </div>
+        {range === "today" ? (
+          <div className="admin-date-today-display">
+            <span><AdminIcon name="calendar" />วันที่เลือก: <strong>{formatThaiBuddhistDate(todayBangkokKey)}</strong></span>
+          </div>
+        ) : (
+          <div className="admin-date-range-fields">
+            <label className="admin-date-field">
+              <span>วันที่เริ่มต้น</span>
+              <span className="admin-date-field-control">
+                <AdminIcon name="calendar" />
+                <span className="admin-date-field-value" aria-hidden="true">{formatThaiBuddhistDate(draftDateRange.start)}</span>
+                <input type="date" aria-label="วันที่เริ่มต้น" value={draftDateRange.start} max={draftDateRange.end} onChange={(event) => setDraftStart(event.target.value)} />
+              </span>
+            </label>
+            <span className="admin-date-range-sep" aria-hidden="true">—</span>
+            <label className="admin-date-field">
+              <span>วันที่สิ้นสุด</span>
+              <span className="admin-date-field-control">
+                <AdminIcon name="calendar" />
+                <span className="admin-date-field-value" aria-hidden="true">{formatThaiBuddhistDate(draftDateRange.end)}</span>
+                <input type="date" aria-label="วันที่สิ้นสุด" value={draftDateRange.end} min={draftDateRange.start} onChange={(event) => setDraftEnd(event.target.value)} />
+              </span>
+            </label>
+            <button type="button" className="admin-date-filter-apply" onClick={applyDateRange}>
+              <AdminIcon name="filter" />กรองข้อมูล
+            </button>
+          </div>
+        )}
+      </div>
       <label className="admin-search"><span className="sr-only">ค้นหาออเดอร์</span><AdminIcon name="search" /><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="ค้นหาเลขออเดอร์ ชื่อ หรือเบอร์โทร" /></label>
       <div className="admin-filter-chips" aria-label="กรองสถานะ">{(["all", "attention", "pending_slip", "paid", "shipped"] as OrderFilter[]).map((value) => <button key={value} type="button" className={filter === value ? "active" : ""} onClick={() => {
         setFilter(value);
@@ -2057,6 +2112,15 @@ function phoneHref(value: string) { return value.replace(/[^\d+]/g, ""); }
 function safeThaiDateTime(value: string) { const date = new Date(value); return Number.isNaN(date.getTime()) ? value : new Intl.DateTimeFormat("th-TH", { dateStyle: "medium", timeStyle: "short", timeZone: "Asia/Bangkok" }).format(date); }
 
 const THAI_MONTHS = ["ม.ค.", "ก.พ.", "มี.ค.", "เม.ย.", "พ.ค.", "มิ.ย.", "ก.ค.", "ส.ค.", "ก.ย.", "ต.ค.", "พ.ย.", "ธ.ค."];
+// The order date filter shows พ.ศ. (Buddhist era = Gregorian + 543) to match
+// how dates are normally written in Thai, unlike formatInputDateTime below.
+function formatThaiBuddhistDate(value: string) {
+  if (!value) return "—";
+  const [year, month, day] = value.split("-");
+  const mIdx = parseInt(month, 10) - 1;
+  const mStr = THAI_MONTHS[mIdx] ?? month;
+  return `${parseInt(day, 10)} ${mStr} ${parseInt(year, 10) + 543}`;
+}
 function formatInputDateTime(value: string) {
   if (!value) return "—";
   const [date, time] = value.split("T");
@@ -2070,7 +2134,13 @@ function formatInputDateTime(value: string) {
 function formatMoney(value: number | null) { return `${Math.round(value ?? 0).toLocaleString("th-TH")} ฿`; }
 function formatBangkokHeader(date: Date) { return new Intl.DateTimeFormat("th-TH", { weekday: "short", day: "numeric", month: "short", hour: "2-digit", minute: "2-digit", timeZone: "Asia/Bangkok" }).format(date); }
 function adminImageSrc(value: string) { if (!value) return ""; try { const url = new URL(value); return `/media${url.pathname}`; } catch { return value; } }
-function inOrderRange(value: string, range: OrderRange) { if (range === "all") return true; const timestamp = new Date(value).getTime(); if (!Number.isFinite(timestamp)) return false; const now = Date.now(); if (range === "7days") return timestamp >= now - 7 * 86_400_000; return bangkokDateKey(new Date(timestamp)) === bangkokDateKey(new Date(now)); }
+function inOrderRange(value: string, range: OrderRange, dateRange: OrderDateRange) {
+  const timestamp = new Date(value).getTime();
+  if (!Number.isFinite(timestamp)) return false;
+  const key = bangkokDateKey(new Date(timestamp));
+  if (range === "today") return key === bangkokDateKey(new Date());
+  return key >= dateRange.start && key <= dateRange.end;
+}
 function bangkokDateKey(date: Date) { return new Intl.DateTimeFormat("en-CA", { year: "numeric", month: "2-digit", day: "2-digit", timeZone: "Asia/Bangkok" }).format(date); }
 function toggleSet(current: Set<string>, value: string) { const next = new Set(current); if (next.has(value)) next.delete(value); else next.add(value); return next; }
 function nextProductId(products: AdminProduct[]) {
