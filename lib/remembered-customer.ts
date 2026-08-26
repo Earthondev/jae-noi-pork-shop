@@ -67,6 +67,15 @@ export function saveRememberedCustomer(
   }
 }
 
+/**
+ * Latest phone the customer checked out with, for prefilling the order-tracking
+ * field — `readValidCustomers` already returns newest-first (`saveRememberedCustomer`
+ * unshifts each new entry).
+ */
+export function readLatestRememberedPhone(storage: CustomerStorage | null, now = Date.now()): string {
+  return readValidCustomers(storage, now)[0]?.phone ?? "";
+}
+
 export function forgetRememberedCustomer(storage: CustomerStorage | null, phone: string, now = Date.now()): boolean {
   if (!storage) return false;
   const normalizedPhone = normalizeCustomerPhone(phone);

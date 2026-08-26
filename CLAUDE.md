@@ -15,7 +15,7 @@ below before changing anything about deployment.
 - **Deploy to Cloudflare:** `npm run deploy:cloudflare` (deploys to the production-connected worker `jae-noi-pork-shop-test`)
 - **Run tests:** `npm run test` (compiles and runs node unit tests in `tests/`)
 - **Run E2E tests:** `npm run test:e2e` (Playwright, `tests-e2e/`) — covers the checkout + payment-QR flow in a real browser (mobile/WebKit + desktop/Chromium). Auto-starts `npm run dev` if not already running. This flow has broken twice in ways unit tests couldn't catch (a fixed-position bar losing its CSS containing block, a canvas-drawn payment amount rendering invisible white-on-white), so treat it as the regression gate for anything touching checkout, the cart drawer, or admin storefront settings.
-- **Lint code:** `npm run lint` — the React Compiler rules here are not cosmetic. "Existing memoization could not be preserved" means the compiler gave up on a whole component, usually because a hoisted `function` reads a `const` declared further down; the fix is to move the declaration above its consumers, not to silence the rule. A second common failure, "Avoid calling setState() directly within an effect," is fixed the way `use-checkout-draft.ts` does it: wrap the `setState` call in `window.setTimeout(fn, 0)` inside the effect, not by silencing the rule. Routinely takes several minutes to finish (sometimes appears stalled with near-zero CPU for a long stretch) — that's normal, not a hang; if it truly never progresses, check for unrelated heavy processes competing for resources before assuming lint itself is broken.
+- **Lint code:** `npm run lint` — the React Compiler rules here are not cosmetic. "Existing memoization could not be preserved" means the compiler gave up on a whole component, usually because a hoisted `function` reads a `const` declared further down; the fix is to move the declaration above its consumers, not to silence the rule. A second common failure, "Avoid calling setState() directly within an effect," is fixed the way `use-checkout-draft.ts` does it: wrap the `setState` call in `window.setTimeout(fn, 0)` inside the effect, not by silencing the rule. Routinely takes several minutes to finish (sometimes appears stalled with near-zero CPU for a long stretch) — that's normal, not a hang; if it truly never progresses, check for unrelated heavy processes competing for resources before assuming lint itself is broken. One confirmed cause: `test-results/` (Playwright output) can accumulate so many artifact subfolders across repeated e2e runs that its APFS link count overflows (65535) and ESLint's glob walk hangs on it — `ls -la test-results` showing a directory with an absurd link count confirms it; `rm -rf test-results` (gitignored) fixes it immediately. `eslint.config.mjs` now excludes `test-results/**` so this shouldn't recur, but if some other generated directory balloons the same way, the same diagnostic applies.
 - **Database migration generation:** `npm run db:generate`
 - **Export sheet orders to D1:** `npm run db:export-sheet-orders`
 
@@ -58,6 +58,11 @@ together with its `www` form).
   ```
 
 - Make sure to stop the dev server before modifying the SQLite file directly.
+
+### Testing IP-Based Rate Limits Locally
+
+- `clientIpKey()` (`lib/rate-limit.ts`) prefers `cf-connecting-ip`, and wrangler dev injects a fixed one on every request — setting only `X-Forwarded-For` in curl won't vary the effective client per request. Set `CF-Connecting-IP: <fake-ip>` explicitly instead.
+- To reset a rate-limit window without waiting, delete its rows straight from the local R2 store: `sqlite3 .wrangler/state/v3/r2/miniflare-R2BucketObject/*.sqlite "DELETE FROM _mf_objects WHERE key LIKE '<namespace>/%';"`.
 
 ### Code Style
 

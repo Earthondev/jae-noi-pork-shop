@@ -8,6 +8,7 @@ import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
 import { BottomNav } from "../_components/shop/bottom-nav";
 import { useCheckoutDraft } from "../_hooks/use-checkout-draft";
 import {
+  isPhoneTrackingLookupInput,
   trackingStepIndex,
   type PublicOrderTracking,
 } from "../../lib/order-tracking";
@@ -17,11 +18,12 @@ import {
   safeClientApiMessage,
 } from "../../lib/public-errors";
 import { fitFontSize } from "../../lib/qr-image";
+import { browserRecentOrderStorage, readRecentOrder } from "../../lib/recent-order";
 import {
-  browserRecentOrderStorage,
-  clearRecentOrder,
-  readRecentOrder,
-} from "../../lib/recent-order";
+  browserCustomerStorage,
+  forgetRememberedCustomer,
+  readLatestRememberedPhone,
+} from "../../lib/remembered-customer";
 
 const paymentLabels: Record<PublicOrderTracking["paymentStatus"], string> = {
   waiting_for_payment: "รอชำระเงิน",
@@ -307,6 +309,8 @@ function OrderHistoryCard({ order, expanded, onToggle, storeName, phoneLast4, ph
             </div>
           )}
           <div className="tracking-details">
+            <div><span>วันที่สั่ง</span><strong>{formatDate(order.createdAt)}</strong></div>
+            <div><span>อัปเดตล่าสุด</span><strong>{formatDate(order.updatedAt)}</strong></div>
             <div><span>รอบจัดส่ง</span><strong>{order.deliveryDate || "รอข้อมูล"}</strong></div>
             <div><span>วิธีรับสินค้า</span><strong>{order.fulfilmentLabel}</strong></div>
             <div><span>บริษัทขนส่ง</span><strong>{order.carrierLabel ?? (order.trackingNumber ? "บริษัทขนส่ง" : "รอข้อมูล")}</strong></div>
@@ -328,15 +332,26 @@ function OrderHistoryCard({ order, expanded, onToggle, storeName, phoneLast4, ph
   );
 }
 
-export function OrderTracker({ storeName, phonePrimary, phoneSecondary, promptPayId, promptPayName, initialOrderId }: { storeName: string; phonePrimary: string; phoneSecondary: string; promptPayId: string | null; promptPayName: string | null; initialOrderId: string }) {
-  const [orderId, setOrderId] = useState(initialOrderId);
-  const [restoredRecentOrder, setRestoredRecentOrder] = useState(false);
-  const [phoneLast4, setPhoneLast4] = useState("");
+export function OrderTracker({ storeName, phonePrimary, phoneSecondary, promptPayId, promptPayName, highlightOrderId: initialHighlightOrderId }: { storeName: string; phonePrimary: string; phoneSecondary: string; promptPayId: string | null; promptPayName: string | null; highlightOrderId: string }) {
+  const [phone, setPhone] = useState("");
+  // The deep link (`/track?order=...`, e.g. from the cart drawer) wins; absent
+  // that, fall back to the last order this device tracked, so a returning
+  // customer with several orders still lands on the right card.
+  const [highlightOrderId, setHighlightOrderId] = useState(initialHighlightOrderId);
+  const [prefilledPhone, setPrefilledPhone] = useState(false);
   const [orders, setOrders] = useState<PublicOrderTracking[]>([]);
   const [expandedOrderId, setExpandedOrderId] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // Distinguishes "hasn't searched yet" from "searched, found nothing" so the
+  // not-found card only ever appears after a real lookup.
+  const [searched, setSearched] = useState(false);
   const resultHeadingRef = useRef<HTMLHeadingElement>(null);
+  const phoneInputRef = useRef<HTMLInputElement>(null);
+
+  // Confirm-received and slip re-upload still authenticate with the last 4
+  // digits, so every full phone lookup carries them along automatically.
+  const phoneLast4 = phone.slice(-4);
 
   const { draft } = useCheckoutDraft();
   const cartCount = Object.values(draft.quantities).reduce((a, b) => a + b, 0);
@@ -346,24 +361,33 @@ export function OrderTracker({ storeName, phonePrimary, phoneSecondary, promptPa
   };
 
   useEffect(() => {
-    if (orders.length > 0) resultHeadingRef.current?.focus();
-  }, [orders]);
+    if (orders.length > 0 || searched) resultHeadingRef.current?.focus();
+  }, [orders, searched]);
 
   useEffect(() => {
-    if (initialOrderId) return;
     const timeout = window.setTimeout(() => {
-      const recentOrder = readRecentOrder(browserRecentOrderStorage());
-      if (!recentOrder) return;
-      setOrderId(recentOrder.orderId);
-      setRestoredRecentOrder(true);
+      const rememberedPhone = readLatestRememberedPhone(browserCustomerStorage());
+      if (!rememberedPhone) return;
+      setPhone(rememberedPhone);
+      setPrefilledPhone(true);
     }, 0);
     return () => window.clearTimeout(timeout);
-  }, [initialOrderId]);
+  }, []);
 
-  function forgetRecentOrder() {
-    clearRecentOrder(browserRecentOrderStorage());
-    setOrderId("");
-    setRestoredRecentOrder(false);
+  useEffect(() => {
+    if (initialHighlightOrderId) return;
+    const timeout = window.setTimeout(() => {
+      const recentOrder = readRecentOrder(browserRecentOrderStorage());
+      if (recentOrder) setHighlightOrderId(recentOrder.orderId);
+    }, 0);
+    return () => window.clearTimeout(timeout);
+  }, [initialHighlightOrderId]);
+
+  function forgetPrefilledPhone() {
+    forgetRememberedCustomer(browserCustomerStorage(), phone);
+    setPhone("");
+    setPrefilledPhone(false);
+    phoneInputRef.current?.focus();
   }
 
   function handleOrderConfirmed(orderId: string) {
@@ -380,22 +404,29 @@ export function OrderTracker({ storeName, phonePrimary, phoneSecondary, promptPa
 
   async function lookupOrder(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (!isPhoneTrackingLookupInput(phone)) {
+      setError("กรุณากรอกเบอร์โทรศัพท์ 9-10 หลัก ขึ้นต้นด้วย 0");
+      return;
+    }
     setLoading(true);
     setError(null);
     setOrders([]);
     setExpandedOrderId(null);
+    setSearched(false);
     try {
       const response = await fetch("/api/orders/track", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ orderId, phoneLast4 }),
+        body: JSON.stringify({ phone }),
       });
       const result = await response.json().catch(() => null) as { orders?: PublicOrderTracking[]; error?: string } | null;
-      if (!response.ok || !result?.orders?.length) {
+      if (!response.ok || !result?.orders) {
         throw new CustomerFacingError(safeClientApiMessage(response.status, result, "TRACKING_UNAVAILABLE"));
       }
       setOrders(result.orders);
-      setExpandedOrderId(result.orders[0].orderId);
+      setSearched(true);
+      const highlighted = result.orders.find((order) => order.orderId === highlightOrderId);
+      setExpandedOrderId(highlighted ? highlighted.orderId : (result.orders.length === 1 ? result.orders[0].orderId : null));
     } catch (lookupError) {
       setError(
         lookupError instanceof CustomerFacingError
@@ -421,29 +452,65 @@ export function OrderTracker({ storeName, phonePrimary, phoneSecondary, promptPa
       <section className="track-hero">
         <p className="eyebrow">ตรวจได้ด้วยตัวเองตลอดเวลา</p>
         <h1>ติดตามสถานะออเดอร์</h1>
-        <p>ใช้เลขออเดอร์และเบอร์โทร 4 ตัวท้าย เพื่อปกป้องข้อมูลการสั่งซื้อของคุณ</p>
+        <p>กรอกแค่เบอร์โทรที่ใช้ตอนสั่งซื้อ ไม่ต้องใช้เลขออเดอร์</p>
         <form className="track-form" onSubmit={lookupOrder}>
           <label>
-            เลขออเดอร์
-            <input value={orderId} onChange={(event) => { setOrderId(event.target.value.toUpperCase().replace(/[^A-Z0-9-]/g, "").slice(0, 22)); setRestoredRecentOrder(false); }} autoComplete="off" pattern="JN-[0-9]{8}-[23456789ABCDEFGHJKLMNPQRSTUVWXYZ]{10}" maxLength={22} placeholder="เช่น JN-20260726-7G4K2P9ABC" required />
-            {restoredRecentOrder && (
+            เบอร์โทรที่ใช้ตอนสั่งซื้อ
+            <input
+              ref={phoneInputRef}
+              value={phone}
+              onChange={(event) => { setPhone(event.target.value.replace(/\D/g, "").slice(0, 10)); setPrefilledPhone(false); }}
+              inputMode="tel"
+              autoComplete="tel"
+              pattern="0[0-9]{8,9}"
+              maxLength={10}
+              placeholder="08x-xxx-xxxx"
+              title="กรอกเบอร์โทร 9-10 หลัก เริ่มต้นด้วย 0"
+              aria-describedby="track-phone-help"
+              required
+            />
+            <small className="field-help" id="track-phone-help">ระบบจะแสดงออเดอร์ย้อนหลัง 30 วันของเบอร์นี้</small>
+            {prefilledPhone && (
               <span className="recent-order-hint" role="status">
-                เติมเลขออเดอร์ล่าสุดจากอุปกรณ์นี้แล้ว
-                <button type="button" onClick={forgetRecentOrder}>ลบเลขที่จำไว้</button>
+                เติมเบอร์ที่เคยสั่งไว้ให้แล้ว
+                <button type="button" onClick={forgetPrefilledPhone}>ลบเบอร์ที่จำไว้</button>
               </span>
             )}
           </label>
-          <label>เบอร์โทร 4 ตัวท้าย<input value={phoneLast4} onChange={(event) => setPhoneLast4(event.target.value.replace(/\D/g, "").slice(0, 4))} inputMode="numeric" autoComplete="tel" pattern="[0-9]{4}" maxLength={4} placeholder="เช่น 7892" required /></label>
-          <button type="submit" disabled={loading}>{loading ? "กำลังค้นหา..." : "ติดตามสถานะ"}</button>
+          <button type="submit" disabled={loading}>{loading ? "กำลังค้นหา..." : "ค้นหาออเดอร์"}</button>
         </form>
         {error && <p className="track-error" role="alert">{error}</p>}
       </section>
 
       {loading && <section className="tracking-skeleton" aria-live="polite" aria-label="กำลังโหลดสถานะออเดอร์"><span /><span /><span /><span /></section>}
 
+      {!loading && searched && orders.length === 0 && (
+        <section className="track-empty" aria-live="polite">
+          <h2 ref={resultHeadingRef} tabIndex={-1}>ไม่พบออเดอร์ของเบอร์นี้</h2>
+          <p>สาเหตุที่เป็นไปได้:</p>
+          <ul>
+            <li>เบอร์ที่กรอกอาจไม่ตรงกับเบอร์ที่ใช้ตอนสั่งซื้อ</li>
+            <li>ระบบแสดงเฉพาะออเดอร์ในช่วง 30 วันล่าสุดเท่านั้น</li>
+          </ul>
+          <button type="button" onClick={() => phoneInputRef.current?.focus()}>ลองกรอกเบอร์อีกครั้ง</button>
+          <p>หรือโทรหาร้านได้โดยตรง</p>
+          <div className="track-phone-links" aria-label="เบอร์โทรร้านเจ๊น้อย">
+            <a href={`tel:${phonePrimary.replace(/[^\d+]/g, "")}`}>☎ {phonePrimary}</a>
+            <a href={`tel:${phoneSecondary.replace(/[^\d+]/g, "")}`}>☎ {phoneSecondary}</a>
+          </div>
+        </section>
+      )}
+
       {orders.length > 0 && (
         <section className="track-history" aria-live="polite">
-          <div className="track-history-heading"><div><p className="eyebrow">ข้อมูลส่วนตัวได้รับการปกป้อง</p><h2 ref={resultHeadingRef} tabIndex={-1}>พบออเดอร์</h2></div><span>{orders[0].maskedPhone}</span></div>
+          <div className="track-history-heading">
+            <div>
+              <p className="eyebrow">ข้อมูลส่วนตัวได้รับการปกป้อง</p>
+              <h2 ref={resultHeadingRef} tabIndex={-1}>{orders.length === 1 ? "ออเดอร์ของคุณ" : `พบ ${orders.length} ออเดอร์`}</h2>
+              {orders.length > 1 && <p className="track-history-hint">แตะที่ออเดอร์เพื่อดูรายละเอียด</p>}
+            </div>
+            <span>{orders[0].maskedPhone}</span>
+          </div>
           <div className="track-history-list">
             {orders.map((order) => (
               <OrderHistoryCard

@@ -209,22 +209,88 @@ test("keeps the order id and attached slip in the downloadable success confirmat
   expect((await download).suggestedFilename()).toBe(`jae-noi-order-${orderId}.png`);
 });
 
-test("prefills the latest locally remembered order on the tracking page", async ({ page }) => {
+test("prefills the latest locally remembered phone on the tracking page", async ({ page }) => {
   const viewport = page.viewportSize();
-  test.skip(!viewport || viewport.width !== 390, "single mobile recent-order coverage");
-  const orderId = "JN-20260726-7G4K2P9ABC";
+  test.skip(!viewport || viewport.width !== 390, "single mobile recent-phone coverage");
+  const phone = "0931687892";
   await page.evaluate((value) => {
-    localStorage.setItem("jae_noi_recent_order_v1", JSON.stringify({
+    localStorage.setItem("jae_noi_remembered_customers_v1", JSON.stringify({
       version: 1,
-      orderId: value,
-      savedAt: Date.now(),
-      expiresAt: Date.now() + 30 * 24 * 60 * 60 * 1000,
+      customers: [{
+        customerName: "ทดสอบ",
+        phone: value,
+        address: "",
+        addressLine: "",
+        subdistrict: "",
+        district: "",
+        province: "",
+        postalCode: "",
+        updatedAt: Date.now(),
+        expiresAt: Date.now() + 90 * 24 * 60 * 60 * 1000,
+      }],
     }));
-  }, orderId);
+  }, phone);
   await page.goto("/track");
 
-  await expect(page.getByLabel("เลขออเดอร์")).toHaveValue(orderId);
-  await expect(page.getByText("เติมเลขออเดอร์ล่าสุดจากอุปกรณ์นี้แล้ว")).toBeVisible();
+  await expect(page.getByLabel("เบอร์โทรที่ใช้ตอนสั่งซื้อ")).toHaveValue(phone);
+  await expect(page.getByText("เติมเบอร์ที่เคยสั่งไว้ให้แล้ว")).toBeVisible();
+});
+
+test("shows a calm not-found state for a phone with no orders", async ({ page }) => {
+  await page.route("**/api/orders/track", async (route) => {
+    await route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ orders: [] }) });
+  });
+  await page.goto("/track");
+  // React hasn't necessarily hydrated the form the instant goto() resolves —
+  // the button is already in the SSR markup, so a plain visibility wait
+  // doesn't prove its onClick/onSubmit handlers are attached yet. Clicking
+  // too early lets the native submit fire instead (a full navigation to
+  // "/track?", since the inputs have no name attribute). Networkidle is a
+  // reliable enough proxy for "the client bundle has loaded and hydrated".
+  await page.waitForLoadState("networkidle");
+
+  await page.getByLabel("เบอร์โทรที่ใช้ตอนสั่งซื้อ").fill("0812345678");
+  await page.getByRole("button", { name: "ค้นหาออเดอร์" }).click();
+
+  await expect(page.getByRole("heading", { name: "ไม่พบออเดอร์ของเบอร์นี้" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "ลองกรอกเบอร์อีกครั้ง" })).toBeVisible();
+});
+
+test("shows a tappable chooser when a phone has multiple orders", async ({ page }) => {
+  const orders = [
+    {
+      orderId: "JN-20260726-7G4K2P9ABC", maskedPhone: "•••-•••-5678",
+      createdAt: "2026-07-26T03:00:00.000Z", updatedAt: "2026-07-26T03:00:00.000Z",
+      deliveryDate: "26 กรกฎาคม 2569", fulfilment: "pickup", fulfilmentLabel: "รับเองหน้าร้าน",
+      subtotal: 200, shippingFee: 0, total: 200,
+      paymentStatus: "paid", orderStatus: "completed",
+      canReuploadSlip: false, mustContactShop: false,
+      trackingNumber: null, carrierCode: null, carrierLabel: null, trackingUrl: null,
+      items: [{ name: "แหนมหมู", quantity: 2, unitPrice: 100, lineTotal: 200 }],
+    },
+    {
+      orderId: "JN-20260801-9K2M4P7XYZ", maskedPhone: "•••-•••-5678",
+      createdAt: "2026-08-01T03:00:00.000Z", updatedAt: "2026-08-01T03:00:00.000Z",
+      deliveryDate: "1 สิงหาคม 2569", fulfilment: "pickup", fulfilmentLabel: "รับเองหน้าร้าน",
+      subtotal: 150, shippingFee: 0, total: 150,
+      paymentStatus: "waiting_for_payment", orderStatus: "received",
+      canReuploadSlip: false, mustContactShop: false,
+      trackingNumber: null, carrierCode: null, carrierLabel: null, trackingUrl: null,
+      items: [{ name: "ไส้กรอกอีสาน", quantity: 1, unitPrice: 150, lineTotal: 150 }],
+    },
+  ];
+  await page.route("**/api/orders/track", async (route) => {
+    await route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ orders }) });
+  });
+  await page.goto("/track");
+  await page.waitForLoadState("networkidle");
+
+  await page.getByLabel("เบอร์โทรที่ใช้ตอนสั่งซื้อ").fill("0812345678");
+  await page.getByRole("button", { name: "ค้นหาออเดอร์" }).click();
+
+  await expect(page.getByRole("heading", { name: "พบ 2 ออเดอร์" })).toBeVisible();
+  await expect(page.getByText("JN-20260726-7G4K2P9ABC")).toBeVisible();
+  await expect(page.getByText("JN-20260801-9K2M4P7XYZ")).toBeVisible();
 });
 
 test("keeps hero and category navigation responsive at the configured breakpoint", async ({ page }) => {
@@ -232,7 +298,9 @@ test("keeps hero and category navigation responsive at the configured breakpoint
   const viewport = page.viewportSize();
   if (!viewport) throw new Error("viewport is required");
 
-  await expect(page.locator(".hero-image")).toHaveCSS("object-position", "50% 33%");
+  // Renamed in 7dd4dfa ("Replace hero photo card with a bleeding
+  // product-spread image") — object-position: right top resolves to this.
+  await expect(page.locator(".hero-photo-img")).toHaveCSS("object-position", "100% 0%");
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
 
   const categoryMenu = page.locator(".category-menu > summary");

@@ -12,6 +12,11 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // Playwright output (gitignored). A run that retries/fails a lot can
+    // balloon this into tens of thousands of artifact subfolders — once one
+    // hit APFS's link-count ceiling here, ESLint's glob walk hung on it for
+    // nearly an hour with near-zero CPU. Keep it out of the walk entirely.
+    "test-results/**",
   ]),
 ]);
 

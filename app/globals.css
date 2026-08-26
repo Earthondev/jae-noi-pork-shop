@@ -1811,22 +1811,25 @@ footer .footer-phone-links a:active { background: rgba(255, 255, 255, 0.1); }
 .track-form { margin-top: 20px; display: grid; gap: 12px; }
 .track-form label { display: grid; gap: 6px; color: var(--ink); font-size: 0.82rem; font-weight: 800; }
 .track-form input {
-  min-height: 48px;
+  min-height: 56px;
   width: 100%;
   padding: 0 14px;
   border: 1px solid var(--line);
   border-radius: 12px;
   background: white;
   color: var(--ink);
-  text-transform: uppercase;
+  font-size: 1.25rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-align: center;
 }
-.track-form label:last-of-type input { text-transform: none; }
 .track-form button {
-  min-height: 48px;
+  min-height: 56px;
   padding: 0 24px;
   border: 0;
   border-radius: 99px;
   font-weight: 800;
+  font-size: 1.02rem;
   white-space: nowrap;
   margin-top: 8px;
   background: var(--red-700);
@@ -1886,6 +1889,33 @@ footer .footer-phone-links a:active { background: rgba(255, 255, 255, 0.1); }
 .tracking-skeleton span:nth-child(3) { width: 80%; }
 @keyframes skeleton-shimmer { to { background-position: -220% 0; } }
 
+.track-empty {
+  margin: 20px 16px 0;
+  padding: 28px 22px;
+  display: grid;
+  gap: 10px;
+  justify-items: start;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  background: var(--cream-50);
+  box-shadow: var(--shadow-sm);
+  animation: rise 0.4s both;
+}
+.track-empty h2 { margin: 0; font-family: var(--font-display), serif; font-size: 1.15rem; color: var(--ink); }
+.track-empty p { margin: 0; color: var(--muted); font-size: 0.86rem; line-height: 1.55; }
+.track-empty ul { margin: 0; padding-left: 20px; display: grid; gap: 4px; color: var(--muted); font-size: 0.86rem; line-height: 1.5; }
+.track-empty button {
+  min-height: 48px;
+  padding: 0 22px;
+  border: 0;
+  border-radius: 99px;
+  background: var(--red-700);
+  color: white;
+  font-weight: 800;
+  box-shadow: 0 6px 14px rgba(181, 21, 25, 0.2);
+}
+.track-empty .track-phone-links { margin-top: 2px; }
+
 .track-history {
   margin: 20px 16px 0;
   display: grid;
@@ -1907,6 +1937,7 @@ footer .footer-phone-links a:active { background: rgba(255, 255, 255, 0.1); }
 .track-history-heading .eyebrow { margin-bottom: 4px; color: var(--gold-300); }
 .track-history-heading h2 { margin: 0; font-size: 1.25rem; }
 .track-history-heading > span { color: var(--cream-100); font-size: 0.78rem; font-weight: 800; }
+.track-history-hint { margin: 4px 0 0; color: var(--cream-100); font-size: 0.76rem; opacity: 0.85; }
 .track-history-list { display: grid; gap: 12px; }
 .track-history-card { min-width: 0; overflow: hidden; border: 1px solid var(--line); border-radius: var(--radius-md); background: white; box-shadow: var(--shadow-sm); animation: track-card-enter 0.28s both; }
 @keyframes track-card-enter { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }

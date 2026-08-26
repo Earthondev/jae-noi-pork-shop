@@ -23,6 +23,11 @@ test("accepts a full Thai phone number and compares it without formatting", () =
   assert.equal(isPhoneTrackingLookupInput("093-168-7892"), true);
   assert.equal(isPhoneTrackingLookupInput("931687892"), false);
   assert.equal(isPhoneTrackingLookupInput("09316878921"), false);
+  // No +66 -> 0 conversion anywhere in the repo (checkout's own regex rejects
+  // "+66" at write time, so no such rows exist to look up); a customer who
+  // types the international form gets the validation message, not a silent
+  // empty result.
+  assert.equal(isPhoneTrackingLookupInput("+66931687892"), false);
   assert.equal(matchesPhone("093-168-7892", "0931687892"), true);
   assert.equal(matchesPhone("093-168-7892", "0931687893"), false);
   assert.equal(matchesPhoneLast4("093-168-7892", "7892"), true);
@@ -39,7 +44,7 @@ test("masks the customer phone and maps fulfilment progress", () => {
   assert.equal(trackingStepIndex("cancelled", "postal"), -1);
 });
 
-test("tracking API is private-by-default and rate limited", async () => {
+test("tracking API is phone-only, private-by-default, and rate limited per-IP and per-phone", async () => {
   const [route, repository] = await Promise.all([
     projectFile("app/api/orders/track/route.ts"),
     projectFile("db/order-repository.ts"),
@@ -49,10 +54,14 @@ test("tracking API is private-by-default and rate limited", async () => {
   assert.match(route, /Cache-Control.*private, no-store/);
   assert.match(route, /checkRateLimit/);
   assert.match(route, /Retry-After/);
-  assert.match(route, /เลขออเดอร์และเบอร์โทร 4 ตัวท้าย/);
+  assert.match(route, /isPhoneTrackingLookupInput/);
+  assert.match(route, /"tracking-rate"/);
+  assert.match(route, /"tracking-phone-day"/);
+  assert.match(route, /MAX_LOOKUPS_PER_PHONE_WINDOW\s*=\s*10/);
   assert.doesNotMatch(route, /customerName|address/);
-  assert.match(repository, /getPublicOrderByIdAndPhoneLast4/);
-  assert.match(repository, /matchesPhoneLast4/);
+  assert.match(repository, /getPublicOrdersByPhone/);
+  assert.match(repository, /matchesPhone\(/);
+  assert.match(repository, /phone_normalized = \?/);
   assert.match(route, /days:\s*30/);
   assert.match(repository, /maskPhone/);
 });
@@ -71,11 +80,17 @@ test("tracking page has accessible progress and paid-only receipt actions", asyn
   assert.match(tracker, /พิมพ์หรือบันทึก PDF/);
   assert.match(tracker, /phoneLast4/);
   assert.match(tracker, /เลขออเดอร์/);
-  assert.doesNotMatch(tracker, /JSON\.stringify\(\{ phone \}\)/);
-  assert.match(tracker, /"ติดตามสถานะ"/);
+  // The whole point of this feature is looking up by phone alone — the guard
+  // that used to forbid `JSON.stringify({ phone })` protected the old
+  // two-factor design (order id + last-4 digits). That tradeoff was a
+  // deliberate, user-confirmed decision (see the plan's "Security tradeoff"
+  // section), not an oversight — don't reintroduce the old guard.
+  assert.match(tracker, /JSON\.stringify\(\{ phone \}\)/);
+  assert.match(tracker, /"ค้นหาออเดอร์"/);
   assert.doesNotMatch(tracker, /โดยไม่แสดงชื่อ ที่อยู่ หรือสลิป/);
   assert.match(shop, /href="\/track"/);
   assert.match(css, /\.tracking-skeleton/);
   assert.match(css, /\.track-history-card/);
+  assert.match(css, /\.track-empty/);
   assert.match(css, /@media print/);
 });

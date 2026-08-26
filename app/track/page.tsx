@@ -6,17 +6,19 @@ import { isValidOrderId } from "../../lib/order-tracking";
 
 export const metadata: Metadata = {
   title: "ติดตามออเดอร์ | เจ๊น้อย เขียงหมูตะคร้อ",
-  description: "ตรวจสอบสถานะชำระเงิน การเตรียมสินค้า และเลขพัสดุของออเดอร์ร้านเจ๊น้อย",
-  // Answers only for someone who already has an order number, and the answer
-  // contains a customer's name and address. Nothing here belongs in a search
-  // index or in an AI assistant's training set.
+  description: "กรอกแค่เบอร์โทรที่ใช้ตอนสั่งซื้อ ตรวจสอบสถานะชำระเงิน การเตรียมสินค้า และเลขพัสดุของออเดอร์ร้านเจ๊น้อย",
+  // The lookup only takes a phone number now — a single low-entropy factor —
+  // so the result is more sensitive than before, not less. Stays out of any
+  // search index or AI assistant's training set. (See public/robots.txt.)
   robots: { index: false, follow: false, nocache: true },
 };
 
 export default async function TrackOrderPage({ searchParams }: { searchParams: Promise<{ order?: string | string[] }> }) {
   const params = await searchParams;
   const requestedOrderId = Array.isArray(params.order) ? params.order[0] : params.order;
-  const initialOrderId = requestedOrderId && isValidOrderId(requestedOrderId) ? requestedOrderId : "";
+  // Only used to auto-expand one card in the results once the customer's
+  // phone lookup succeeds — it is never itself a search input anymore.
+  const highlightOrderId = requestedOrderId && isValidOrderId(requestedOrderId) ? requestedOrderId : "";
   // PromptPay details come along so a customer whose slip was rejected can
   // scan and pay again straight from the tracking page instead of hunting for
   // the QR back in the cart.
@@ -34,7 +36,7 @@ export default async function TrackOrderPage({ searchParams }: { searchParams: P
       phoneSecondary={content.phoneSecondary}
       promptPayId={storefront?.promptPayId ?? null}
       promptPayName={storefront?.promptPayName ?? null}
-      initialOrderId={initialOrderId}
+      highlightOrderId={highlightOrderId}
     />
   );
 }
