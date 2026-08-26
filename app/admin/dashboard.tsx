@@ -665,9 +665,11 @@ function OrdersPanel({ orders, setOrders, saving, setSaving, setNotice, onPrintS
   const [range, setRange] = useState<OrderRange>("today");
   // The custom range only takes effect once the admin presses "กรองข้อมูล" —
   // draftDateRange holds the in-progress picks, dateRange holds what's applied.
-  const todayBangkokKey = useMemo(() => bangkokDateKey(new Date()), []);
-  const [dateRange, setDateRange] = useState<OrderDateRange>({ start: todayBangkokKey, end: todayBangkokKey });
-  const [draftDateRange, setDraftDateRange] = useState<OrderDateRange>({ start: todayBangkokKey, end: todayBangkokKey });
+  // Today's date is recomputed on every render (not memoized) so the "วันนี้"
+  // display and filter stay correct if the dashboard is left open past midnight.
+  const todayBangkokKey = bangkokDateKey(new Date());
+  const [dateRange, setDateRange] = useState<OrderDateRange>(() => { const key = bangkokDateKey(new Date()); return { start: key, end: key }; });
+  const [draftDateRange, setDraftDateRange] = useState<OrderDateRange>(() => { const key = bangkokDateKey(new Date()); return { start: key, end: key }; });
   const [filter, setFilter] = useState<OrderFilter>("all");
   const [selectedRound, setSelectedRound] = useState<string>("all");
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
@@ -682,11 +684,15 @@ function OrdersPanel({ orders, setOrders, saving, setSaving, setNotice, onPrintS
   const [confirm, setConfirm] = useState<ConfirmState>(null);
 
   // Picking a start date past the current draft end (or vice versa) snaps the
-  // other side to match, so the range can never invert.
+  // other side to match, so the range can never invert. Native date inputs can
+  // be cleared to "" (e.g. via the keyboard or a browser's clear affordance),
+  // which would otherwise defeat the min/max comparisons below — ignore those.
   function setDraftStart(value: string) {
+    if (!value) return;
     setDraftDateRange((current) => ({ start: value, end: current.end < value ? value : current.end }));
   }
   function setDraftEnd(value: string) {
+    if (!value) return;
     setDraftDateRange((current) => ({ start: current.start, end: value < current.start ? current.start : value }));
   }
   function applyDateRange() {
