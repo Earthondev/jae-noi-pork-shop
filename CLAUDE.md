@@ -34,6 +34,21 @@ dashboard is detached on the next deploy**; `customDomainPatterns()` in
 `vite.config.ts` is the only durable place to add one (it publishes an apex
 together with its `www` form).
 
+## SEO & Google Search Console
+
+Ownership is verified two ways — **removing either one revokes verification**:
+`public/google264d1eb100577ac2.html` (HTML file method) and `verification.google`
+in `app/layout.tsx`'s `generateMetadata()` (HTML tag method). Neither looks used
+by anything else in the codebase; that's expected, don't clean them up.
+
+The site had zero Google indexing as of 2026-08-26 (`site:jaenoishop.com`
+returned nothing) — unsurprising for a domain this new (sitemap.xml added
+2026-08-03, the `/products/[slug]` pages added 2026-08-26) with no backlinks,
+since marketing is Facebook-first rather than search-driven. Search Console's
+Merchant/Product structured-data report can lag several days behind what's
+actually deployed — treat an "invalid item" finding there as needing a fresh
+crawl (Request Indexing) before trusting it as a current bug.
+
 ## Development Guidelines
 
 ### Tech Stack & Architecture
@@ -71,6 +86,7 @@ together with its `www` form).
 - Always check `npm run lint` and `npm run test` before recommending deployment.
 - When visually verifying with Playwright, a `fullPage` screenshot can render `position: fixed`/`sticky` elements (header, bottom nav) a second time mid-page — that's a capture artifact of resizing the viewport to the full document height, not a real bug. Cross-check against a plain (non-fullPage, single-viewport) screenshot before reporting it as one.
 - Any `<DndContext>` (`@dnd-kit`, used in the admin products/categories drag-to-reorder) needs an explicit `id` prop once a page has more than one instance, or React logs a hydration mismatch on `aria-describedby` every load (server and client generate different values for its internal counter).
+- A fixed-position overlay that stays mounted through its exit animation (opacity transition instead of conditionally rendering `null`) needs `pointer-events: none` while hidden and `auto` only while visible — otherwise the invisible element still intercepts clicks on whatever sits underneath it (broke an unrelated e2e test this way). Also give its `display: flex` wrapper an explicit `align-items` (e.g. `flex-start`) — the flex default `stretch` silently stretches a single child to the wrapper's full height. Reference: `app/_components/shop/slip-required-toast.tsx` + its `.slip-required-toast`/`.slip-required-toast-card` CSS.
 
 ### This repo is edited by more than one agent at a time
 
