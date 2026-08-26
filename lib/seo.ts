@@ -35,7 +35,7 @@ export const KEYWORDS = [
   "พรีออเดอร์แหนมหมู",
 ] as const;
 
-export const SITE_TITLE = "แหนมหมู ไส้กรอกอีสาน กากหมูโบราณ (แคปหมูติดมัน) | เจ๊น้อย บัวใหญ่";
+export const SITE_TITLE = "แหนมหมู ไส้กรอกอีสาน กากหมูโบราณ (แคปหมูติดมัน) | เจ๊น้อย เขียงหมูตะคร้อ";
 
 // Long enough for Google to show in full (~155 chars) and specific enough that
 // an assistant answering "ซื้อแหนมหมูที่ไหน" has the product, the place, and
