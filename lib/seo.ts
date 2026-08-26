@@ -41,7 +41,7 @@ export const SITE_TITLE = "แหนมหมู ไส้กรอกอีส�
 // an assistant answering "ซื้อแหนมหมูที่ไหน" has the product, the place, and
 // the way to buy in one sentence.
 export const SITE_DESCRIPTION =
-  "สั่งแหนมหมู ไส้กรอกอีสาน และกากหมูโบราณ (แคปหมูติดมัน) จากเจ๊น้อย เขียงหมูตะคร้อ อ.บัวใหญ่ จ.นครราชสีมา ทำสด แพ็กสูญญากาศ ส่งไปรษณีย์ทั่วไทย";
+  "สั่งแหนมหมู ไส้กรอกอีสาน และกากหมูโบราณ (แคปหมูติดมัน) สูตรเจ๊น้อย เขียงหมูตะคร้อ อ.บัวใหญ่ จ.นครราชสีมา ทำสดทุกวัน แพ็กสูญญากาศ ส่งไปรษณีย์ถึงบ้านทั่วไทย";
 
 export function fullAddress(): string {
   return `${SHOP.legalName} ${SHOP.street} ${SHOP.subdistrict} ${SHOP.district} ${SHOP.province} ${SHOP.postalCode}`;
@@ -61,6 +61,9 @@ export function shopJsonLd(): string {
     legalName: SHOP.legalName,
     url: SITE_URL,
     image: `${SITE_URL}/og.png`,
+    // Organization/LocalBusiness logo — Google's Merchant and Knowledge Panel
+    // surfaces read this field specifically, separately from `image` above.
+    logo: `${SITE_URL}/images/products/jae-noi-shop-logo.jpg`,
     description: SITE_DESCRIPTION,
     telephone: SHOP.phonePrimary,
     priceRange: "฿฿",
@@ -85,29 +88,37 @@ export function shopJsonLd(): string {
     // between structured data and the page price as a Merchant error, so keep
     // these in sync by hand whenever a price changes in Admin > สินค้า.
     makesOffer: [
-      offer("แหนมหมู", "แหนมหมูสูตรดั้งเดิม ทำสดใหม่ แพ็กสูญญากาศ", 130),
-      offer("ไส้กรอกอีสาน", "ไส้กรอกอีสานรสเปรี้ยวกำลังดี ย่างทานร้อน ๆ", 100),
+      offer("naem-moo", "แหนมหมู", "แหนมหมูสูตรดั้งเดิม ทำสดใหม่ แพ็กสูญญากาศ", 130, "/images/products/jae-noi-holding-two-naem-pork-bags.jpg"),
+      offer("sai-krok-isan", "ไส้กรอกอีสาน", "ไส้กรอกอีสานรสเปรี้ยวกำลังดี ย่างทานร้อน ๆ", 100, "/images/products/jae-noi-holding-two-naem-pork-bags.jpg"),
       // "แคปหมู" is the name customers search for; "กากหมูโบราณ" is the same
       // product's name in the admin catalogue. One Product, not two, or Google
       // sees two listings for a store that only sells one of them.
-      offer("กากหมูโบราณ", "กากหมูเจียวสูตรโบราณ หอมกรอบ", 185, "แคปหมู"),
+      offer("kaep-moo", "กากหมูโบราณ", "กากหมูเจียวสูตรโบราณ หอมกรอบ", 185, "/images/products/jae-noi-presenting-pork-rinds-large-tubs.jpg", "แคปหมู"),
     ],
   });
 }
 
-function offer(name: string, description: string, price: number, alternateName?: string) {
+// Slugs are shared with the /products/[slug] pages (app/products/<slug>/page.tsx)
+// so each Product node below can link to a real, crawlable page about itself
+// instead of only existing nested inside the Store's makesOffer.
+function offer(slug: string, name: string, description: string, price: number, image: string, alternateName?: string) {
+  const url = `${SITE_URL}/products/${slug}`;
   return {
     "@type": "Offer",
     // Google's Product rich-result validator requires offers/review/aggregateRating
     // on the Product node itself, not only on the Offer wrapping it — a Product
     // with no offers of its own is reported invalid even though an Offer refers to it.
+    // `image` is likewise required for Product rich results, not just recommended.
     itemOffered: {
       "@type": "Product",
       name,
       description,
+      image: `${SITE_URL}${image}`,
+      url,
+      mainEntityOfPage: { "@type": "WebPage", "@id": url },
       category: "อาหารแปรรูปจากหมู",
       ...(alternateName ? { alternateName } : {}),
-      offers: { "@type": "Offer", priceCurrency: "THB", price, availability: "https://schema.org/PreOrder" },
+      offers: { "@type": "Offer", priceCurrency: "THB", price, availability: "https://schema.org/PreOrder", url },
     },
     availability: "https://schema.org/PreOrder",
     priceCurrency: "THB",

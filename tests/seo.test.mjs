@@ -32,9 +32,21 @@ test("structured data is valid JSON and states the shop's real contact details",
     assert.ok(entry.itemOffered.offers, `${entry.itemOffered.name} ต้องมี offers`);
     assert.equal(typeof entry.itemOffered.offers.price, "number");
     assert.equal(entry.itemOffered.offers.priceCurrency, "THB");
+    // `image` is required (not just recommended) for Product rich results.
+    assert.ok(entry.itemOffered.image?.startsWith(SITE_URL), `${entry.itemOffered.name} ต้องมี image แบบ absolute URL`);
   }
+  // The Organization/LocalBusiness logo Google's Merchant and Knowledge Panel
+  // surfaces read, distinct from the generic `image` field above.
+  assert.ok(data.logo?.startsWith(SITE_URL), "ต้องมี logo แบบ absolute URL");
   const porkRind = data.makesOffer.find((entry) => entry.itemOffered.name === "กากหมูโบราณ");
   assert.equal(porkRind.itemOffered.alternateName, "แคปหมู", "แคปหมู ต้องผูกกับสินค้าเดียวกัน ไม่ใช่รายการแยก");
+  // Each Product should point at a real, crawlable page about itself, not
+  // just live nested inside the Store's makesOffer — regression test for
+  // slug drift between here and the app/products/<slug> route folders.
+  assert.deepEqual(
+    data.makesOffer.map((entry) => entry.itemOffered.url),
+    [`${SITE_URL}/products/naem-moo`, `${SITE_URL}/products/sai-krok-isan`, `${SITE_URL}/products/kaep-moo`],
+  );
 });
 
 test("the JSON-LD cannot break out of its script tag", () => {
@@ -64,6 +76,9 @@ test("sitemap.xml uses the real sitemaps.org namespace", async () => {
   assert.deepEqual(listed, [
     "https://jaenoishop.com/",
     "https://jaenoishop.com/products",
+    "https://jaenoishop.com/products/naem-moo",
+    "https://jaenoishop.com/products/sai-krok-isan",
+    "https://jaenoishop.com/products/kaep-moo",
     "https://jaenoishop.com/how-to-order",
   ]);
   // Checked against the listed URLs rather than the file text, so a comment

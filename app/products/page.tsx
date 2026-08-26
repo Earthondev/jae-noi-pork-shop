@@ -43,18 +43,21 @@ const collectionJsonLd = JSON.stringify({
 const products = [
   {
     name: "แหนมหมู",
+    slug: "naem-moo",
     image: "/images/products/jae-noi-holding-two-naem-pork-bags.jpg",
     alt: "แหนมหมูสูตรร้านเจ๊น้อย เขียงหมูตะคร้อ",
     text: "แหนมหมูสูตรดั้งเดิม ทำสดใหม่ แพ็กสูญญากาศ เหมาะสำหรับทานที่บ้านหรือสั่งเป็นของฝากจากบัวใหญ่",
   },
   {
     name: "ไส้กรอกอีสาน",
+    slug: "sai-krok-isan",
     image: "/images/products/jae-noi-holding-two-naem-pork-bags.jpg",
     alt: "ไส้กรอกอีสานจากร้านเจ๊น้อย",
     text: "ไส้กรอกอีสานรสเปรี้ยวกำลังดี ย่างทานร้อน ๆ ได้รสชาติแบบอาหารอีสานที่คุ้นเคย และจัดส่งทั่วไทยตามรอบพรีออเดอร์",
   },
   {
     name: "แคปหมูติดมัน",
+    slug: "kaep-moo",
     image: "/images/products/jae-noi-presenting-pork-rinds-large-tubs.jpg",
     alt: "แคปหมูติดมัน หรือกากหมูโบราณ เจ๊น้อย",
     text: "กากหมูเจียวสูตรโบราณ หอมกรอบ โดยใช้ชื่อแคปหมูเป็นคำที่ลูกค้าค้นหาได้ง่ายในหน้าร้านและช่องทางออนไลน์",
@@ -96,7 +99,7 @@ export default function ProductsPage() {
               <article className="seo-card" key={product.name}>
                 <Image src={product.image} alt={product.alt} width={760} height={520} />
                 <div>
-                  <h3>{product.name}</h3>
+                  <h3><Link href={`/products/${product.slug}`}>{product.name}</Link></h3>
                   <p>{product.text}</p>
                   <Link href="/#products">ดูสถานะสินค้าและรอบสั่งซื้อ <span aria-hidden="true">→</span></Link>
                 </div>
