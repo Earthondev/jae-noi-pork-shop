@@ -38,6 +38,40 @@ const StarIcon = () => (
   </svg>
 );
 
+function OrderStepIcon({ step }: Readonly<{ step: 1 | 2 | 3 }>) {
+  if (step === 1) {
+    return <svg className="order-step-icon" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 9h18l-1.5 11a2 2 0 0 1-2 1.8H5.5a2 2 0 0 1-2-1.8L3 9Z" /><path d="M8 9V7a4 4 0 0 1 8 0v2" /></svg>;
+  }
+  if (step === 2) {
+    return <svg className="order-step-icon" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h9" /><path d="M7 8h4M7 12h3" /><path d="m17 21 4-4-4-4" /><path d="M12 17h9" /></svg>;
+  }
+  return <svg className="order-step-icon" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="6" height="6" rx="1" /><rect x="15" y="3" width="6" height="6" rx="1" /><rect x="3" y="15" width="6" height="6" rx="1" /><rect x="15" y="15" width="6" height="6" rx="1" /></svg>;
+}
+
+type OrderStepProps = Readonly<{
+  step: 1 | 2 | 3;
+  title: string;
+  description: string;
+}>;
+
+function OrderStep({ step, title, description }: OrderStepProps) {
+  return (
+    <div className="order-step">
+      <span className="order-step-number">{step}</span>
+      <span className="order-step-icon-shell"><OrderStepIcon step={step} /></span>
+      <div className="order-step-copy">
+        <h3>{title}</h3>
+        <p>{description}</p>
+      </div>
+      {step < 3 && (
+        <svg className="order-step-arrow" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <path d="m9 18 6-6-6-6" />
+        </svg>
+      )}
+    </div>
+  );
+}
+
 export function Shop() {
   const [cartOpen, setCartOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
@@ -435,9 +469,9 @@ export function Shop() {
       />
 
       <section className="order-flow" id="how-to-order">
-        <div><span>1</span><h3>เลือกสินค้า</h3><p>เพิ่มจำนวนที่ต้องการลงตะกร้า</p></div>
-        <div><span>2</span><h3>กรอกที่อยู่</h3><p>แจ้งชื่อ เบอร์โทร และที่จัดส่ง</p></div>
-        <div><span>3</span><h3>ชำระเงิน</h3><p>สแกน QR พร้อมยอดออเดอร์ แล้วแนบสลิป</p></div>
+        <OrderStep step={1} title="เลือกสินค้า" description="เพิ่มจำนวนที่ต้องการลงตะกร้า" />
+        <OrderStep step={2} title="กรอกที่อยู่" description="แจ้งชื่อ เบอร์โทร และที่จัดส่ง" />
+        <OrderStep step={3} title="ชำระเงิน" description="สแกน QR พร้อมยอดออเดอร์ แล้วแนบสลิป" />
       </section>
 
       <ProductGrid

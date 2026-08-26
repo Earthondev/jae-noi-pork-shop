@@ -38,7 +38,10 @@ export function SiteHeader({
         <span className="brand-mark">
           <Image src={storeLogoUrl} alt="" width={80} height={80} priority />
         </span>
-        <span className="brand-name">{storeName}</span>
+        <span className="brand-copy">
+          <span className="brand-name">{storeName}</span>
+          <span className="brand-tagline">ของอร่อยจากตะคร้อ · ทำสดทุกวัน</span>
+        </span>
       </a>
       <nav className={hasCategoryMenu ? "has-category-menu" : undefined} aria-label="เมนูหลัก">
         <a className="products-nav-link" href="#products">สินค้า</a>
