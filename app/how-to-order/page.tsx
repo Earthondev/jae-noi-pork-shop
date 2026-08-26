@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { SeoPageNav } from "../_components/shop/seo-page-nav";
 import { SITE_URL, SHOP } from "../../lib/seo";
 
 const PAGE_URL = `${SITE_URL}/how-to-order`;
@@ -147,6 +148,7 @@ export default function HowToOrderPage() {
           </div>
         </footer>
       </div>
+      <SeoPageNav activeTab="products" />
     </main>
   );
 }

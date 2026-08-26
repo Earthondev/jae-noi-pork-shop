@@ -830,13 +830,6 @@ function OrdersPanel({ orders, setOrders, saving, setSaving, setNotice, onPrintS
 
   return <section className="admin-panel admin-orders-panel">
     <div className="admin-section-heading"><div><p className="eyebrow">จัดการงานประจำวัน</p><h2>ออเดอร์</h2></div><span className="admin-result-count">{filtered.length} รายการ</span></div>
-    <TrackingImportPanel onImported={(updates) => {
-      const byOrder = new Map(updates.map((update) => [update.orderId, update]));
-      setOrders((current) => current.map((order) => {
-        const update = byOrder.get(order.id);
-        return update ? { ...order, tracking_number: update.trackingNumber, carrier_code: update.carrierCode, order_status: "shipped" } : order;
-      }));
-    }} />
     <div className="admin-filter-stack">
       <div className="admin-date-filter-card">
         <p className="admin-date-filter-title"><AdminIcon name="calendar" />ตัวเลือกช่วงวันที่</p>
@@ -908,13 +901,6 @@ function OrdersPanel({ orders, setOrders, saving, setSaving, setNotice, onPrintS
           <div className="admin-stat-info">
             <span className="admin-stat-label">ยอดค่าส่ง</span>
             <strong className="admin-stat-value amber">{formatMoney(breakdown.shipping)}</strong>
-          </div>
-        </div>
-        <div className="admin-stat-card">
-          <span className="admin-stat-icon-badge pink"><AdminIcon name="package" /></span>
-          <div className="admin-stat-info">
-            <span className="admin-stat-label">ยอดรวม</span>
-            <strong className="admin-stat-value red">{formatMoney(breakdown.total)}</strong>
           </div>
         </div>
       </div>
@@ -1135,6 +1121,16 @@ function OrdersPanel({ orders, setOrders, saving, setSaving, setNotice, onPrintS
       );
     })}
     </div>
+    {/* Used once per round when tracking numbers come back from the carrier —
+        kept below the order list so it doesn't stand between admin and the
+        daily task of checking today's orders. */}
+    <TrackingImportPanel onImported={(updates) => {
+      const byOrder = new Map(updates.map((update) => [update.orderId, update]));
+      setOrders((current) => current.map((order) => {
+        const update = byOrder.get(order.id);
+        return update ? { ...order, tracking_number: update.trackingNumber, carrier_code: update.carrierCode, order_status: "shipped" } : order;
+      }));
+    }} />
     <ConfirmDialog open={Boolean(confirm)} title={confirm?.title ?? ""} description={confirm?.description ?? ""} confirmLabel={confirm?.confirmLabel ?? "ยืนยัน"} tone={confirm?.tone} busy={saving !== null} onCancel={() => setConfirm(null)} onConfirm={() => { const action = confirm?.action; setConfirm(null); if (action) void action(); }} />
   </section>;
 }

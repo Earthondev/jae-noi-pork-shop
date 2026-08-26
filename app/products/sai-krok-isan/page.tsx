@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Image from "next/image";
 import Link from "next/link";
+import { SeoPageNav } from "../../_components/shop/seo-page-nav";
 import { SITE_URL, SHOP } from "../../../lib/seo";
 
 const PAGE_URL = `${SITE_URL}/products/sai-krok-isan`;
@@ -115,6 +116,7 @@ export default function SaiKrokIsanPage() {
           </div>
         </footer>
       </div>
+      <SeoPageNav activeTab="products" />
     </main>
   );
 }

@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Image from "next/image";
 import Link from "next/link";
+import { SeoPageNav } from "../../_components/shop/seo-page-nav";
 import { SITE_URL, SHOP } from "../../../lib/seo";
 
 const PAGE_URL = `${SITE_URL}/products/kaep-moo`;
@@ -120,6 +121,7 @@ export default function KaepMooPage() {
           </div>
         </footer>
       </div>
+      <SeoPageNav activeTab="products" />
     </main>
   );
 }

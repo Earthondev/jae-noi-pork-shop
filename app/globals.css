@@ -820,7 +820,7 @@ footer .footer-phone-links a:active { background: rgba(255, 255, 255, 0.1); }
 
 /* Server-rendered SEO landing pages */
 .seo-page { min-height: 100vh; background: var(--cream-50); }
-.seo-page-shell { width: min(1120px, 100%); margin: 0 auto; padding: 20px 16px 64px; }
+.seo-page-shell { width: min(1120px, 100%); margin: 0 auto; padding: 20px 16px calc(96px + env(safe-area-inset-bottom)); }
 .seo-breadcrumbs { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: 0 0 20px; color: var(--muted); font-size: 0.82rem; }
 .seo-breadcrumbs a { color: var(--red-800); font-weight: 800; text-decoration: none; }
 .seo-page-hero { padding: 38px 22px; border: 1px solid var(--line); border-radius: var(--radius-lg); background: radial-gradient(circle at 95% 5%, rgba(230, 180, 51, 0.24), transparent 42%), linear-gradient(135deg, var(--white), var(--cream-100)); box-shadow: var(--shadow-sm); }
