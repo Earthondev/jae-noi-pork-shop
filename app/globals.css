@@ -1054,6 +1054,83 @@ footer .footer-phone-links a:active { background: rgba(255, 255, 255, 0.1); }
 }
 @keyframes backdrop-fade { from { opacity: 0; } to { opacity: 1; } }
 
+/* Portal-rendered straight to document.body (see slip-required-toast.tsx),
+   so this z-index only has to beat other fixed overlays, not worry about an
+   ancestor's containing block. Placed above the drawer and even the dead
+   .tribute-backdrop rule below so a future revival of that code can't
+   silently outrank it. No backdrop dim on purpose — a toast, not a modal;
+   the form underneath stays interactive so the customer can go fix it. */
+.slip-required-toast {
+  position: fixed;
+  inset: 0;
+  z-index: 300;
+  display: flex;
+  justify-content: center;
+  /* align-items defaults to stretch on a flex container — without this the
+     card (its only child) stretches to fill the full fixed-height wrapper
+     instead of hugging its own content. */
+  align-items: flex-start;
+  padding-top: max(20px, env(safe-area-inset-top));
+  pointer-events: none;
+}
+.slip-required-toast-card {
+  width: min(90vw, 340px);
+  padding: 14px 16px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  border-radius: 18px;
+  background: var(--white);
+  box-shadow: var(--shadow-lg);
+  color: var(--ink);
+  cursor: pointer;
+  pointer-events: none;
+  opacity: 0;
+  transform: translateY(-14px) scale(0.96);
+  transition: opacity 0.22s ease, transform 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.slip-required-toast.visible .slip-required-toast-card {
+  pointer-events: auto;
+  opacity: 1;
+  transform: translateY(0) scale(1);
+}
+.slip-required-toast-icon {
+  flex: 0 0 auto;
+  width: 36px;
+  height: 36px;
+  display: grid;
+  place-items: center;
+  border-radius: 99px;
+  background: rgba(181, 21, 25, 0.1);
+  color: var(--red-700);
+}
+.slip-required-toast-icon svg { width: 19px; height: 19px; }
+.slip-required-toast-card strong {
+  display: block;
+  font-family: var(--font-display), serif;
+  font-size: 0.94rem;
+  color: var(--red-800);
+}
+.slip-required-toast-card p {
+  margin: 2px 0 0;
+  color: var(--muted);
+  font-size: 0.8rem;
+  line-height: 1.4;
+}
+.slip-required-toast-close {
+  flex: 0 0 auto;
+  margin-left: auto;
+  width: 24px;
+  height: 24px;
+  display: grid;
+  place-items: center;
+  border: 0;
+  border-radius: 99px;
+  background: transparent;
+  color: var(--muted);
+}
+.slip-required-toast-close svg { width: 14px; height: 14px; }
+
 .tribute-backdrop {
   position: fixed;
   inset: 0;

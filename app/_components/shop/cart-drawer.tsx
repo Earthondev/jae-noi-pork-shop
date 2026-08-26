@@ -6,6 +6,7 @@ import type { Quantities } from "../../_hooks/use-checkout-draft";
 import type { Fulfilment, PreorderRound, Product } from "../../_hooks/use-storefront";
 import { computePillWidth, fitFontSize } from "../../../lib/qr-image";
 import { AddressFields, type AddressFieldName } from "./address-fields";
+import { SlipRequiredToast } from "./slip-required-toast";
 import { amountUntilFreeShipping } from "../../../lib/shipping";
 import { displayProductName } from "../../../lib/product-catalog";
 
@@ -93,6 +94,8 @@ export function CartDrawer({ drawerRef, onClose, cart, checkout, storefront, ord
   const [slipFile, setSlipFile] = useState<File | null>(null);
   const [slipPreviewUrl, setSlipPreviewUrl] = useState<string | null>(null);
   const [slipError, setSlipError] = useState<string | null>(null);
+  const [slipToastVisible, setSlipToastVisible] = useState(false);
+  const [slipToastKey, setSlipToastKey] = useState(0);
   const [confirmingClear, setConfirmingClear] = useState(false);
   const [prevOrderId, setPrevOrderId] = useState(order.id);
   const successCardRef = useRef<HTMLDivElement | null>(null);
@@ -165,6 +168,8 @@ export function CartDrawer({ drawerRef, onClose, cart, checkout, storefront, ord
       event.preventDefault();
       setSlipError("กรุณาแนบรูปสลิปโอนเงินก่อนยืนยันคำสั่งซื้อ");
       slipInputRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+      setSlipToastVisible(true);
+      setSlipToastKey((key) => key + 1);
       return;
     }
     order.onSubmit(event);
@@ -361,6 +366,7 @@ export function CartDrawer({ drawerRef, onClose, cart, checkout, storefront, ord
 
   return (
     <div className="drawer-backdrop" role="presentation" onMouseDown={(event) => event.target === event.currentTarget && onClose()}>
+      <SlipRequiredToast visible={slipToastVisible} resetKey={slipToastKey} onDismiss={() => setSlipToastVisible(false)} />
       <aside ref={drawerRef} className="cart-drawer" role="dialog" aria-modal="true" aria-labelledby="cart-title">
         <div className="drawer-handle" />
         <div className="drawer-heading">
