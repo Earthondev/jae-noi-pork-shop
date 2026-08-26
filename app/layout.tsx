@@ -23,6 +23,7 @@ export async function generateMetadata(): Promise<Metadata> {
     // URL search engines should keep.
     alternates: { canonical: SITE_URL },
     robots: { index: true, follow: true, googleBot: { index: true, follow: true, "max-image-preview": "large", "max-snippet": -1 } },
+    verification: { google: "bwVFiTr2gLB_rPMFyeR2FdqEHzgFiXaryOnjpSxLAl0" },
     icons: {
       icon: [
         { url: "/favicon-shop-v2.ico", sizes: "48x48", type: "image/x-icon" },
