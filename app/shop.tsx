@@ -144,8 +144,16 @@ export function Shop() {
   useEffect(() => {
     if (!checkoutRestored || storeLoading || restoredNoticeShownRef.current) return;
     restoredNoticeShownRef.current = true;
-    if (!storefrontNotice) setStorefrontNotice("กู้คืนตะกร้าและข้อมูลที่กรอกไว้แล้ว พร้อมตรวจราคาและสถานะสินค้าล่าสุดให้แล้ว");
+    if (!storefrontNotice) setStorefrontNotice("กู้คืนตะกร้าแล้ว · ตรวจสอบราคาและสถานะสินค้าให้เป็นปัจจุบันแล้ว");
   }, [checkoutRestored, setStorefrontNotice, storefrontNotice, storeLoading]);
+
+  const isRestoredNotice = Boolean(storefrontNotice?.startsWith("กู้คืนตะกร้าแล้ว"));
+
+  useEffect(() => {
+    if (!isRestoredNotice) return;
+    const timeout = window.setTimeout(() => setStorefrontNotice(null), 6000);
+    return () => window.clearTimeout(timeout);
+  }, [isRestoredNotice, setStorefrontNotice]);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -567,9 +575,16 @@ export function Shop() {
         </div>
       )}
       {storefront.notice && !cartOpen && (
-        <div className={`storefront-notice${cartCount > 0 ? " with-cart" : ""}`} role="status">
-          <span>{storefront.notice}</span>
-          <button type="button" onClick={() => storefront.setNotice(null)} aria-label="ปิดข้อความแจ้งเตือน">×</button>
+        <div className={`storefront-notice${cartCount > 0 ? " with-cart" : ""}${isRestoredNotice ? " is-success" : ""}`} role="status" aria-live="polite" aria-atomic="true">
+          <span className="storefront-notice-icon" aria-hidden="true">✓</span>
+          <span className="storefront-notice-copy">
+            <strong>{isRestoredNotice ? "พร้อมสั่งต่อได้เลย" : "แจ้งเตือนจากร้าน"}</strong>
+            <span>{storefront.notice}</span>
+          </span>
+          {isRestoredNotice && cartCount > 0 && (
+            <button type="button" className="storefront-notice-cart" onClick={() => { storefront.setNotice(null); setCartOpen(true); }}>ดูตะกร้า</button>
+          )}
+          <button type="button" className="storefront-notice-close" onClick={() => storefront.setNotice(null)} aria-label="ปิดข้อความแจ้งเตือน">×</button>
         </div>
       )}
       {cartCount > 0 && !cartOpen && nearProducts && (
