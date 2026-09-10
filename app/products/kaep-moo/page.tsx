@@ -10,9 +10,9 @@ const PAGE_URL = `${SITE_URL}/products/kaep-moo`;
 // two — see the matching comment in lib/seo.ts.
 const PRODUCT = productGuide("kaep-moo");
 const PRODUCT_IMAGE = PRODUCT.image;
-const PAGE_TITLE = "แคปหมูติดมัน กากหมูโบราณ | เจ๊น้อย เขียงหมูตะคร้อ";
+const PAGE_TITLE = "กากหมูโบราณ แคปหมูติดมันจากบัวใหญ่ | เจ๊น้อย";
 const PAGE_DESCRIPTION =
-  "กากหมูโบราณ (แคปหมูติดมัน) จากเจ๊น้อย เขียงหมูตะคร้อ อ.บัวใหญ่ จ.นครราชสีมา เจียวสูตรโบราณ หอมกรอบ ส่งไปรษณีย์ทั่วไทย";
+  "รู้จักกากหมูโบราณหรือแคปหมูติดมันของร้านเจ๊น้อย เขียงหมูตะคร้อ บัวใหญ่ ดูข้อมูลสินค้าและลิงก์ราคา ขนาดบรรจุ วิธีสั่งซื้อ และข้อมูลร้าน";
 
 export const metadata: Metadata = {
   title: PAGE_TITLE,

@@ -17,7 +17,7 @@ test("the title and description carry the products, the shop and the place", () 
     assert.ok(SITE_TITLE.includes(term), `title ควรมี ${term}`);
   }
   assert.ok(SITE_DESCRIPTION.includes("บัวใหญ่") && SITE_DESCRIPTION.includes("นครราชสีมา"), "description ต้องบอกที่ตั้ง");
-  // Google truncates around 160; a description longer than that loses its tail.
+  // Project copy budgets, not guaranteed Google snippet display limits.
   assert.ok(SITE_DESCRIPTION.length <= 165, `description ยาว ${SITE_DESCRIPTION.length} เกินที่ Google แสดง`);
   assert.ok(SITE_TITLE.length <= 75, `title ยาว ${SITE_TITLE.length} เกินไป`);
 });

@@ -37,13 +37,12 @@ export const KEYWORDS = [
   "พรีออเดอร์แหนมหมู",
 ] as const;
 
-export const SITE_TITLE = "แหนมหมู ไส้กรอกอีสาน กากหมูโบราณ (แคปหมูติดมัน) | เจ๊น้อย เขียงหมูตะคร้อ";
+export const SITE_TITLE = "แหนมหมู ไส้กรอกอีสาน แคปหมู | เจ๊น้อย เขียงหมูตะคร้อ บัวใหญ่";
 
-// Long enough for Google to show in full (~155 chars) and specific enough that
-// an assistant answering "ซื้อแหนมหมูที่ไหน" has the product, the place, and
-// the way to buy in one sentence.
+// Describe the catalogue and location without promising current availability.
+// Google may choose different snippet text based on the query.
 export const SITE_DESCRIPTION =
-  "สั่งแหนมหมู ไส้กรอกอีสาน และกากหมูโบราณ (แคปหมูติดมัน) สูตรเจ๊น้อย เขียงหมูตะคร้อ อ.บัวใหญ่ จ.นครราชสีมา ทำสดทุกวัน แพ็กสูญญากาศ ส่งไปรษณีย์ถึงบ้านทั่วไทย";
+  "เจ๊น้อย เขียงหมูตะคร้อ อ.บัวใหญ่ จ.นครราชสีมา รวมแหนมหมู ไส้กรอกอีสาน กากหมูและหม่ำหมู ดูราคา รูปสินค้า ขนาดบรรจุ ค่าจัดส่ง และรอบขายล่าสุด";
 
 export function fullAddress(): string {
   return `${SHOP.legalName} ${SHOP.street} ${SHOP.subdistrict} ${SHOP.district} ${SHOP.province} ${SHOP.postalCode}`;

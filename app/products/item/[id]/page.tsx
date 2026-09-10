@@ -27,12 +27,13 @@ async function loadProduct(params: Props["params"]) {
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { product, storefront } = await loadProduct(params);
   const name = displayProductName(product.name);
-  const title = `${name} | ${storefront.content.storeName}`;
+  const title = `${name} บัวใหญ่ | ${storefront.content.storeName}`;
+  const description = `${name}${product.unit ? ` ขนาด ${product.unit}` : ""} จาก${storefront.content.storeName} อ.บัวใหญ่ จ.นครราชสีมา ดูราคา รูปสินค้า ค่าจัดส่ง และสถานะรอบขาย`;
   const url = `${SITE_URL}${productPath(product.id)}`;
   return {
-    title, description: product.detail,
+    title, description,
     alternates: { canonical: url },
-    openGraph: { title, description: product.detail, url, type: "website", images: [{ url: new URL(product.image, SITE_URL).href, alt: name }] },
+    openGraph: { title, description, url, type: "website", images: [{ url: new URL(product.image, SITE_URL).href, alt: name }] },
   };
 }
 
@@ -62,6 +63,7 @@ export default async function ProductDetail({ params }: Props) {
             <div className="pd-actions">
               <Link className="pd-cta" href={state.canOrder ? `/#product-${encodeURIComponent(product.id)}` : "/#top"}>{state.canOrder ? "เลือกสินค้านี้" : "ดูรอบขาย"}</Link>
               <Link href="/products">สินค้าทั้งหมด</Link>
+              <Link href="/how-to-order">วิธีสั่งซื้อและจัดส่ง</Link>
             </div>
             {content.careNote && <p className="pd-care">{content.careNote}</p>}
           </div>

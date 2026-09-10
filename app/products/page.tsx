@@ -11,9 +11,9 @@ import { CatalogueShipping } from "../_components/shop/catalogue-shipping";
 export const dynamic = "force-dynamic";
 
 const PAGE_URL = `${SITE_URL}/products`;
-const PAGE_TITLE = "สินค้าทั้งหมด | เจ๊น้อย เขียงหมูตะคร้อ";
+const PAGE_TITLE = "เมนูสินค้าและราคา | เจ๊น้อย เขียงหมูตะคร้อ บัวใหญ่";
 const PAGE_DESCRIPTION =
-  "รวมเมนูแหนมหมู ไส้กรอกอีสาน และแคปหมูติดมันจากเจ๊น้อย เขียงหมูตะคร้อ อ.บัวใหญ่ จ.นครราชสีมา ทำสด แพ็กสูญญากาศ พร้อมสั่งออนไลน์";
+  "เทียบราคาและขนาดแหนมหมู ไส้กรอกอีสาน กากหมู หม่ำหมู และแคปหมูจากเจ๊น้อย เขียงหมูตะคร้อ บัวใหญ่ ดูรูป รายละเอียดสินค้า ค่าจัดส่ง และสถานะรอบขาย";
 
 export const metadata: Metadata = {
   title: PAGE_TITLE,
@@ -51,7 +51,7 @@ export default async function ProductsPage() {
             สำหรับลูกค้าที่กำลังหาแหนมหมู ไส้กรอกอีสาน หรือแคปหมูติดมันเพื่อทานเองและเป็นของฝาก
           </p>
           <div className="seo-page-actions">
-            <Link className="seo-primary-action" href="/#products">ดูสินค้าพร้อมสั่ง</Link>
+            <Link className="seo-primary-action" href="/#products">ดูสินค้าและรอบขาย</Link>
             <Link className="seo-secondary-action" href="/how-to-order">ดูวิธีสั่งซื้อ</Link>
           </div>
         </header>

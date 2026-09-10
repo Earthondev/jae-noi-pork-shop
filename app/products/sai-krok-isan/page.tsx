@@ -8,9 +8,9 @@ const PAGE_URL = `${SITE_URL}/products/sai-krok-isan`;
 const PRODUCT = productGuide("sai-krok-isan");
 const PRODUCT_NAME = PRODUCT.name;
 const PRODUCT_IMAGE = PRODUCT.image;
-const PAGE_TITLE = "ไส้กรอกอีสาน รสเปรี้ยวกำลังดี | เจ๊น้อย เขียงหมูตะคร้อ";
+const PAGE_TITLE = "รู้จักไส้กรอกอีสานเจ๊น้อย บัวใหญ่ | เขียงหมูตะคร้อ";
 const PAGE_DESCRIPTION =
-  "ไส้กรอกอีสานรสเปรี้ยวกำลังดีจากเจ๊น้อย เขียงหมูตะคร้อ อ.บัวใหญ่ จ.นครราชสีมา ทำสดใหม่ สั่งออนไลน์ ส่งไปรษณีย์ทั่วไทย";
+  "รู้จักไส้กรอกอีสานของร้านเจ๊น้อย เขียงหมูตะคร้อ อ.บัวใหญ่ จ.นครราชสีมา พร้อมลิงก์ดูสินค้า ราคาปัจจุบัน วิธีสั่งซื้อ และข้อมูลติดต่อร้าน";
 
 export const metadata: Metadata = {
   title: PAGE_TITLE,

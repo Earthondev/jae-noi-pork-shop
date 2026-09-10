@@ -8,9 +8,9 @@ const PAGE_URL = `${SITE_URL}/products/naem-moo`;
 const PRODUCT = productGuide("naem-moo");
 const PRODUCT_NAME = PRODUCT.name;
 const PRODUCT_IMAGE = PRODUCT.image;
-const PAGE_TITLE = "แหนมหมูสูตรดั้งเดิม ทำสดใหม่ | เจ๊น้อย เขียงหมูตะคร้อ";
+const PAGE_TITLE = "รู้จักแหนมหมูเจ๊น้อยจากบัวใหญ่ | เขียงหมูตะคร้อ";
 const PAGE_DESCRIPTION =
-  "แหนมหมูสูตรดั้งเดิมจากเจ๊น้อย เขียงหมูตะคร้อ อ.บัวใหญ่ จ.นครราชสีมา ทำสดใหม่ แพ็กสูญญากาศ สั่งออนไลน์ ส่งไปรษณีย์ทั่วไทย";
+  "รู้จักแหนมหมูของร้านเจ๊น้อย เขียงหมูตะคร้อ อ.บัวใหญ่ จ.นครราชสีมา พร้อมลิงก์ดูสินค้า ราคาและขนาดปัจจุบัน วิธีสั่งซื้อ และข้อมูลติดต่อร้าน";
 
 export const metadata: Metadata = {
   title: PAGE_TITLE,
