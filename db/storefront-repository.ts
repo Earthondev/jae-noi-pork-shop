@@ -59,6 +59,7 @@ type ProductRow = {
   badge: string;
   price: number | null;
   status: string;
+  updated_at: string;
   image_url: string;
   category: string;
 };
@@ -84,7 +85,7 @@ export async function getD1StorefrontData(now = new Date()): Promise<StorefrontD
   const bindings = env as unknown as RuntimeBindings;
   if (!bindings.DB) throw new Error("Cloudflare D1 binding `DB` is unavailable");
   const [productResult, roundResult, settingResult, roundProductResult] = await bindings.DB.batch([
-    bindings.DB.prepare(`SELECT id, name, unit, detail, badge, price, status, image_url, category
+    bindings.DB.prepare(`SELECT id, name, unit, detail, badge, price, status, image_url, category, updated_at
       FROM products ORDER BY sort_order`),
     bindings.DB.prepare(`SELECT id, delivery_date, opens_at, closes_at, status, label, note, product_scope
       FROM delivery_rounds ORDER BY delivery_date`),
@@ -104,6 +105,7 @@ export async function getD1StorefrontData(now = new Date()): Promise<StorefrontD
     const complete = Boolean(row.unit && row.detail && row.price !== null && row.price > 0);
     return [{
       id: row.id,
+      updatedAt: row.updated_at,
       name: row.name,
       unit: row.unit || "รอข้อมูลหน่วยขาย",
       detail: row.detail || "รายละเอียดสินค้ารอข้อมูล",
@@ -111,6 +113,7 @@ export async function getD1StorefrontData(now = new Date()): Promise<StorefrontD
       price: row.price,
       status: status === "เปิดขาย" && !complete ? "รอข้อมูล" : status,
       image: safeProductImageUrl(row.image_url, mediaOrigin),
+      images: [...new Set(row.image_url.split(",").filter(Boolean).slice(0, 5).map((url) => safeProductImageUrl(url, mediaOrigin)))],
       category: row.category || "อื่น ๆ",
     }];
   });

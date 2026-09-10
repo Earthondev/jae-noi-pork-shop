@@ -14,4 +14,6 @@ Disallow: /track
 # shop. Training on it is neither granted nor refused.
 # content-signal: search=yes, ai-input=yes
 
+# Assistants that read a plain-text brief instead of crawling: /llms.txt is the
+# short version of the whole shop, including the facts they must not guess at.
 Sitemap: https://jaenoishop.com/sitemap.xml

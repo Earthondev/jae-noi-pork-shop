@@ -10,6 +10,7 @@ export type Product = {
   name: string;
   unit: string;
   detail: string;
+  images?: string[];
   badge: string;
   price: number | null;
   image: string;
@@ -60,6 +61,14 @@ export type StorefrontResponse = {
 export type Fulfilment = "pickup" | "postal";
 
 type UseStorefrontOptions = Readonly<{
+  /**
+   * The catalogue as the server already rendered it. Seeding state from it is
+   * what puts real product names, prices and round status into the HTML a
+   * crawler (and an AI assistant, which usually does not run JavaScript at all)
+   * receives — and it removes the empty-then-populated flash for customers.
+   * Null when the database read failed; the client fetch then fills in as before.
+   */
+  initial: StorefrontResponse | null;
   /** Re-fetches whenever the cart drawer opens, so prices/availability are always fresh at checkout. */
   cartOpen: boolean;
   /** Owned by `useCheckoutDraft`; called on every successful fetch so restored items stay reconciled with the live catalog. */
@@ -95,6 +104,7 @@ export type UseStorefrontResult = Readonly<{
 }>;
 
 export function useStorefront({
+  initial,
   cartOpen,
   pruneUnavailable,
   selectedRound,
@@ -102,17 +112,17 @@ export function useStorefront({
   fulfilment,
   setFulfilment,
 }: UseStorefrontOptions): UseStorefrontResult {
-  const [products, setProducts] = useState<Product[]>([]);
-  const [categoryOrder, setCategoryOrder] = useState<string[]>([]);
-  const [rounds, setRounds] = useState<PreorderRound[]>([]);
-  const [nextRound, setNextRound] = useState<PreorderRound | null>(null);
-  const [shippingFee, setShippingFee] = useState<number | null>(null);
-  const [freeShippingMinimum, setFreeShippingMinimum] = useState<number | null>(null);
-  const [pickupAddress, setPickupAddress] = useState<string | null>(null);
-  const [pickupMapUrl, setPickupMapUrl] = useState<string | null>(null);
-  const [promptPayId, setPromptPayId] = useState<string | null>(null);
-  const [promptPayName, setPromptPayName] = useState<string | null>(null);
-  const [content, setContent] = useState<StorefrontContent>({
+  const [products, setProducts] = useState<Product[]>(initial?.products ?? []);
+  const [categoryOrder, setCategoryOrder] = useState<string[]>(initial?.categoryOrder ?? []);
+  const [rounds, setRounds] = useState<PreorderRound[]>(initial?.rounds ?? []);
+  const [nextRound, setNextRound] = useState<PreorderRound | null>(initial?.nextRound ?? null);
+  const [shippingFee, setShippingFee] = useState<number | null>(initial?.shippingFee ?? null);
+  const [freeShippingMinimum, setFreeShippingMinimum] = useState<number | null>(initial?.freeShippingMinimum ?? null);
+  const [pickupAddress, setPickupAddress] = useState<string | null>(initial?.pickupAddress ?? null);
+  const [pickupMapUrl, setPickupMapUrl] = useState<string | null>(initial?.pickupMapUrl ?? null);
+  const [promptPayId, setPromptPayId] = useState<string | null>(initial?.promptPayId ?? null);
+  const [promptPayName, setPromptPayName] = useState<string | null>(initial?.promptPayName ?? null);
+  const [content, setContent] = useState<StorefrontContent>(initial?.content ?? {
     storeName: "เจ๊น้อย เขียงหมูตะคร้อ",
     heroTitle: "แหนมหมูจากตะคร้อ",
     heroHighlight: "สั่งง่ายถึงบ้าน",
@@ -124,10 +134,13 @@ export function useStorefront({
     storeLogoUrl: "/images/products/jae-noi-shop-logo.jpg",
     storeCoverUrl: "/images/products/jae-noi-holding-two-naem-pork-bags.jpg",
   });
-  const [secureWriteReady, setSecureWriteReady] = useState(false);
-  const [storeLoading, setStoreLoading] = useState(true);
+  const [secureWriteReady, setSecureWriteReady] = useState(initial?.secureWriteReady ?? false);
+  // Already loaded when the server handed us a catalogue: the first paint shows
+  // the real shop rather than a skeleton, and `orderingOpen` below is decided by
+  // the rounds the server saw instead of waiting a round-trip to find out.
+  const [storeLoading, setStoreLoading] = useState(initial === null);
   const [notice, setNotice] = useState<string | null>(null);
-  const hasLoadedProductsRef = useRef(false);
+  const hasLoadedProductsRef = useRef((initial?.products.length ?? 0) > 0);
   const mountedRef = useRef(true);
   const refreshInFlightRef = useRef<Promise<StorefrontResponse | null> | null>(null);
   const selectedRoundRef = useRef(selectedRound);

@@ -1,3 +1,5 @@
+import type { StorefrontData } from "../db/storefront-repository";
+
 // One place for the facts search engines and AI assistants quote back about
 // the shop. Kept out of the layout so the values can be asserted in tests
 // rather than reviewed by eye inside JSX.
@@ -48,29 +50,101 @@ export function fullAddress(): string {
 }
 
 /**
+ * The shop's presence elsewhere. Assistants and Google's Knowledge Panel merge
+ * a business's identity across these URLs, so an entry here is worth more than
+ * any wording change on the page itself. Empty strings are dropped rather than
+ * emitted, because a `sameAs` pointing nowhere is worse than no `sameAs`.
+ */
+export const SHOP_LINKS = {
+  // The shop's own place on Google Maps — the same link the storefront's
+  // "เปิดแผนที่ / นำทาง" button uses (`pickup_map_url` in storefront_settings).
+  // Keep the two identical: this is what ties the website to the Google
+  // Business Profile, and a second, different pin reads as a second business.
+  googleMaps: "https://maps.app.goo.gl/C7sFuXvWZZeHuL1u8?g_st=ic",
+  // Business profile shared by the shop owner.
+  googleBusinessProfile: "https://share.google/xImLwlrVykUpT5klZ",
+  // The shop's own Facebook *Page*, once it has one. The profile recorded so
+  // far belongs to the owner personally and is a contact link, not the
+  // business, so it does not belong in `sameAs`.
+  facebook: "",
+} as const;
+
+function sameAsLinks(): string[] {
+  return Object.values(SHOP_LINKS).filter((link) => link.length > 0);
+}
+
+/** Editorial guides are not saleable catalogue entries. Prices live only in D1. */
+export const PRODUCT_GUIDES = [
+  { slug: "naem-moo", name: "แหนมหมู", image: "/images/products/jae-noi-holding-two-naem-pork-bags.jpg" },
+  { slug: "sai-krok-isan", name: "ไส้กรอกอีสาน", image: "/images/products/jae-noi-holding-two-naem-pork-bags.jpg" },
+  { slug: "kaep-moo", name: "กากหมูโบราณ", image: "/images/products/jae-noi-presenting-pork-rinds-large-tubs.jpg" },
+] as const;
+
+export function productGuide(slug: string) {
+  const guide = PRODUCT_GUIDES.find((entry) => entry.slug === slug);
+  if (!guide) throw new Error(`Unknown product guide: ${slug}`);
+  return guide;
+}
+
+export function jsonLd(value: unknown): string {
+  return JSON.stringify(value).replace(/</g, "\\u003c");
+}
+
+export function breadcrumbs(name: string, url: string) {
+  return {
+    "@type": "BreadcrumbList",
+    itemListElement: [
+      { "@type": "ListItem", position: 1, name: "หน้าแรก", item: SITE_URL },
+      { "@type": "ListItem", position: 2, name: "เมนูสินค้า", item: `${SITE_URL}/products` },
+      { "@type": "ListItem", position: 3, name, item: url },
+    ],
+  };
+}
+
+export function guideJsonLd(slug: string, name?: string): string {
+  const guide = productGuide(slug);
+  return jsonLd({ "@context": "https://schema.org", ...breadcrumbs(name ?? guide.name, `${SITE_URL}/products/${slug}`) });
+}
+
+/**
  * Schema.org description of the shop. Assistants lift name, address, phone and
  * opening model straight out of this, so it repeats what the page says rather
  * than claiming anything the storefront does not.
  */
-export function shopJsonLd(): string {
-  return JSON.stringify({
+export function shopJsonLd(storefront?: StorefrontData | null): string {
+  const map = storefront ? storefront.pickupMapUrl : SHOP_LINKS.googleMaps;
+  const sameAs = [...sameAsLinks().filter((url) => url !== SHOP_LINKS.googleMaps), ...(map ? [map] : [])];
+  return jsonLd({
     "@context": "https://schema.org",
     "@type": "Store",
     "@id": `${SITE_URL}/#store`,
-    name: SHOP.name,
+    name: storefront?.content.storeName ?? SHOP.name,
     legalName: SHOP.legalName,
     url: SITE_URL,
     image: `${SITE_URL}/og.png`,
     // Organization/LocalBusiness logo — Google's Merchant and Knowledge Panel
     // surfaces read this field specifically, separately from `image` above.
-    logo: `${SITE_URL}/images/products/jae-noi-shop-logo.jpg`,
+    logo: new URL(storefront?.content.storeLogoUrl ?? "/images/products/jae-noi-shop-logo.jpg", SITE_URL).href,
     description: SITE_DESCRIPTION,
-    telephone: SHOP.phonePrimary,
+    telephone: storefront?.content.phonePrimary ?? SHOP.phonePrimary,
     priceRange: "฿฿",
     currenciesAccepted: "THB",
     paymentAccepted: "PromptPay, โอนเงินผ่านธนาคาร",
     servesCuisine: ["อาหารอีสาน", "อาหารแปรรูปจากหมู"],
-    areaServed: { "@type": "Country", name: "ประเทศไทย" },
+    // What the shop is an authority *on*, in the words customers ask in. This
+    // is the field an assistant reads when deciding whether this entity is a
+    // sensible answer to "ซื้อแหนมหมูบัวใหญ่ที่ไหน" at all.
+    knowsAbout: ["แหนมหมู", "ไส้กรอกอีสาน", "แคปหมูติดมัน", "กากหมูโบราณ", "ของฝากนครราชสีมา"],
+    ...(sameAs.length > 0 ? { sameAs } : {}),
+    ...(map ? { hasMap: map } : {}),
+    // Orders run in pre-order rounds rather than fixed shop hours, so the shop
+    // does not claim opening hours it cannot keep. `areaServed` carries both
+    // the nationwide postal service and the towns people actually search with.
+    areaServed: [
+      { "@type": "Country", name: "ประเทศไทย" },
+      { "@type": "AdministrativeArea", name: "จังหวัดนครราชสีมา" },
+      { "@type": "City", name: "อำเภอบัวใหญ่" },
+    ],
     address: {
       "@type": "PostalAddress",
       streetAddress: SHOP.street,
@@ -80,48 +154,8 @@ export function shopJsonLd(): string {
       addressCountry: "TH",
     },
     contactPoint: [
-      { "@type": "ContactPoint", telephone: SHOP.phonePrimary, contactType: "sales", availableLanguage: "Thai" },
-      { "@type": "ContactPoint", telephone: SHOP.phoneSecondary, contactType: "customer service", availableLanguage: "Thai" },
-    ],
-    // Prices are snapshots of the admin catalogue, not a live read of it (this
-    // file has no D1 access — see the module comment). Google flags a mismatch
-    // between structured data and the page price as a Merchant error, so keep
-    // these in sync by hand whenever a price changes in Admin > สินค้า.
-    makesOffer: [
-      offer("naem-moo", "แหนมหมู", "แหนมหมูสูตรดั้งเดิม ทำสดใหม่ แพ็กสูญญากาศ", 130, "/images/products/jae-noi-holding-two-naem-pork-bags.jpg"),
-      offer("sai-krok-isan", "ไส้กรอกอีสาน", "ไส้กรอกอีสานรสเปรี้ยวกำลังดี ย่างทานร้อน ๆ", 100, "/images/products/jae-noi-holding-two-naem-pork-bags.jpg"),
-      // "แคปหมู" is the name customers search for; "กากหมูโบราณ" is the same
-      // product's name in the admin catalogue. One Product, not two, or Google
-      // sees two listings for a store that only sells one of them.
-      offer("kaep-moo", "กากหมูโบราณ", "กากหมูเจียวสูตรโบราณ หอมกรอบ", 185, "/images/products/jae-noi-presenting-pork-rinds-large-tubs.jpg", "แคปหมู"),
+      { "@type": "ContactPoint", telephone: storefront?.content.phonePrimary ?? SHOP.phonePrimary, contactType: "sales", availableLanguage: "Thai" },
+      { "@type": "ContactPoint", telephone: storefront?.content.phoneSecondary ?? SHOP.phoneSecondary, contactType: "customer service", availableLanguage: "Thai" },
     ],
   });
-}
-
-// Slugs are shared with the /products/[slug] pages (app/products/<slug>/page.tsx)
-// so each Product node below can link to a real, crawlable page about itself
-// instead of only existing nested inside the Store's makesOffer.
-function offer(slug: string, name: string, description: string, price: number, image: string, alternateName?: string) {
-  const url = `${SITE_URL}/products/${slug}`;
-  return {
-    "@type": "Offer",
-    // Google's Product rich-result validator requires offers/review/aggregateRating
-    // on the Product node itself, not only on the Offer wrapping it — a Product
-    // with no offers of its own is reported invalid even though an Offer refers to it.
-    // `image` is likewise required for Product rich results, not just recommended.
-    itemOffered: {
-      "@type": "Product",
-      name,
-      description,
-      image: `${SITE_URL}${image}`,
-      url,
-      mainEntityOfPage: { "@type": "WebPage", "@id": url },
-      category: "อาหารแปรรูปจากหมู",
-      ...(alternateName ? { alternateName } : {}),
-      offers: { "@type": "Offer", priceCurrency: "THB", price, availability: "https://schema.org/PreOrder", url },
-    },
-    availability: "https://schema.org/PreOrder",
-    priceCurrency: "THB",
-    price,
-  };
 }

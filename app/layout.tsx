@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { headers } from "next/headers";
 import { Noto_Sans_Thai, Noto_Serif_Thai } from "next/font/google";
 import "./globals.css";
+import { getPublicStorefront } from "../db/public-storefront";
 import { KEYWORDS, SITE_DESCRIPTION, SITE_TITLE, SITE_URL, shopJsonLd } from "../lib/seo";
 
 const bodyFont = Noto_Sans_Thai({ variable: "--font-body", subsets: ["thai", "latin"], weight: ["400", "500", "600", "700", "800"] });
@@ -39,7 +40,8 @@ export async function generateMetadata(): Promise<Metadata> {
 
 export const viewport: Viewport = { themeColor: "#b51519", colorScheme: "light" };
 
-export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
+export default async function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
+  const storefront = await getPublicStorefront().catch(() => null);
   return (
     <html lang="th">
       <head>
@@ -50,7 +52,7 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
         {children}
         {/* Server-rendered so assistants that do not run JavaScript still get
             the shop's name, address, phone and what it sells. */}
-        <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: shopJsonLd() }} />
+        <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: shopJsonLd(storefront) }} />
       </body>
     </html>
   );

@@ -41,6 +41,25 @@ Ownership is verified two ways — **removing either one revokes verification**:
 in `app/layout.tsx`'s `generateMetadata()` (HTML tag method). Neither looks used
 by anything else in the codebase; that's expected, don't clean them up.
 
+### Where the facts live (changed 2026-09-10)
+
+Product names, prices, units, images, statuses and shipping settings come only
+from D1 via `db/public-storefront.ts` (request-scoped read, bounded timeout, no
+stale price fallback). `lib/catalogue-seo.ts` derives JSON-LD from the same data
+as the visible page. Stable URLs use `/products/item/<product.id>`; never match
+products by a name substring. New admin products automatically appear in
+`/products` and the dynamic `/sitemap.xml`. Hidden products are excluded by the
+storefront repository and their detail URLs return 404. Database failures must
+not masquerade as missing products.
+
+`lib/seo.ts` contains store facts and price-free editorial guide metadata.
+The three old guide URLs remain available but must not publish prices or Offers.
+The root Store JSON-LD has no makesOffer snapshot. Product availability uses
+per-round product IDs: accepting preorders is PreOrder, otherwise OutOfStock.
+Never emit return-policy markup or invented delivery times. The owner shared
+https://share.google/xImLwlrVykUpT5klZ for sameAs; the map reads live settings.
+Admin forms, product IDs and checkout remain the source of business rules.
+
 The site had zero Google indexing as of 2026-08-26 (`site:jaenoishop.com`
 returned nothing) — unsurprising for a domain this new (sitemap.xml added
 2026-08-03, the `/products/[slug]` pages added 2026-08-26) with no backlinks,
@@ -153,3 +172,7 @@ cannot be read back, so verify by observing behaviour, not by inspecting them.
 
 - Never ask the user to paste, and never write or persist, a Cloudflare API token (e.g. `cfut_...`) anywhere it could end up in a public place — chat history, commit, log file, or any file that gets checked into the repo.
 - If a token is ever exposed in chat history, a file, or a commit, immediately tell the user to revoke that token right away in the Cloudflare dashboard and issue a new one.
+
+### Product guidance content
+
+Storage, cooking, ingredients, allergens, meal ideas and FAQs are code-managed in `lib/product-content.ts`, keyed by stable product ID. Populate only shop-confirmed facts. Empty fields do not appear. No new admin fields or database migration are required. Existing admin price, unit, description, visibility and image controls remain unchanged; the existing image list supplies the product gallery.

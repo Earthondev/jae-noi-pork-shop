@@ -7,6 +7,8 @@ export type ProductStatus = "เปิดขาย" | "ปิดชั่วค�
 export type VisibleProductStatus = Exclude<ProductStatus, "ซ่อนสินค้า">;
 
 export type CatalogProduct = {
+  updatedAt?: string;
+  images?: string[];
   id: string;
   name: string;
   unit: string;

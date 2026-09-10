@@ -1,0 +1,219 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-09-10T08:20:50.367797+00:00",
+  "title": "Design System: เจ๊น้อย product detail",
+  "extensions": {
+    "colorMeta": {
+      "red-950": {
+        "role": "primary",
+        "displayName": "red 950",
+        "tonalRamp": [
+          "oklch(15% 0.0982 25.07)",
+          "oklch(26% 0.0982 25.07)",
+          "oklch(38% 0.0982 25.07)",
+          "oklch(49% 0.0982 25.07)",
+          "oklch(61% 0.0982 25.07)",
+          "oklch(72% 0.0982 25.07)",
+          "oklch(84% 0.0982 25.07)",
+          "oklch(95% 0.0982 25.07)"
+        ]
+      },
+      "red-800": {
+        "role": "primary",
+        "displayName": "red 800",
+        "tonalRamp": [
+          "oklch(15% 0.1255 25.19)",
+          "oklch(26% 0.1255 25.19)",
+          "oklch(38% 0.1255 25.19)",
+          "oklch(49% 0.1255 25.19)",
+          "oklch(61% 0.1255 25.19)",
+          "oklch(72% 0.1255 25.19)",
+          "oklch(84% 0.1255 25.19)",
+          "oklch(95% 0.1255 25.19)"
+        ]
+      },
+      "red-700": {
+        "role": "primary",
+        "displayName": "red 700",
+        "tonalRamp": [
+          "oklch(15% 0.1503 25.22)",
+          "oklch(26% 0.1503 25.22)",
+          "oklch(38% 0.1503 25.22)",
+          "oklch(49% 0.1503 25.22)",
+          "oklch(61% 0.1503 25.22)",
+          "oklch(72% 0.1503 25.22)",
+          "oklch(84% 0.1503 25.22)",
+          "oklch(95% 0.1503 25.22)"
+        ]
+      },
+      "cream-50": {
+        "role": "neutral",
+        "displayName": "cream 50",
+        "tonalRamp": [
+          "oklch(15% 0.0041 91.45)",
+          "oklch(26% 0.0041 91.45)",
+          "oklch(38% 0.0041 91.45)",
+          "oklch(49% 0.0041 91.45)",
+          "oklch(61% 0.0041 91.45)",
+          "oklch(72% 0.0041 91.45)",
+          "oklch(84% 0.0041 91.45)",
+          "oklch(95% 0.0041 91.45)"
+        ]
+      },
+      "cream-100": {
+        "role": "neutral",
+        "displayName": "cream 100",
+        "tonalRamp": [
+          "oklch(15% 0.0455 89.07)",
+          "oklch(26% 0.0455 89.07)",
+          "oklch(38% 0.0455 89.07)",
+          "oklch(49% 0.0455 89.07)",
+          "oklch(61% 0.0455 89.07)",
+          "oklch(72% 0.0455 89.07)",
+          "oklch(84% 0.0455 89.07)",
+          "oklch(95% 0.0455 89.07)"
+        ]
+      },
+      "ink": {
+        "role": "neutral",
+        "displayName": "ink",
+        "tonalRamp": [
+          "oklch(15% 0.0296 26.52)",
+          "oklch(26% 0.0296 26.52)",
+          "oklch(38% 0.0296 26.52)",
+          "oklch(49% 0.0296 26.52)",
+          "oklch(61% 0.0296 26.52)",
+          "oklch(72% 0.0296 26.52)",
+          "oklch(84% 0.0296 26.52)",
+          "oklch(95% 0.0296 26.52)"
+        ]
+      },
+      "muted": {
+        "role": "neutral",
+        "displayName": "muted",
+        "tonalRamp": [
+          "oklch(15% 0.0296 27.25)",
+          "oklch(26% 0.0296 27.25)",
+          "oklch(38% 0.0296 27.25)",
+          "oklch(49% 0.0296 27.25)",
+          "oklch(61% 0.0296 27.25)",
+          "oklch(72% 0.0296 27.25)",
+          "oklch(84% 0.0296 27.25)",
+          "oklch(95% 0.0296 27.25)"
+        ]
+      },
+      "line": {
+        "role": "neutral",
+        "displayName": "line",
+        "tonalRamp": [
+          "oklch(15% 0.0301 55.97)",
+          "oklch(26% 0.0301 55.97)",
+          "oklch(38% 0.0301 55.97)",
+          "oklch(49% 0.0301 55.97)",
+          "oklch(61% 0.0301 55.97)",
+          "oklch(72% 0.0301 55.97)",
+          "oklch(84% 0.0301 55.97)",
+          "oklch(95% 0.0301 55.97)"
+        ]
+      },
+      "white": {
+        "role": "neutral",
+        "displayName": "white",
+        "tonalRamp": [
+          "oklch(15% 0.0000 89.88)",
+          "oklch(26% 0.0000 89.88)",
+          "oklch(38% 0.0000 89.88)",
+          "oklch(49% 0.0000 89.88)",
+          "oklch(61% 0.0000 89.88)",
+          "oklch(72% 0.0000 89.88)",
+          "oklch(84% 0.0000 89.88)",
+          "oklch(95% 0.0000 89.88)"
+        ]
+      },
+      "gold-500": {
+        "role": "secondary",
+        "displayName": "gold 500",
+        "tonalRamp": [
+          "oklch(15% 0.1462 84.27)",
+          "oklch(26% 0.1462 84.27)",
+          "oklch(38% 0.1462 84.27)",
+          "oklch(49% 0.1462 84.27)",
+          "oklch(61% 0.1462 84.27)",
+          "oklch(72% 0.1462 84.27)",
+          "oklch(84% 0.1462 84.27)",
+          "oklch(95% 0.1462 84.27)"
+        ]
+      }
+    },
+    "motion": [
+      {
+        "name": "color-state",
+        "value": "150ms",
+        "purpose": "CTA background and thumbnail border; disabled for reduced motion."
+      }
+    ],
+    "breakpoints": [
+      {
+        "name": "product-mobile",
+        "value": "720px"
+      }
+    ]
+  },
+  "components": [
+    {
+      "name": "Purchase action",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "Order-state link back to the existing purchase flow.",
+      "html": "<a class=\"ds-cta\" href=\"#\">เลือกสินค้านี้</a>",
+      "css": ".ds-cta{display:inline-block;background:var(--red-700,#9C2A2A);color:var(--white,#fff);padding:14px 28px;border-radius:var(--radius-sm,14px);font-family:var(--font-body,sans-serif);font-weight:700;text-decoration:none;min-height:48px;transition:background 150ms}.ds-cta:hover{background:var(--red-800,#7a1f1f)}.ds-cta:focus-visible{outline:3px solid var(--gold-500,#D4A017);outline-offset:3px}@media(prefers-reduced-motion:reduce){.ds-cta{transition:none}}"
+    },
+    {
+      "name": "Secondary link",
+      "kind": "button",
+      "description": "Return to all products.",
+      "html": "<a class=\"ds-link\" href=\"#\">สินค้าทั้งหมด</a>",
+      "css": ".ds-link{color:var(--red-800,#7a1f1f);font-family:var(--font-body,sans-serif)}.ds-link:focus-visible{outline:3px solid var(--gold-500,#D4A017);outline-offset:3px}"
+    },
+    {
+      "name": "Product guidance",
+      "kind": "custom",
+      "description": "Native disclosure for shop-supplied guidance.",
+      "html": "<details class=\"ds-details\"><summary><h2>รายละเอียดสินค้า</h2></summary><p>ข้อมูลที่ร้านระบุ</p></details>",
+      "css": ".ds-details{border-top:1px solid var(--line,#ebd6c8);padding:12px 0;color:var(--ink,#2a1816);font-family:var(--font-body,sans-serif)}.ds-details summary{cursor:pointer;padding:12px 4px;min-height:48px}.ds-details h2{display:inline;font-size:20px;margin:0}.ds-details p{padding:0 20px;line-height:1.8}.ds-details summary:focus-visible{outline:3px solid var(--gold-500,#D4A017);outline-offset:3px}"
+    },
+    {
+      "name": "Breadcrumb",
+      "kind": "nav",
+      "description": "Wrapping path with current location.",
+      "html": "<nav class=\"ds-breadcrumb\" aria-label=\"เส้นทางหน้าเว็บ\"><a href=\"#\">หน้าแรก</a><span aria-hidden=\"true\">/</span><span aria-current=\"page\">สินค้า</span></nav>",
+      "css": ".ds-breadcrumb{display:flex;flex-wrap:wrap;gap:8px;color:var(--muted,#6e5855);font-size:.82rem;font-family:var(--font-body,sans-serif)}.ds-breadcrumb a{color:var(--red-800,#7a1f1f);font-weight:800;text-decoration:none}.ds-breadcrumb a:focus-visible{outline:3px solid var(--gold-500,#D4A017);outline-offset:3px}"
+    },
+    {
+      "name": "Care note",
+      "kind": "custom",
+      "description": "Optional note below the purchase controls.",
+      "html": "<p class=\"ds-care\">ข้อมูลการดูแลที่ร้านระบุ</p>",
+      "css": ".ds-care{color:var(--ink,#2a1816);font-family:var(--font-body,sans-serif);white-space:pre-line;overflow-wrap:anywhere;line-height:1.8;border-top:1px solid var(--line,#ebd6c8);padding-top:16px;margin-top:28px}"
+    }
+  ],
+  "narrative": {
+    "northStar": "The familiar Thai shop counter",
+    "overview": "Warm Thai shop identity, with real food photography, cream surfaces, dark brown reading text and a clear red purchase action. This scan documents only the implemented product detail surface; it does not redefine the homepage, checkout or administration.",
+    "keyCharacteristics": [
+      "Real product photography with square framing.",
+      "Readable Thai copy and restrained separators.",
+      "Visible keyboard focus and native disclosure behavior."
+    ],
+    "rules": [],
+    "dos": [
+      "Do inherit the existing CSS custom properties.",
+      "Do preserve square photo geometry and keyboard-visible selection.",
+      "Do show optional guidance only when confirmed by the shop and configured in code by stable product ID."
+    ],
+    "donts": [
+      "Don't invent prices, care claims or policy content.",
+      "Don't impose this surface composition on unrelated routes."
+    ]
+  }
+}

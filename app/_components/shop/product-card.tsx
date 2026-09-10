@@ -1,4 +1,6 @@
 import Image from "next/image";
+import Link from "next/link";
+import { productPath } from "../../../lib/catalogue-seo";
 import { useState } from "react";
 import { displayProductName, PRODUCT_IMAGE_PLACEHOLDER } from "../../../lib/product-catalog";
 import type { Product } from "../../_hooks/use-storefront";
@@ -40,7 +42,7 @@ export function ProductCard({ product, quantity, index, onUpdateQuantity, orderi
   }
 
   return (
-    <article className={`product-card status-${statusClass}`} style={{ "--delay": `${index * 90}ms` } as React.CSSProperties}>
+    <article id={`product-${product.id}`} className={`product-card status-${statusClass}`} style={{ "--delay": `${index * 90}ms` } as React.CSSProperties}>
       <div className="product-image-wrap">
         <Image
           src={imageSrc}
@@ -60,7 +62,7 @@ export function ProductCard({ product, quantity, index, onUpdateQuantity, orderi
       </div>
       <div className="product-info">
         <div>
-          <h3>{customerProductName}</h3>
+          <h3><Link href={productPath(product.id)}>{customerProductName}</Link></h3>
           <p>{product.detail}</p>
         </div>
         {quantity === 0 ? (

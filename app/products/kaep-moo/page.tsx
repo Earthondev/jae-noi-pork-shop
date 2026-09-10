@@ -2,19 +2,17 @@ import type { Metadata } from "next";
 import Image from "next/image";
 import Link from "next/link";
 import { SeoPageNav } from "../../_components/shop/seo-page-nav";
-import { SITE_URL, SHOP } from "../../../lib/seo";
+import { SITE_URL, SHOP, productGuide, guideJsonLd } from "../../../lib/seo";
 
 const PAGE_URL = `${SITE_URL}/products/kaep-moo`;
 // "กากหมูโบราณ" is the product's name in the admin catalogue and structured
 // data; "แคปหมู" is the name customers actually search for. Same product, not
 // two — see the matching comment in lib/seo.ts.
-const PRODUCT_NAME = "กากหมูโบราณ";
-const PRODUCT_ALT_NAME = "แคปหมู";
-const PRODUCT_IMAGE = "/images/products/jae-noi-presenting-pork-rinds-large-tubs.jpg";
-const PRODUCT_PRICE = 185;
+const PRODUCT = productGuide("kaep-moo");
+const PRODUCT_IMAGE = PRODUCT.image;
 const PAGE_TITLE = "แคปหมูติดมัน กากหมูโบราณ | เจ๊น้อย เขียงหมูตะคร้อ";
 const PAGE_DESCRIPTION =
-  "กากหมูโบราณ (แคปหมูติดมัน) จากเจ๊น้อย เขียงหมูตะคร้อ อ.บัวใหญ่ จ.นครราชสีมา เจียวสูตรโบราณ หอมกรอบ ราคาเริ่มต้น 185 บาท ส่งไปรษณีย์ทั่วไทย";
+  "กากหมูโบราณ (แคปหมูติดมัน) จากเจ๊น้อย เขียงหมูตะคร้อ อ.บัวใหญ่ จ.นครราชสีมา เจียวสูตรโบราณ หอมกรอบ ส่งไปรษณีย์ทั่วไทย";
 
 export const metadata: Metadata = {
   title: PAGE_TITLE,
@@ -30,31 +28,7 @@ export const metadata: Metadata = {
   },
 };
 
-const jsonLd = JSON.stringify({
-  "@context": "https://schema.org",
-  "@graph": [
-    {
-      "@type": "Product",
-      "@id": `${PAGE_URL}#product`,
-      name: PRODUCT_NAME,
-      alternateName: PRODUCT_ALT_NAME,
-      description: PAGE_DESCRIPTION,
-      image: `${SITE_URL}${PRODUCT_IMAGE}`,
-      url: PAGE_URL,
-      category: "อาหารแปรรูปจากหมู",
-      brand: { "@type": "Brand", name: SHOP.name },
-      offers: { "@type": "Offer", price: PRODUCT_PRICE, priceCurrency: "THB", availability: "https://schema.org/PreOrder", url: PAGE_URL },
-    },
-    {
-      "@type": "BreadcrumbList",
-      itemListElement: [
-        { "@type": "ListItem", position: 1, name: "หน้าแรก", item: SITE_URL },
-        { "@type": "ListItem", position: 2, name: "เมนูสินค้า", item: `${SITE_URL}/products` },
-        { "@type": "ListItem", position: 3, name: "แคปหมูติดมัน", item: PAGE_URL },
-      ],
-    },
-  ],
-});
+const jsonLd = guideJsonLd("kaep-moo", "แคปหมูติดมัน");
 
 export default function KaepMooPage() {
   return (
@@ -74,10 +48,10 @@ export default function KaepMooPage() {
           <h1>แคปหมูติดมัน (กากหมูโบราณ) เจ๊น้อย</h1>
           <p>
             กากหมูเจียวสูตรโบราณ หอมกรอบ โดยใช้ชื่อแคปหมูเป็นคำที่ลูกค้าค้นหาได้ง่ายในหน้าร้านและช่องทางออนไลน์
-            ราคาเริ่มต้น {PRODUCT_PRICE} บาทต่อแพ็ก
+            ดูราคา หน่วยขาย และรายการที่เปิดรับล่าสุดได้ที่หน้ารวมสินค้า
           </p>
           <div className="seo-page-actions">
-            <Link className="seo-primary-action" href="/#products">สั่งแคปหมูตอนนี้</Link>
+            <Link className="seo-primary-action" href="/products">สั่งแคปหมูตอนนี้</Link>
             <Link className="seo-secondary-action" href="/products">ดูเมนูสินค้าทั้งหมด</Link>
           </div>
         </header>
@@ -93,7 +67,7 @@ export default function KaepMooPage() {
               <div>
                 <h3>แคปหมูติดมัน</h3>
                 <p>กากหมูเจียวสูตรโบราณ หอมกรอบ โดยใช้ชื่อแคปหมูเป็นคำที่ลูกค้าค้นหาได้ง่ายในหน้าร้านและช่องทางออนไลน์</p>
-                <Link href="/#products">ดูสถานะสินค้าและรอบสั่งซื้อ <span aria-hidden="true">→</span></Link>
+                <Link href="/products">ดูสถานะสินค้าและรอบสั่งซื้อ <span aria-hidden="true">→</span></Link>
               </div>
             </article>
           </div>

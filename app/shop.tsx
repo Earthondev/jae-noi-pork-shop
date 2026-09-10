@@ -10,7 +10,7 @@ import { Hero } from "./_components/shop/hero";
 import { ProductGrid } from "./_components/shop/product-grid";
 import { SiteHeader } from "./_components/shop/site-header";
 import { useCheckoutDraft } from "./_hooks/use-checkout-draft";
-import { useStorefront } from "./_hooks/use-storefront";
+import { useStorefront, type StorefrontResponse } from "./_hooks/use-storefront";
 import {
   CustomerFacingError,
   PUBLIC_ERROR_MESSAGES,
@@ -29,6 +29,7 @@ import { formatThaiAddress } from "../lib/thai-address";
 import { postalShippingCost } from "../lib/shipping";
 import { categoryNamesFromProducts, orderCategoryNames } from "../lib/category-order";
 import { displayProductName } from "../lib/product-catalog";
+import { catalogueJsonLd } from "../lib/catalogue-seo";
 
 type ClientPaymentStatus = "waiting" | "verified" | "review" | "invalid";
 
@@ -72,7 +73,12 @@ function OrderStep({ step, title, description }: OrderStepProps) {
   );
 }
 
-export function Shop() {
+export type ShopProps = Readonly<{
+  /** The catalogue the server already read from D1, or null when that read failed. */
+  initialStorefront: StorefrontResponse | null;
+}>;
+
+export function Shop({ initialStorefront }: ShopProps) {
   const [cartOpen, setCartOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [orderId, setOrderId] = useState<string | null>(null);
@@ -101,6 +107,7 @@ export function Shop() {
   const setSelectedRound = useCallback((round: string) => setCheckoutField("selectedRound", round), [setCheckoutField]);
   const setFulfilment = useCallback((fulfilment: "pickup" | "postal") => setCheckoutField("fulfilment", fulfilment), [setCheckoutField]);
   const storefront = useStorefront({
+    initial: initialStorefront,
     cartOpen,
     pruneUnavailable,
     selectedRound: checkoutDraft.selectedRound,
@@ -448,6 +455,13 @@ export function Shop() {
 
   return (
     <main id="top">
+      {/* Server-seeded on first render; kept in sync with visible prices when
+          the existing storefront refresh picks up an admin change. */}
+      {!storefront.storeLoading && (
+        <script type="application/ld+json" dangerouslySetInnerHTML={{
+          __html: catalogueJsonLd(storefront.products, storefront),
+        }} />
+      )}
       <SiteHeader
         cartCount={cartCount}
         onOpenCart={() => setCartOpen(true)}

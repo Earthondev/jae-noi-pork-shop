@@ -3,9 +3,15 @@ import Image from "next/image";
 import Link from "next/link";
 import { SeoPageNav } from "../_components/shop/seo-page-nav";
 import { SITE_URL, SHOP } from "../../lib/seo";
+import { getPublicStorefront } from "../../db/public-storefront";
+import { catalogueJsonLd, productPath, productOrderState } from "../../lib/catalogue-seo";
+import { displayProductName } from "../../lib/product-catalog";
+import { CatalogueShipping } from "../_components/shop/catalogue-shipping";
+
+export const dynamic = "force-dynamic";
 
 const PAGE_URL = `${SITE_URL}/products`;
-const PAGE_TITLE = "แหนมหมู ไส้กรอกอีสาน แคปหมู | เจ๊น้อย เขียงหมูตะคร้อ";
+const PAGE_TITLE = "สินค้าทั้งหมด | เจ๊น้อย เขียงหมูตะคร้อ";
 const PAGE_DESCRIPTION =
   "รวมเมนูแหนมหมู ไส้กรอกอีสาน และแคปหมูติดมันจากเจ๊น้อย เขียงหมูตะคร้อ อ.บัวใหญ่ จ.นครราชสีมา ทำสด แพ็กสูญญากาศ พร้อมสั่งออนไลน์";
 
@@ -23,49 +29,10 @@ export const metadata: Metadata = {
   },
 };
 
-const collectionJsonLd = JSON.stringify({
-  "@context": "https://schema.org",
-  "@type": "CollectionPage",
-  "@id": `${PAGE_URL}#collection`,
-  name: PAGE_TITLE,
-  description: PAGE_DESCRIPTION,
-  url: PAGE_URL,
-  isPartOf: { "@id": `${SITE_URL}/#store` },
-  mainEntity: {
-    "@type": "ItemList",
-    itemListElement: [
-      { "@type": "ListItem", position: 1, name: "แหนมหมู" },
-      { "@type": "ListItem", position: 2, name: "ไส้กรอกอีสาน" },
-      { "@type": "ListItem", position: 3, name: "กากหมูโบราณ หรือ แคปหมูติดมัน" },
-    ],
-  },
-});
-
-const products = [
-  {
-    name: "แหนมหมู",
-    slug: "naem-moo",
-    image: "/images/products/jae-noi-holding-two-naem-pork-bags.jpg",
-    alt: "แหนมหมูสูตรร้านเจ๊น้อย เขียงหมูตะคร้อ",
-    text: "แหนมหมูสูตรดั้งเดิม ทำสดใหม่ แพ็กสูญญากาศ เหมาะสำหรับทานที่บ้านหรือสั่งเป็นของฝากจากบัวใหญ่",
-  },
-  {
-    name: "ไส้กรอกอีสาน",
-    slug: "sai-krok-isan",
-    image: "/images/products/jae-noi-holding-two-naem-pork-bags.jpg",
-    alt: "ไส้กรอกอีสานจากร้านเจ๊น้อย",
-    text: "ไส้กรอกอีสานรสเปรี้ยวกำลังดี ย่างทานร้อน ๆ ได้รสชาติแบบอาหารอีสานที่คุ้นเคย และจัดส่งทั่วไทยตามรอบพรีออเดอร์",
-  },
-  {
-    name: "แคปหมูติดมัน",
-    slug: "kaep-moo",
-    image: "/images/products/jae-noi-presenting-pork-rinds-large-tubs.jpg",
-    alt: "แคปหมูติดมัน หรือกากหมูโบราณ เจ๊น้อย",
-    text: "กากหมูเจียวสูตรโบราณ หอมกรอบ โดยใช้ชื่อแคปหมูเป็นคำที่ลูกค้าค้นหาได้ง่ายในหน้าร้านและช่องทางออนไลน์",
-  },
-] as const;
-
-export default function ProductsPage() {
+export default async function ProductsPage() {
+  const storefront = await getPublicStorefront();
+  const products = storefront.products;
+  const collectionJsonLd = catalogueJsonLd(products, storefront);
   return (
     <main className="seo-page">
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: collectionJsonLd }} />
@@ -78,7 +45,7 @@ export default function ProductsPage() {
 
         <header className="seo-page-hero">
           <p className="eyebrow">เมนูของอร่อยจากตะคร้อ</p>
-          <h1>แหนมหมู ไส้กรอกอีสาน และแคปหมูจากเจ๊น้อย</h1>
+          <h1>สินค้าทั้งหมดของ{storefront.content.storeName}</h1>
           <p>
             รวมสินค้าหลักของร้านเจ๊น้อย เขียงหมูตะคร้อ อำเภอบัวใหญ่ จังหวัดนครราชสีมา
             สำหรับลูกค้าที่กำลังหาแหนมหมู ไส้กรอกอีสาน หรือแคปหมูติดมันเพื่อทานเองและเป็นของฝาก
@@ -92,17 +59,20 @@ export default function ProductsPage() {
         <section className="seo-product-grid" aria-labelledby="product-list-title">
           <div className="section-heading">
             <span className="eyebrow">เลือกตามเมนูที่ชอบ</span>
-            <h2 id="product-list-title">เมนูแหนมหมูและของฝากจากบัวใหญ่</h2>
-            <p>ชื่อสินค้าและรายละเอียดด้านล่างใช้คำที่ตรงกับสินค้าของร้าน เพื่อให้เลือกเมนูได้ง่ายก่อนเปิดรอบพรีออเดอร์</p>
+            <h2 id="product-list-title">เลือกสินค้าของเจ๊น้อย</h2>
+            <p>ดูราคา หน่วยขาย และสถานะเปิดรับของแต่ละรายการก่อนสั่งซื้อ</p>
           </div>
+          <CatalogueShipping {...storefront} />
           <div className="seo-card-grid">
             {products.map((product) => (
-              <article className="seo-card" key={product.name}>
-                <Image src={product.image} alt={product.alt} width={760} height={520} />
+              <article className="seo-card" key={product.id}>
+                <Image src={product.image} alt={displayProductName(product.name)} width={760} height={520} />
                 <div>
-                  <h3><Link href={`/products/${product.slug}`}>{product.name}</Link></h3>
-                  <p>{product.text}</p>
-                  <Link href="/#products">ดูสถานะสินค้าและรอบสั่งซื้อ <span aria-hidden="true">→</span></Link>
+                  <h3><Link href={productPath(product.id)}>{displayProductName(product.name)}</Link></h3>
+                  <p>{product.detail}</p>
+                  <p>{product.price === null ? "รอข้อมูลราคา" : `${product.price} บาท · ${product.unit}`}</p>
+                  <p>{productOrderState(product, storefront).label}</p>
+                  <Link href={productPath(product.id)}>ดูรายละเอียดสินค้า <span aria-hidden="true">→</span></Link>
                 </div>
               </article>
             ))}

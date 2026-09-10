@@ -2,15 +2,15 @@ import type { Metadata } from "next";
 import Image from "next/image";
 import Link from "next/link";
 import { SeoPageNav } from "../../_components/shop/seo-page-nav";
-import { SITE_URL, SHOP } from "../../../lib/seo";
+import { SITE_URL, SHOP, productGuide, guideJsonLd } from "../../../lib/seo";
 
 const PAGE_URL = `${SITE_URL}/products/sai-krok-isan`;
-const PRODUCT_NAME = "ไส้กรอกอีสาน";
-const PRODUCT_IMAGE = "/images/products/jae-noi-holding-two-naem-pork-bags.jpg";
-const PRODUCT_PRICE = 100;
+const PRODUCT = productGuide("sai-krok-isan");
+const PRODUCT_NAME = PRODUCT.name;
+const PRODUCT_IMAGE = PRODUCT.image;
 const PAGE_TITLE = "ไส้กรอกอีสาน รสเปรี้ยวกำลังดี | เจ๊น้อย เขียงหมูตะคร้อ";
 const PAGE_DESCRIPTION =
-  "ไส้กรอกอีสานรสเปรี้ยวกำลังดีจากเจ๊น้อย เขียงหมูตะคร้อ อ.บัวใหญ่ จ.นครราชสีมา ทำสดใหม่ ราคาเริ่มต้น 100 บาท สั่งออนไลน์ ส่งไปรษณีย์ทั่วไทย";
+  "ไส้กรอกอีสานรสเปรี้ยวกำลังดีจากเจ๊น้อย เขียงหมูตะคร้อ อ.บัวใหญ่ จ.นครราชสีมา ทำสดใหม่ สั่งออนไลน์ ส่งไปรษณีย์ทั่วไทย";
 
 export const metadata: Metadata = {
   title: PAGE_TITLE,
@@ -26,30 +26,7 @@ export const metadata: Metadata = {
   },
 };
 
-const jsonLd = JSON.stringify({
-  "@context": "https://schema.org",
-  "@graph": [
-    {
-      "@type": "Product",
-      "@id": `${PAGE_URL}#product`,
-      name: PRODUCT_NAME,
-      description: PAGE_DESCRIPTION,
-      image: `${SITE_URL}${PRODUCT_IMAGE}`,
-      url: PAGE_URL,
-      category: "อาหารแปรรูปจากหมู",
-      brand: { "@type": "Brand", name: SHOP.name },
-      offers: { "@type": "Offer", price: PRODUCT_PRICE, priceCurrency: "THB", availability: "https://schema.org/PreOrder", url: PAGE_URL },
-    },
-    {
-      "@type": "BreadcrumbList",
-      itemListElement: [
-        { "@type": "ListItem", position: 1, name: "หน้าแรก", item: SITE_URL },
-        { "@type": "ListItem", position: 2, name: "เมนูสินค้า", item: `${SITE_URL}/products` },
-        { "@type": "ListItem", position: 3, name: PRODUCT_NAME, item: PAGE_URL },
-      ],
-    },
-  ],
-});
+const jsonLd = guideJsonLd("sai-krok-isan");
 
 export default function SaiKrokIsanPage() {
   return (
@@ -69,10 +46,10 @@ export default function SaiKrokIsanPage() {
           <h1>ไส้กรอกอีสาน เจ๊น้อย เขียงหมูตะคร้อ</h1>
           <p>
             ไส้กรอกอีสานรสเปรี้ยวกำลังดี ย่างทานร้อน ๆ ได้รสชาติแบบอาหารอีสานที่คุ้นเคย จัดส่งทั่วไทยตามรอบพรีออเดอร์
-            ราคาเริ่มต้น {PRODUCT_PRICE} บาทต่อแพ็ก
+            ดูราคา หน่วยขาย และรายการที่เปิดรับล่าสุดได้ที่หน้ารวมสินค้า
           </p>
           <div className="seo-page-actions">
-            <Link className="seo-primary-action" href="/#products">สั่งไส้กรอกอีสานตอนนี้</Link>
+            <Link className="seo-primary-action" href="/products">สั่งไส้กรอกอีสานตอนนี้</Link>
             <Link className="seo-secondary-action" href="/products">ดูเมนูสินค้าทั้งหมด</Link>
           </div>
         </header>
@@ -88,7 +65,7 @@ export default function SaiKrokIsanPage() {
               <div>
                 <h3>{PRODUCT_NAME}</h3>
                 <p>ไส้กรอกอีสานรสเปรี้ยวกำลังดี ย่างทานร้อน ๆ ได้รสชาติแบบอาหารอีสานที่คุ้นเคย และจัดส่งทั่วไทยตามรอบพรีออเดอร์</p>
-                <Link href="/#products">ดูสถานะสินค้าและรอบสั่งซื้อ <span aria-hidden="true">→</span></Link>
+                <Link href="/products">ดูสถานะสินค้าและรอบสั่งซื้อ <span aria-hidden="true">→</span></Link>
               </div>
             </article>
           </div>
