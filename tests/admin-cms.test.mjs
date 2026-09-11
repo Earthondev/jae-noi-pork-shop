@@ -61,7 +61,7 @@ test("admin CMS mutations require login, same-origin checks, and private respons
   assert.match(dashboard, /เปิดรอบขาย/);
   assert.match(dashboard, /serverClockLabel/);
   assert.match(dashboard, /history\.replaceState/);
-  assert.match(dashboard, /ไม่ต้องรีโหลดหน้า/);
+  assert.match(dashboard, /ข้อมูลล่าสุดถูกโหลดให้แล้ว กรุณาตรวจสอบแล้วกดบันทึกอีกครั้ง/);
   assert.match(dashboard, /ยอดชำระแล้วรอบนี้/);
   assert.match(dashboard, /order\.payment_status === "paid"/);
   assert.match(dashboard, /สินค้า/);

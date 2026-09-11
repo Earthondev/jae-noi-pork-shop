@@ -18,6 +18,7 @@ import {
   type ProductInput,
   type RoundInput,
 } from "../../lib/admin-cms";
+import { isRetryableAdminCmsConflict } from "../../lib/admin-cms-mutation";
 import { CustomerFacingError, PUBLIC_ERROR_MESSAGES, safeClientApiMessage } from "../../lib/public-errors";
 import { categoryNamesFromProducts, orderCategoryNames } from "../../lib/category-order";
 import { productSales, salesBreakdown } from "../../lib/order-sales-summary";
@@ -192,10 +193,10 @@ export function AdminDashboard({ initialOrders, initialCms, userName, serverNow,
     try {
       const response = await fetch("/api/admin/cms", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action, ...payload }) });
       if (response.status === 401) return redirectToLogin();
-      const result = await response.json().catch(() => null) as { error?: string } | null;
-      if (response.status === 409) {
+      const result = await response.json().catch(() => null) as { code?: string; error?: string } | null;
+      if (isRetryableAdminCmsConflict(response.status, result)) {
         await refreshCms();
-        setNotice("ข้อมูลล่าสุดถูกโหลดให้แล้ว กรุณากดบันทึกอีกครั้ง โดยไม่ต้องรีโหลดหน้า");
+        setNotice("ข้อมูลล่าสุดถูกโหลดให้แล้ว กรุณาตรวจสอบแล้วกดบันทึกอีกครั้ง");
         return false;
       }
       if (!response.ok) throw new CustomerFacingError(safeClientApiMessage(response.status, result, "ADMIN_UNAVAILABLE"));
@@ -1189,15 +1190,30 @@ function RoundsPanel({ rounds, products, saving, mutate, onFormActive, onFormDir
 }
 
 function RoundForm({ title, value, products, disabled, lockDeliveryDate = false, onChange, onCancel, onSubmit }: { title: string; value: RoundInput; products: AdminProduct[]; disabled: boolean; lockDeliveryDate?: boolean; onChange: (value: RoundInput) => void; onCancel: () => void; onSubmit: () => void }) {
-  return <form className="admin-edit-card" onSubmit={(event) => { event.preventDefault(); onSubmit(); }}><h3>{title}</h3><div className="admin-form-grid"><label><span>วันจัดส่ง</span><input required type="date" disabled={disabled || lockDeliveryDate} value={value.deliveryDate} onChange={(event) => onChange({ ...value, deliveryDate: event.target.value })} /></label><label><span>เปิดรับตั้งแต่</span><input required type="datetime-local" disabled={disabled} value={value.opensAt} onChange={(event) => onChange({ ...value, opensAt: event.target.value })} /></label><label><span>ปิดรับวันที่</span><input required type="datetime-local" disabled={disabled} value={value.closesAt} onChange={(event) => onChange({ ...value, closesAt: event.target.value })} /></label><label><span>สถานะ</span><select disabled={disabled} value={value.status} onChange={(event) => onChange({ ...value, status: event.target.value as RoundInput["status"] })}>{ROUND_STATUSES.map((status) => <option key={status} value={status}>{roundStatusLabels[status]}</option>)}</select></label><RoundProductPicker value={value} products={products} disabled={disabled} onChange={onChange} /><label className="full"><span>หมายเหตุ</span><textarea rows={3} maxLength={500} value={value.note} onChange={(event) => onChange({ ...value, note: event.target.value })} /></label></div><FormActions disabled={disabled} onCancel={onCancel} /></form>;
+  return <form className="admin-edit-card admin-round-form" onSubmit={(event) => { event.preventDefault(); onSubmit(); }}><div className="admin-round-form-header"><h3>{title}</h3><button className="admin-round-quick-save" type="submit" disabled={disabled}>{disabled ? "กำลังบันทึก…" : "บันทึก"}</button></div><div className="admin-form-grid"><label><span>วันจัดส่ง</span><input required type="date" lang="th-TH" disabled={disabled || lockDeliveryDate} value={value.deliveryDate} onChange={(event) => onChange({ ...value, deliveryDate: event.target.value })} /></label><DateTime24Input label="เปิดรับตั้งแต่" disabled={disabled} value={value.opensAt} onChange={(opensAt) => onChange({ ...value, opensAt })} /><DateTime24Input label="ปิดรับวันที่" disabled={disabled} value={value.closesAt} onChange={(closesAt) => onChange({ ...value, closesAt })} /><label><span>สถานะ</span><select disabled={disabled} value={value.status} onChange={(event) => onChange({ ...value, status: event.target.value as RoundInput["status"] })}>{ROUND_STATUSES.map((status) => <option key={status} value={status}>{roundStatusLabels[status]}</option>)}</select></label><RoundProductPicker value={value} products={products} disabled={disabled} onChange={onChange} /><label className="full"><span>หมายเหตุ</span><textarea rows={3} maxLength={500} value={value.note} onChange={(event) => onChange({ ...value, note: event.target.value })} /></label></div><FormActions disabled={disabled} onCancel={onCancel} /></form>;
 }
 
-// Products stay listed even when the round is set to open the whole shop, so
-// switching to "เลือกบางรายการ" never means hunting for the list — it just
-// enables the checkboxes that are already on screen.
-// The picker doubles as a preview of what the round will look like to a
-// customer, so it shows the same things the storefront card does — photo,
-// price, unit, category — rather than a bare list of ids.
+function DateTime24Input({ label, value, disabled, onChange }: { label: string; value: string; disabled: boolean; onChange: (value: string) => void }) {
+  const [date = "", time = ""] = value.split("T");
+  const update = (nextDate: string, nextTime: string) => onChange(nextDate || nextTime ? `${nextDate}T${nextTime}` : "");
+  const formatTime = (input: string) => {
+    const digits = input.replace(/\D/g, "").slice(0, 4);
+    return digits.length <= 2 ? digits : `${digits.slice(0, 2)}:${digits.slice(2)}`;
+  };
+
+  return <div className="admin-datetime-field">
+    <span className="admin-datetime-label">{label}</span>
+    <div className="admin-datetime-controls">
+      <label><span>วันที่</span><input required type="date" lang="th-TH" disabled={disabled} value={date} onChange={(event) => update(event.target.value, time)} /></label>
+      <label><span>เวลา 24 ชม.</span><input required type="text" inputMode="numeric" autoComplete="off" placeholder="13:30" pattern="(?:[01]\d|2[0-3]):[0-5]\d" maxLength={5} disabled={disabled} value={time} onChange={(event) => update(date, formatTime(event.target.value))} /></label>
+    </div>
+  </div>;
+}
+
+// The whole-shop choice stays compact, especially on mobile where rendering
+// every product would push the save action several screens away. Choosing a
+// subset reveals the searchable product cards with the storefront details the
+// admin needs to make the selection confidently.
 function RoundProductPicker({ value, products, disabled, onChange }: { value: RoundInput; products: AdminProduct[]; disabled: boolean; onChange: (value: RoundInput) => void }) {
   const [search, setSearch] = useState("");
   const [category, setCategory] = useState("ทั้งหมด");
@@ -1228,6 +1244,8 @@ function RoundProductPicker({ value, products, disabled, onChange }: { value: Ro
 
     {selectable.length === 0 ? (
       <p className="admin-round-product-empty">ยังไม่มีสินค้าให้เลือก กรุณาเพิ่มสินค้าในแท็บ “สินค้า” ก่อน</p>
+    ) : !selectedOnly ? (
+      <p className="admin-round-all-summary">เปิดขายสินค้าที่พร้อมขายครบทั้ง <strong>{selectable.length}</strong> รายการ โดยอัตโนมัติ</p>
     ) : (
       <>
         <div className="admin-round-product-toolbar">
@@ -1235,9 +1253,7 @@ function RoundProductPicker({ value, products, disabled, onChange }: { value: Ro
             <AdminIcon name="search" />
             <input type="search" aria-label="ค้นหาสินค้า" placeholder="ค้นหาชื่อหรือรหัสสินค้า" value={search} onChange={(event) => setSearch(event.target.value)} />
           </label>
-          <p className="admin-round-product-count">
-            {selectedOnly ? <><strong>{value.productIds.length}</strong> / {selectable.length} รายการที่เลือก</> : <>เปิดครบทั้ง <strong>{selectable.length}</strong> รายการ</>}
-          </p>
+          <p className="admin-round-product-count"><strong>{value.productIds.length}</strong> / {selectable.length} รายการที่เลือก</p>
         </div>
         {categories.length > 2 && (
           <div className="admin-round-product-categories" role="tablist" aria-label="กรองตามหมวดหมู่">
@@ -1246,15 +1262,13 @@ function RoundProductPicker({ value, products, disabled, onChange }: { value: Ro
             ))}
           </div>
         )}
-        {selectedOnly && (
-          <div className="admin-round-product-actions">
-            <button type="button" onClick={() => setIds([...value.productIds, ...visible.map((product) => product.id)])}>เลือกที่เห็นทั้งหมด</button>
-            <button type="button" onClick={() => setIds(value.productIds.filter((id) => !visible.some((product) => product.id === id)))}>เอาที่เห็นออก</button>
-          </div>
-        )}
+        <div className="admin-round-product-actions">
+          <button type="button" onClick={() => setIds([...value.productIds, ...visible.map((product) => product.id)])}>เลือกที่เห็นทั้งหมด</button>
+          <button type="button" onClick={() => setIds(value.productIds.filter((id) => !visible.some((product) => product.id === id)))}>เอาที่เห็นออก</button>
+        </div>
         <div className="admin-round-product-grid">
           {visible.length === 0 ? <p className="admin-round-product-empty">ไม่พบสินค้าที่ตรงกับที่ค้นหา</p> : visible.map((product) => (
-            <RoundProductOption key={product.id} product={product} checked={selectedOnly ? selected.has(product.id) : true} interactive={selectedOnly} onToggle={() => toggle(product.id)} />
+            <RoundProductOption key={product.id} product={product} checked={selected.has(product.id)} interactive onToggle={() => toggle(product.id)} />
           ))}
         </div>
       </>

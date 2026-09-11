@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { getAdminUser } from "../../../admin-auth";
 import { isSameOriginMutation } from "../../../../lib/admin-auth";
+import { ADMIN_CMS_MUTATION_ERROR_CODES } from "../../../../lib/admin-cms-mutation";
 import { publicErrorBody } from "../../../../lib/public-errors";
 import { reportServerError } from "../../../../lib/server-monitoring";
 import {
@@ -90,8 +91,8 @@ export async function POST(request: Request) {
     }
 
     if (result === "not_found") return json({ error: "ไม่พบข้อมูลที่ต้องการแก้ไข" }, 404);
-    if (result === "duplicate") return json({ error: "มีรหัสหรือวันจัดส่งนี้อยู่แล้ว" }, 409);
-    if (result === "conflict") return json({ error: "ข้อมูลถูกแก้จากที่อื่นแล้ว กรุณารีเฟรชก่อนบันทึกอีกครั้ง" }, 409);
+    if (result === "duplicate") return json({ code: ADMIN_CMS_MUTATION_ERROR_CODES.duplicate, error: "มีรอบของวันจัดส่งนี้อยู่แล้ว กรุณาเลือกวันอื่น หรือยกเลิกเพื่อกลับไปแก้รอบเดิม" }, 409);
+    if (result === "conflict") return json({ code: ADMIN_CMS_MUTATION_ERROR_CODES.conflict, error: "ข้อมูลถูกแก้จากที่อื่นแล้ว กรุณารีเฟรชก่อนบันทึกอีกครั้ง" }, 409);
     await invalidateStorefrontCache(request);
     return json({ ok: true });
   } catch (error) {
