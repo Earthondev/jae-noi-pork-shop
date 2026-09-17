@@ -1,16 +1,18 @@
 import type { Metadata } from "next";
-import Image from "next/image";
 import Link from "next/link";
+import { GuideProducts } from "../../_components/shop/guide-products";
 import { SeoPageNav } from "../../_components/shop/seo-page-nav";
 import { SITE_URL, SHOP, productGuide, guideJsonLd } from "../../../lib/seo";
+
+export const dynamic = "force-dynamic";
 
 const PAGE_URL = `${SITE_URL}/products/sai-krok-isan`;
 const PRODUCT = productGuide("sai-krok-isan");
 const PRODUCT_NAME = PRODUCT.name;
 const PRODUCT_IMAGE = PRODUCT.image;
-const PAGE_TITLE = "รู้จักไส้กรอกอีสานเจ๊น้อย บัวใหญ่ | เขียงหมูตะคร้อ";
+const PAGE_TITLE = "ไส้กรอกอีสานบัวใหญ่: ราคาและขนาดแพ็ค | เจ๊น้อย";
 const PAGE_DESCRIPTION =
-  "รู้จักไส้กรอกอีสานของร้านเจ๊น้อย เขียงหมูตะคร้อ อ.บัวใหญ่ จ.นครราชสีมา พร้อมลิงก์ดูสินค้า ราคาปัจจุบัน วิธีสั่งซื้อ และข้อมูลติดต่อร้าน";
+  "ดูราคาไส้กรอกอีสานเจ๊น้อย บัวใหญ่ ขนาดแพ็คและรายละเอียดที่ร้านระบุ พร้อมรูปสินค้า ค่าจัดส่ง และลิงก์วิธีสั่งซื้อ";
 
 export const metadata: Metadata = {
   title: PAGE_TITLE,
@@ -43,43 +45,27 @@ export default function SaiKrokIsanPage() {
 
         <header className="seo-page-hero seo-page-hero-compact">
           <p className="eyebrow">ของดีจากเขียงหมูตะคร้อ</p>
-          <h1>ไส้กรอกอีสาน เจ๊น้อย เขียงหมูตะคร้อ</h1>
-          <p>
-            ไส้กรอกอีสานรสเปรี้ยวกำลังดี ย่างทานร้อน ๆ ได้รสชาติแบบอาหารอีสานที่คุ้นเคย จัดส่งทั่วไทยตามรอบพรีออเดอร์
-            ดูราคา หน่วยขาย และรายการที่เปิดรับล่าสุดได้ที่หน้ารวมสินค้า
-          </p>
+          <h1>ไส้กรอกอีสานบัวใหญ่: ราคาและขนาดแพ็ค</h1>
+          <p>เลือกไส้กรอกอีสานจากราคา หน่วยขาย และรายละเอียดของแต่ละรายการ ตรวจข้อมูลแพ็คที่ร้านระบุด้านล่างก่อนเลือกจำนวน</p>
           <div className="seo-page-actions">
-            <Link className="seo-primary-action" href="/products">สั่งไส้กรอกอีสานตอนนี้</Link>
+            <Link className="seo-primary-action" href="#guide-prices-title">ดูราคาและขนาดสินค้า</Link>
             <Link className="seo-secondary-action" href="/products">ดูเมนูสินค้าทั้งหมด</Link>
           </div>
         </header>
 
-        <section className="seo-product-grid" aria-labelledby="product-detail-title">
-          <div className="section-heading">
-            <span className="eyebrow">รายละเอียดสินค้า</span>
-            <h2 id="product-detail-title">ไส้กรอกอีสานเจ๊น้อย ทำสดทุกวัน</h2>
-          </div>
-          <div className="seo-card-grid single-card">
-            <article className="seo-card seo-card-detail">
-              <Image src={PRODUCT_IMAGE} alt="ไส้กรอกอีสานจากร้านเจ๊น้อย เขียงหมูตะคร้อ" width={760} height={520} />
-              <div>
-                <h3>{PRODUCT_NAME}</h3>
-                <p>ไส้กรอกอีสานรสเปรี้ยวกำลังดี ย่างทานร้อน ๆ ได้รสชาติแบบอาหารอีสานที่คุ้นเคย และจัดส่งทั่วไทยตามรอบพรีออเดอร์</p>
-                <Link href="/products">ดูสถานะสินค้าและรอบสั่งซื้อ <span aria-hidden="true">→</span></Link>
-              </div>
-            </article>
-          </div>
+        <GuideProducts slug="sai-krok-isan" />
+
+        <section className="seo-info-panel" aria-labelledby="guide-size-title">
+          <h2 id="guide-size-title">ไส้กรอกอีสานหนึ่งแพ็คมีกี่ชิ้น?</h2>
+          <p>ดูจำนวนชิ้นที่ร้านระบุในหน่วยขายหรือรายละเอียดรายการด้านบน หากระบุเพียง “1 แพ็ค” โดยไม่มีจำนวนชิ้น ต้องสอบถามร้านเพิ่มเติมก่อนสั่ง ไม่ควรใช้จำนวนชิ้นในภาพเป็นจำนวนที่จะได้รับ</p>
+          <a href={`tel:${SHOP.phonePrimary.replace(/[^\d+]/g, "")}`}>สอบถามรายละเอียดกับร้าน</a>
         </section>
 
-        <section className="seo-info-panel" aria-labelledby="shop-info-title">
-          <div>
-            <p className="eyebrow">ทำไมต้องไส้กรอกอีสานเจ๊น้อย</p>
-            <h2 id="shop-info-title">เจ๊น้อย เขียงหมูตะคร้อ อ.บัวใหญ่ จ.นครราชสีมา</h2>
-          </div>
-          <p>
-            ทำสดทุกวัน สั่งออนไลน์ได้ตามรอบพรีออเดอร์ พร้อมบริการจัดส่งไปรษณีย์ทั่วไทย
-            และตัวเลือกรับเองหน้าร้านเมื่อมีการเปิดรับในรอบนั้น
-          </p>
+        <section className="seo-info-panel" aria-labelledby="guide-order-title">
+          <h2 id="guide-order-title">สั่งไส้กรอกอีสานและดูการจัดส่งได้ที่ไหน?</h2>
+          <p>เลือกรายการจากหน้าสินค้า แล้วตรวจรอบขายและตัวเลือกการรับสินค้าที่หน้าเว็บแสดง ดูขั้นตอนกรอกข้อมูลและชำระเงินได้ที่หน้าวิธีสั่งซื้อ</p>
+          <Link href="/how-to-order">วิธีสั่งซื้อและการจัดส่ง</Link>
+          <Link href="/products/naem-moo">ดูคู่มือแหนมหมู</Link>
         </section>
 
         <footer className="seo-page-footer">

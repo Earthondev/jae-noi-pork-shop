@@ -1,16 +1,18 @@
 import type { Metadata } from "next";
-import Image from "next/image";
 import Link from "next/link";
+import { GuideProducts } from "../../_components/shop/guide-products";
 import { SeoPageNav } from "../../_components/shop/seo-page-nav";
 import { SITE_URL, SHOP, productGuide, guideJsonLd } from "../../../lib/seo";
+
+export const dynamic = "force-dynamic";
 
 const PAGE_URL = `${SITE_URL}/products/naem-moo`;
 const PRODUCT = productGuide("naem-moo");
 const PRODUCT_NAME = PRODUCT.name;
 const PRODUCT_IMAGE = PRODUCT.image;
-const PAGE_TITLE = "รู้จักแหนมหมูเจ๊น้อยจากบัวใหญ่ | เขียงหมูตะคร้อ";
+const PAGE_TITLE = "แหนมหมูบัวใหญ่: ราคา ขนาด และการสั่งซื้อ | เจ๊น้อย";
 const PAGE_DESCRIPTION =
-  "รู้จักแหนมหมูของร้านเจ๊น้อย เขียงหมูตะคร้อ อ.บัวใหญ่ จ.นครราชสีมา พร้อมลิงก์ดูสินค้า ราคาและขนาดปัจจุบัน วิธีสั่งซื้อ และข้อมูลติดต่อร้าน";
+  "แหนมหมูเจ๊น้อยจากบัวใหญ่ ดูราคา ขนาดและหน่วยขายปัจจุบัน รูปสินค้า ค่าจัดส่ง และวิธีสั่งซื้อ พร้อมข้อมูลสำหรับเลือกจำนวนแพ็ค";
 
 export const metadata: Metadata = {
   title: PAGE_TITLE,
@@ -43,43 +45,27 @@ export default function NaemMooPage() {
 
         <header className="seo-page-hero seo-page-hero-compact">
           <p className="eyebrow">ของดีจากเขียงหมูตะคร้อ</p>
-          <h1>แหนมหมูสูตรดั้งเดิม เจ๊น้อย เขียงหมูตะคร้อ</h1>
-          <p>
-            แหนมหมูสูตรดั้งเดิม ทำสดใหม่ แพ็กสูญญากาศ เหมาะสำหรับทานที่บ้านหรือสั่งเป็นของฝากจากบัวใหญ่
-            ดูราคา หน่วยขาย และรายการที่เปิดรับล่าสุดได้ที่หน้ารวมสินค้า
-          </p>
+          <h1>แหนมหมูบัวใหญ่: ราคา ขนาด และการสั่งซื้อ</h1>
+          <p>เลือกแหนมหมูโดยดูทั้งราคาและปริมาณที่ได้รับในแต่ละแพ็ค พร้อมตรวจรายละเอียดรายการและวิธีสั่งซื้อจากร้านเจ๊น้อย เขียงหมูตะคร้อ</p>
           <div className="seo-page-actions">
-            <Link className="seo-primary-action" href="/products">สั่งแหนมหมูตอนนี้</Link>
+            <Link className="seo-primary-action" href="#guide-prices-title">ดูราคาและขนาดสินค้า</Link>
             <Link className="seo-secondary-action" href="/products">ดูเมนูสินค้าทั้งหมด</Link>
           </div>
         </header>
 
-        <section className="seo-product-grid" aria-labelledby="product-detail-title">
-          <div className="section-heading">
-            <span className="eyebrow">รายละเอียดสินค้า</span>
-            <h2 id="product-detail-title">แหนมหมูเจ๊น้อย ทำสดทุกวัน</h2>
-          </div>
-          <div className="seo-card-grid single-card">
-            <article className="seo-card seo-card-detail">
-              <Image src={PRODUCT_IMAGE} alt="แหนมหมูสูตรร้านเจ๊น้อย เขียงหมูตะคร้อ" width={760} height={520} />
-              <div>
-                <h3>{PRODUCT_NAME}</h3>
-                <p>แหนมหมูสูตรดั้งเดิม ทำสดใหม่ แพ็กสูญญากาศ เหมาะสำหรับทานที่บ้านหรือสั่งเป็นของฝากจากบัวใหญ่</p>
-                <Link href="/products">ดูสถานะสินค้าและรอบสั่งซื้อ <span aria-hidden="true">→</span></Link>
-              </div>
-            </article>
-          </div>
+        <GuideProducts slug="naem-moo" />
+
+        <section className="seo-info-panel" aria-labelledby="guide-size-title">
+          <h2 id="guide-size-title">เลือกจำนวนแพ็คแหนมหมูอย่างไร?</h2>
+          <p>ก่อนเลือกจำนวนแพ็ค ให้ดูน้ำหนักต่อชิ้นและจำนวนชิ้นต่อแพ็คในรายละเอียดสินค้า เพราะจำนวนแพ็คอย่างเดียวอาจบอกปริมาณที่ได้รับไม่ครบ หากรายการยังไม่ระบุน้ำหนักหรือจำนวนชิ้น ให้สอบถามร้านก่อนสั่ง</p>
+          <a href={`tel:${SHOP.phonePrimary.replace(/[^\d+]/g, "")}`}>สอบถามรายละเอียดกับร้าน</a>
         </section>
 
-        <section className="seo-info-panel" aria-labelledby="shop-info-title">
-          <div>
-            <p className="eyebrow">ทำไมต้องแหนมหมูเจ๊น้อย</p>
-            <h2 id="shop-info-title">เจ๊น้อย เขียงหมูตะคร้อ อ.บัวใหญ่ จ.นครราชสีมา</h2>
-          </div>
-          <p>
-            ทำสดทุกวัน แพ็กสูญญากาศ สั่งออนไลน์ได้ตามรอบพรีออเดอร์ พร้อมบริการจัดส่งไปรษณีย์ทั่วไทย
-            และตัวเลือกรับเองหน้าร้านเมื่อมีการเปิดรับในรอบนั้น
-          </p>
+        <section className="seo-info-panel" aria-labelledby="guide-order-title">
+          <h2 id="guide-order-title">สั่งแหนมหมูจากบัวใหญ่ได้ทางไหน?</h2>
+          <p>เลือกรายการจากหน้าสินค้า แล้วตรวจรอบขายและตัวเลือกการรับสินค้าที่หน้าเว็บแสดง ดูขั้นตอนกรอกข้อมูลและชำระเงินได้ที่หน้าวิธีสั่งซื้อ</p>
+          <Link href="/how-to-order">วิธีสั่งซื้อและการจัดส่ง</Link>
+          <Link href="/products/sai-krok-isan">ดูคู่มือไส้กรอกอีสาน</Link>
         </section>
 
         <footer className="seo-page-footer">
