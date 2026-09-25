@@ -53,20 +53,56 @@ storefront repository and their detail URLs return 404. Database failures must
 not masquerade as missing products.
 
 `lib/seo.ts` contains store facts and price-free editorial guide metadata.
-The three old guide URLs remain available but must not publish prices or Offers.
-The root Store JSON-LD has no makesOffer snapshot. Product availability uses
-per-round product IDs: accepting preorders is PreOrder, otherwise OutOfStock.
-Never emit return-policy markup or invented delivery times. The owner shared
-https://share.google/xImLwlrVykUpT5klZ for sameAs; the map reads live settings.
-Admin forms, product IDs and checkout remain the source of business rules.
+The three editorial guide URLs remain available but must not publish prices or
+Offers. The root Store JSON-LD has no makesOffer snapshot. Product availability
+uses per-round product IDs: accepting preorders is PreOrder, otherwise
+OutOfStock. Never emit return-policy markup or invented delivery times. The
+owner shared https://share.google/xImLwlrVykUpT5klZ for sameAs; the map reads
+live settings. Admin forms, product IDs and checkout remain the source of
+business rules.
 
-The site had zero Google indexing as of 2026-08-26 (`site:jaenoishop.com`
-returned nothing) — unsurprising for a domain this new (sitemap.xml added
-2026-08-03, the `/products/[slug]` pages added 2026-08-26) with no backlinks,
-since marketing is Facebook-first rather than search-driven. Search Console's
-Merchant/Product structured-data report can lag several days behind what's
-actually deployed — treat an "invalid item" finding there as needing a fresh
-crawl (Request Indexing) before trusting it as a current bug.
+### Current search status (verified 2026-09-25)
+
+Use the live Search Console property `sc-domain:jaenoishop.com` as the source of
+truth. The previous note that the site had zero indexed pages is obsolete.
+
+- The Performance report for 2026-08-01 through 2026-08-31 shows 4 clicks, 64
+  impressions, 6.2% CTR and average position 4.5. These are Google Search
+  clicks, not unique visitors, sessions, orders or revenue. The page table's
+  rows sum to 5 clicks while the aggregate card shows 4; report the aggregate
+  total and flag the page breakdown as inconsistent.
+- The query table for August exposed `ร้านเขียงหมู` (2 impressions, 0 clicks).
+  Low-volume queries may be omitted, so this is not a complete query list.
+- The indexing report was last updated 2026-09-21 and showed 9 indexed pages
+  and 8 not indexed. Its 8-page total is a report snapshot, not a post-deploy
+  crawl result.
+- `https://jaenoishop.com/sitemap.xml` was resubmitted on 2026-09-25. Search
+  Console accepted it; the last-read date still showed 2026-09-21, with 13
+  discovered pages. Wait for Google to process the resubmission before judging
+  post-deploy indexing changes.
+- Merchant listings and Product reports were last updated 2026-09-23 and showed
+  14 valid items and 0 invalid items. The Merchant listings report listed
+  non-critical recommendations for `deliveryTime`, `hasMerchantReturnPolicy`
+  and `category`. Do not add return-policy markup against the owner's direction
+  or invent delivery times just to clear recommendations.
+- On 2026-09-25, URL Inspection showed these six pages already in Google and
+  accepted recrawl requests: `/`, `/products`, `/products/naem-moo`,
+  `/products/sai-krok-isan`, `/products/kaep-moo` and `/how-to-order`. A request
+  queues a crawl; it does not guarantee an index change or a ranking.
+- Manual Google searches found the shop for `เจ๊น้อย เขียงหมูตะคร้อ` and
+  `ร้านเขียงหมู บัวใหญ่`; the `แหนมหมู บัวใหญ่` guide appeared in results, and
+  `ไส้กรอกอีสาน บัวใหญ่` included a shop mention/link in an AI overview. For the
+  broad `ไส้กรอกอีสาน` query, the observed results focused on recipes, videos
+  and general information, with no shop result in the results inspected. Focus
+  near-term content on purchase-intent and local phrases while keeping the
+  product facts accurate. Results vary by location and personalization.
+- A Google local result displayed the Website link as `http://jaenoishop.com/`.
+  If editing the verified Business Profile, check that its website field uses
+  the canonical HTTPS URL.
+
+Search Console reports can lag behind deployment by several days. Distinguish
+report data dates from current live page behavior, and use URL Inspection or a
+fresh crawl before treating an older structured-data warning as a live defect.
 
 ## Development Guidelines
 
