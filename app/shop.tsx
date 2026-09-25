@@ -46,7 +46,13 @@ function OrderStepIcon({ step }: Readonly<{ step: 1 | 2 | 3 }>) {
   if (step === 2) {
     return <svg className="order-step-icon" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h9" /><path d="M7 8h4M7 12h3" /><path d="m17 21 4-4-4-4" /><path d="M12 17h9" /></svg>;
   }
-  return <svg className="order-step-icon" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="6" height="6" rx="1" /><rect x="15" y="3" width="6" height="6" rx="1" /><rect x="3" y="15" width="6" height="6" rx="1" /><rect x="15" y="15" width="6" height="6" rx="1" /></svg>;
+  return <svg className="order-step-icon order-step-icon-qr" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M8 4H6a2 2 0 0 0-2 2v2M16 4h2a2 2 0 0 1 2 2v2M4 16v2a2 2 0 0 0 2 2h2M20 16v2a2 2 0 0 1-2 2h-2" />
+    <rect x="7" y="7" width="4" height="4" rx="1" />
+    <rect x="13" y="7" width="4" height="4" rx="1" />
+    <rect x="7" y="13" width="4" height="4" rx="1" />
+    <path d="M14 13h3v3M14 18h.01M18 18h.01M20 13v.01" />
+  </svg>;
 }
 
 type OrderStepProps = Readonly<{
