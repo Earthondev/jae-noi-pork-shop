@@ -75,7 +75,7 @@ function sameAsLinks(): string[] {
 /** Editorial guides are not saleable catalogue entries. Prices live only in D1. */
 export const PRODUCT_GUIDES = [
   { slug: "naem-moo", name: "แหนมหมู", image: "/images/products/jae-noi-holding-two-naem-pork-bags.jpg" },
-  { slug: "sai-krok-isan", name: "ไส้กรอกอีสาน", image: "/images/products/jae-noi-holding-two-naem-pork-bags.jpg" },
+  { slug: "sai-krok-isan", name: "ไส้กรอกอีสาน", image: "/images/products/jae-noi-presenting-vacuum-packed-pork-sausages.jpg" },
   { slug: "kaep-moo", name: "กากหมูโบราณ", image: "/images/products/jae-noi-presenting-pork-rinds-large-tubs.jpg" },
 ] as const;
 

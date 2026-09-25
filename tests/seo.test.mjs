@@ -57,6 +57,14 @@ test("keywords stay unique and cover the shop's own products", () => {
   }
 });
 
+test("editorial guide images match the product they describe", () => {
+  const source = readFile(new URL("../lib/seo.ts", import.meta.url), "utf8");
+  return source.then((text) => {
+    assert.match(text, /sai-krok-isan.*jae-noi-presenting-vacuum-packed-pork-sausages\.jpg/);
+    assert.doesNotMatch(text, /sai-krok-isan.*jae-noi-holding-two-naem-pork-bags\.jpg/);
+  });
+});
+
 test("the shop uses the verified production map and owner-provided business profile", () => {
   // Verified against production on 2026-09-10, not the local seed data.
   assert.equal(SHOP_LINKS.googleMaps, "https://maps.app.goo.gl/C7sFuXvWZZeHuL1u8?g_st=ic");
