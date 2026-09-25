@@ -653,6 +653,13 @@ export function Shop({ initialStorefront }: ShopProps) {
       )}
       {cartCount > 0 && !cartOpen && nearProducts && (
         <button className="floating-cart" type="button" onClick={() => setCartOpen(true)} aria-label={`เปิดตะกร้า มีสินค้า ${cartCount} ชิ้น รวมค่าสินค้า ${subtotal} บาท`}>
+          <span className="floating-cart-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M4 5h2l1.6 9.3a2 2 0 0 0 2 1.7h7.8a2 2 0 0 0 1.9-1.5L21 8H7" />
+              <circle cx="10" cy="19" r="1.3" /><circle cx="18" cy="19" r="1.3" />
+            </svg>
+            <b key={cartCount}>{cartCount}</b>
+          </span>
           <span className="floating-cart-copy">
             <strong key={cartCount}>ตะกร้า · {cartCount} ชิ้น</strong>
             <small key={subtotal}>รวมสินค้า {subtotal.toLocaleString("th-TH")} บาท</small>

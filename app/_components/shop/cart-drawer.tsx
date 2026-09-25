@@ -82,6 +82,7 @@ export type CartDrawerProps = Readonly<{
 
 export function CartDrawer({ drawerRef, onClose, cart, checkout, storefront, order }: CartDrawerProps) {
   const freeShippingGap = amountUntilFreeShipping(cart.subtotal, storefront.freeShippingMinimum);
+  const cartCount = cart.items.reduce((total, product) => total + (cart.quantities[product.id] ?? 0), 0);
   const [copiedId, setCopiedId] = useState(false);
   const [copiedAmount, setCopiedAmount] = useState(false);
   const [orderCopyStatus, setOrderCopyStatus] = useState<"idle" | "copied" | "error">("idle");
@@ -367,12 +368,13 @@ export function CartDrawer({ drawerRef, onClose, cart, checkout, storefront, ord
   return (
     <div className="drawer-backdrop" role="presentation" onMouseDown={(event) => event.target === event.currentTarget && onClose()}>
       <SlipRequiredToast visible={slipToastVisible} resetKey={slipToastKey} onDismiss={() => setSlipToastVisible(false)} />
-      <aside ref={drawerRef} className="cart-drawer" role="dialog" aria-modal="true" aria-labelledby="cart-title">
+      <aside ref={drawerRef} id="cart-dialog" className={`cart-drawer${cart.items.length === 0 ? " is-empty" : ""}`} role="dialog" aria-modal="true" aria-labelledby="cart-title">
         <div className="drawer-handle" />
         <div className="drawer-heading">
           <div>
             <p className="eyebrow">รายการของคุณ</p>
             <h2 id="cart-title">ตะกร้าสินค้า</h2>
+            <span className="cart-drawer-count">{cartCount > 0 ? `${cartCount.toLocaleString("th-TH")} ชิ้นในตะกร้า` : "พร้อมเลือกของอร่อย"}</span>
           </div>
           <button type="button" onClick={onClose} aria-label="ปิดตะกร้า">×</button>
         </div>
@@ -460,19 +462,42 @@ export function CartDrawer({ drawerRef, onClose, cart, checkout, storefront, ord
             </div>
             <div className="cart-list">
               {cart.items.length === 0 ? (
-                <p className="empty-cart">ยังไม่มีสินค้าในตะกร้า</p>
+                <div className="empty-cart" role="status">
+                  <span className="empty-cart-icon" aria-hidden="true">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M5 8h14l1 12H4L5 8Z" />
+                      <path d="M8 8V6.5a4 4 0 0 1 8 0V8M9 12h6" />
+                    </svg>
+                  </span>
+                  <strong>ตะกร้ายังว่างอยู่</strong>
+                  <p>เลือกของอร่อยจากร้านเจ๊น้อย แล้วกลับมาสั่งต่อได้ที่นี่</p>
+                </div>
               ) : (
-                cart.items.map((product) => {
+                cart.items.map((product, index) => {
                   const inRound = cart.isProductInRound(product.id);
                   const customerProductName = displayProductName(product.name);
                   return (
-                  <div className={`cart-line${inRound ? "" : " out-of-round"}`} key={product.id}>
-                    <div>
-                      <strong>{customerProductName}</strong>
-                      <small>{product.price === null ? "รอข้อมูลราคา" : `${product.price.toLocaleString("th-TH")} บาท/รายการ`}</small>
-                      {!inRound && <small className="cart-line-warning">ไม่ได้เปิดขายในรอบนี้ · นำออกหรือเลือกรอบอื่น</small>}
+                  <div className={`cart-line${inRound ? "" : " out-of-round"}`} key={product.id} style={{ animationDelay: `${Math.min(index, 6) * 45}ms` }}>
+                    <div className="cart-line-product">
+                      <span className="cart-line-image">
+                        {product.image ? (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img src={product.image} alt="" loading="lazy" decoding="async" />
+                        ) : (
+                          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                            <path d="M5 8h14l1 12H4L5 8Z" /><path d="M8 8V6.5a4 4 0 0 1 8 0V8" />
+                          </svg>
+                        )}
+                      </span>
+                      <span className="cart-line-details">
+                        <strong>{customerProductName}</strong>
+                        <small>{product.price === null ? "รอข้อมูลราคา" : `${product.price.toLocaleString("th-TH")} บาท/รายการ`}</small>
+                        {!inRound && <small className="cart-line-warning">ไม่ได้เปิดขายในรอบนี้ · นำออกหรือเลือกรอบอื่น</small>}
+                      </span>
                     </div>
-                    <div className="stepper compact">
+                    <div className="cart-line-actions">
+                      <strong className="cart-line-total">{product.price === null ? "รอราคา" : `${(product.price * (cart.quantities[product.id] ?? 0)).toLocaleString("th-TH")} บาท`}</strong>
+                      <div className="stepper compact">
                       <button className="decrease-button" type="button" onClick={() => cart.onUpdateQuantity(product.id, -1)} aria-label={`ลด ${customerProductName}`}
 >−</button>
                       <output>{cart.quantities[product.id]}</output>
@@ -483,6 +508,7 @@ export function CartDrawer({ drawerRef, onClose, cart, checkout, storefront, ord
                         aria-label={!inRound ? `${customerProductName} ไม่ได้เปิดขายในรอบนี้` : storefront.orderingOpen ? `เพิ่ม ${customerProductName}` : `ยังเพิ่ม ${customerProductName} ไม่ได้จนกว่าจะเปิดรอบ`}
                         disabled={!storefront.orderingOpen || !inRound}
                       >+</button>
+                      </div>
                     </div>
                   </div>
                   );
