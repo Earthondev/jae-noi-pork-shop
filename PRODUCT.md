@@ -1,7 +1,38 @@
-# Product context
+# Product
 
-Thai storefront for เจ๊น้อย เขียงหมูตะคร้อ. Customers browse food products and order through sales rounds. Shop administrators maintain names, prices, units, visibility, photos.
+<!-- impeccable:product-schema 1 -->
 
-Product detail pages help customers decide to buy and read confirmed care instructions after receipt. Preserve the existing Thai identity and checkout. Data in D1 is authoritative; never hardcode prices or invent storage duration, cooking temperature, ingredients or return policies. Optional product guidance is maintained in code per stable product ID and remains absent until the shop confirms it. No additional admin controls or database changes.
+## Platform
 
-Approved scope: unified desktop image/purchase columns, square gallery from existing uploaded photos, mobile image-first sequence, cream background, dark brown text, red CTA with white text, native disclosure sections and related live products. Existing public URLs and admin workflows stay compatible. No deployment is part of this implementation.
+web
+
+## Users
+
+- Customers browse the shop's products and place orders in the shop's sales rounds.
+- Shop administrators maintain product names, prices, units, sales visibility, and photos.
+
+## Product Purpose
+
+The Thai storefront and back office support shopping at เจ๊น้อย เขียงหมูตะคร้อ. Product detail pages help customers decide what to buy and provide confirmed care instructions after receipt.
+
+## Positioning
+
+Product availability and ordering follow sales rounds maintained by the shop.
+
+## Capabilities and Constraints
+
+- The shop's product names, prices, units, sales visibility, and photos are maintained through its administrative workflows.
+- Product and shop data in D1 is authoritative.
+- Product care guidance is maintained by stable product ID and remains absent until the shop confirms it.
+- Do not invent prices, storage duration, cooking temperature, ingredients, or return policies.
+- Preserve the existing checkout. Do not add administrative controls or database changes without an approved request.
+
+## Brand Commitments
+
+- Use the Thai shop name เจ๊น้อย เขียงหมูตะคร้อ.
+
+## Product Principles
+
+- Keep customer-facing product information aligned with shop-maintained names, prices, units, sales visibility, and photos.
+- Publish care guidance only after the shop confirms it.
+- Keep the storefront and ordering workflow grounded in the shop's sales rounds.

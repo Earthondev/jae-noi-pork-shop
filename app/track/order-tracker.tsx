@@ -157,6 +157,7 @@ function OrderHistoryCard({ order, expanded, onToggle, storeName, phoneLast4, ph
   const [receiptError, setReceiptError] = useState<string | null>(null);
   const [confirming, setConfirming] = useState(false);
   const [confirmError, setConfirmError] = useState<string | null>(null);
+  const [customerConfirmed, setCustomerConfirmed] = useState(false);
   const [trackingCopied, setTrackingCopied] = useState(false);
   const [slipFile, setSlipFile] = useState<File | null>(null);
   const [slipSending, setSlipSending] = useState(false);
@@ -189,6 +190,7 @@ function OrderHistoryCard({ order, expanded, onToggle, storeName, phoneLast4, ph
       });
       const result = await response.json().catch(() => null) as { error?: string } | null;
       if (!response.ok) throw new CustomerFacingError(safeClientApiMessage(response.status, result, "TRACKING_UNAVAILABLE"));
+      setCustomerConfirmed(true);
       onConfirmed(order.orderId);
     } catch (confirmActionError) {
       setConfirmError(confirmActionError instanceof CustomerFacingError ? confirmActionError.message : PUBLIC_ERROR_MESSAGES.TRACKING_UNAVAILABLE);
@@ -307,6 +309,13 @@ function OrderHistoryCard({ order, expanded, onToggle, storeName, phoneLast4, ph
               </button>
               {confirmError && <p className="track-error" role="alert">{confirmError}</p>}
             </div>
+          )}
+          {customerConfirmed && (
+            <section className="track-review-request" aria-labelledby={`review-request-${order.orderId}`}>
+              <h3 id={`review-request-${order.orderId}`}>ช่วยแบ่งปันประสบการณ์กับร้านเจ๊น้อยได้ไหมคะ</h3>
+              <p>หากสะดวก รบกวนเขียนรีวิวตามประสบการณ์จริงที่มีต่อ เจ๊น้อย เขียงหมูตะคร้อ บน Google Maps ความคิดเห็นของคุณช่วยร้านและลูกค้าท่านอื่นได้มากเลยค่ะ</p>
+              <a href="https://share.google/t1BEpvldlDIbj320X" target="_blank" rel="noopener noreferrer">เขียนรีวิวบน Google Maps</a>
+            </section>
           )}
           <div className="tracking-details">
             <div><span>วันที่สั่ง</span><strong>{formatDate(order.createdAt)}</strong></div>
