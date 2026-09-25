@@ -8,6 +8,7 @@ import { BottomNav } from "./_components/shop/bottom-nav";
 import { CartDrawer, type OrderRecap } from "./_components/shop/cart-drawer";
 import { Hero } from "./_components/shop/hero";
 import { ProductGrid } from "./_components/shop/product-grid";
+import { animateFlyToCart } from "./_components/shop/fly-to-cart";
 import { SiteHeader } from "./_components/shop/site-header";
 import { useCheckoutDraft } from "./_hooks/use-checkout-draft";
 import { useStorefront, type StorefrontResponse } from "./_hooks/use-storefront";
@@ -142,8 +143,15 @@ export function Shop({ initialStorefront }: ShopProps) {
   const [cartFeedback, setCartFeedback] = useState<string | null>(null);
 
   const updateQuantity = useCallback(
-    (productId: string, delta: number) => {
+    (productId: string, delta: number, source?: HTMLElement) => {
       const product = storefront.products.find((candidate) => candidate.id === productId);
+      if (delta > 0 && source instanceof HTMLElement) {
+        const sourceImage = source.closest(".product-card")?.querySelector<HTMLImageElement>(".product-image-wrap img");
+        const cartTarget = window.matchMedia("(min-width: 720px)").matches
+          ? document.querySelector<HTMLElement>('[data-cart-target="header"]')
+          : document.querySelector<HTMLElement>('[data-cart-target="bottom-nav"]');
+        if (sourceImage && cartTarget) animateFlyToCart(sourceImage, cartTarget);
+      }
       updateCheckoutQuantity(storefront.products, productId, delta);
       if (delta > 0 && product) setCartFeedback(`เพิ่ม ${displayProductName(product.name)} ลงตะกร้าแล้ว`);
     },

@@ -6,7 +6,7 @@ export type ProductGridProps = Readonly<{
   storeLoading: boolean;
   products: readonly Product[];
   quantities: Quantities;
-  onUpdateQuantity: (productId: string, delta: number) => void;
+  onUpdateQuantity: (productId: string, delta: number, source?: HTMLElement) => void;
   categories: readonly string[];
   selectedCategory: string;
   onSelectCategory: (category: string) => void;

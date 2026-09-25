@@ -9,7 +9,7 @@ export type ProductCardProps = Readonly<{
   product: Product;
   quantity: number;
   index: number;
-  onUpdateQuantity: (productId: string, delta: number) => void;
+  onUpdateQuantity: (productId: string, delta: number, source?: HTMLElement) => void;
   orderingOpen: boolean;
   /** False when the round on offer does not carry this product. */
   inRound?: boolean;
@@ -81,11 +81,11 @@ export function ProductCard({ product, quantity, index, onUpdateQuantity, orderi
               )}
             </div>
             {isPurchasable ? (
-              <button className="product-add-button" type="button" onClick={() => onUpdateQuantity(product.id, 1)} aria-label={`เพิ่ม ${customerProductName} ลงตะกร้า`}>
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                  <circle cx="9" cy="21" r="1"></circle>
-                  <circle cx="20" cy="21" r="1"></circle>
-                  <path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"></path>
+              <button className="product-add-button" type="button" onClick={(event) => onUpdateQuantity(product.id, 1, event.currentTarget)} aria-label={`เพิ่ม ${customerProductName} ลงตะกร้า`}>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                  <path d="M3 4h2l2.2 10.1a2 2 0 0 0 2 1.6h8.4a2 2 0 0 0 2-1.6L21 8H6.1" />
+                  <circle cx="10" cy="20" r="1.2" />
+                  <circle cx="18" cy="20" r="1.2" />
                 </svg>
                 เพิ่มลงตะกร้า
               </button>
