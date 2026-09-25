@@ -129,8 +129,8 @@ export function useStorefront({
     heroDescription: "แหนมหมู ไส้กรอกอีสาน และกากหมูโบราณ (แคปหมูติดมัน) สูตรร้านเจ๊น้อย เลือกของอร่อย ใส่ตะกร้า แล้วสั่งได้เลย",
     storyTitle: "ของดีจากเขียงหมูตะคร้อ",
     storyDescription: "รสชาติคุ้นเคยจากร้านท้องถิ่น ส่งต่อด้วยวัตถุดิบที่คัดแล้วและความตั้งใจในทุกแพ็ก จากมือเจ๊น้อยถึงมือลูกค้า",
-    phonePrimary: "087-2416773",
-    phoneSecondary: "087-8755479",
+    phonePrimary: "087-241-6773",
+    phoneSecondary: "061-093-5329",
     storeLogoUrl: "/images/products/jae-noi-shop-logo.jpg",
     storeCoverUrl: "/images/products/jae-noi-holding-two-naem-pork-bags.jpg",
   });

@@ -26,8 +26,8 @@ export default async function TrackOrderPage({ searchParams }: { searchParams: P
   const content = storefront?.content ?? {
     ...DEFAULT_STOREFRONT_CONTENT,
     storeName: "เจ๊น้อย เขียงหมูตะคร้อ",
-    phonePrimary: "087-2416773",
-    phoneSecondary: "087-8755479",
+    phonePrimary: "087-241-6773",
+    phoneSecondary: "061-093-5329",
   };
   return (
     <OrderTracker

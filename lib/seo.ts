@@ -14,8 +14,8 @@ export const SHOP = {
   district: "อ.บัวใหญ่",
   province: "จ.นครราชสีมา",
   postalCode: "30120",
-  phonePrimary: "087-2416773",
-  phoneSecondary: "061-0935329",
+  phonePrimary: "087-241-6773",
+  phoneSecondary: "061-093-5329",
 } as const;
 
 /** What a customer would actually type into Google or ask an assistant. */

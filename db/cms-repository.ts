@@ -79,7 +79,7 @@ export async function getAdminCmsData(): Promise<AdminCmsData> {
     heroDescription: value("hero_description", DEFAULT_STOREFRONT_CONTENT.heroDescription),
     storyTitle: value("story_title", DEFAULT_STOREFRONT_CONTENT.storyTitle),
     storyDescription: value("story_description", DEFAULT_STOREFRONT_CONTENT.storyDescription),
-    phonePrimary: value("phone_primary", "087-2416773"), phoneSecondary: value("phone_secondary", "087-8755479"),
+    phonePrimary: value("phone_primary", "087-241-6773"), phoneSecondary: value("phone_secondary", "061-093-5329"),
     shippingFee: fee === undefined || fee === "" ? null : Number(fee), pickupAddress: value("pickup_address"),
     freeShippingMinimum: freeShippingMinimum === undefined || freeShippingMinimum === "" ? null : Number(freeShippingMinimum),
     lastFreeShippingMinimum: freeShippingMinimum === undefined || freeShippingMinimum === ""
