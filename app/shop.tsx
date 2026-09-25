@@ -41,10 +41,20 @@ const StarIcon = () => (
 
 function OrderStepIcon({ step }: Readonly<{ step: 1 | 2 | 3 }>) {
   if (step === 1) {
-    return <svg className="order-step-icon" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 9h18l-1.5 11a2 2 0 0 1-2 1.8H5.5a2 2 0 0 1-2-1.8L3 9Z" /><path d="M8 9V7a4 4 0 0 1 8 0v2" /></svg>;
+    return <svg className="order-step-icon order-step-icon-bag" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M5 8h14l1 12H4L5 8Z" />
+      <path d="M8 8V6.5a4 4 0 0 1 8 0V8" />
+      <path d="M9 12h6M9 15h4" />
+    </svg>;
   }
   if (step === 2) {
-    return <svg className="order-step-icon" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h9" /><path d="M7 8h4M7 12h3" /><path d="m17 21 4-4-4-4" /><path d="M12 17h9" /></svg>;
+    return <svg className="order-step-icon order-step-icon-address" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M4.5 3.5h8l3 3V12M12.5 3.5v3h3" />
+      <path d="M4.5 3.5v17h8" />
+      <path d="M7.5 10h5M7.5 13h4" />
+      <path d="M18 13a3 3 0 0 0-3 3c0 2.1 3 5 3 5s3-2.9 3-5a3 3 0 0 0-3-3Z" />
+      <circle cx="18" cy="16" r=".8" />
+    </svg>;
   }
   return <svg className="order-step-icon order-step-icon-qr" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
     <path d="M8 4H6a2 2 0 0 0-2 2v2M16 4h2a2 2 0 0 1 2 2v2M4 16v2a2 2 0 0 0 2 2h2M20 16v2a2 2 0 0 1-2 2h-2" />

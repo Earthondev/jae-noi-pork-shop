@@ -763,7 +763,7 @@ img { display: block; }
   border: 1px solid rgba(212, 160, 23, .24);
   border-radius: inherit;
 }
-.order-step-icon { width: 31px; height: 31px; }
+.order-step-icon { width: 33px; height: 33px; stroke-width: 1.7; }
 .order-step-icon-qr { width: 33px; height: 33px; stroke-width: 1.65; }
 .order-step-copy { min-width: 0; display: grid; gap: 3px; padding-right: 18px; }
 .order-step h3 { margin: 0; color: var(--ink); font-size: 1rem; font-weight: 900; line-height: 1.25; }
