@@ -21,6 +21,27 @@ export function productOrderState(product: CatalogProduct, context: CatalogueCon
   return { canOrder: true, label: "เปิดรับพรีออเดอร์" };
 }
 
+/**
+ * Search snippet for a product detail page. It targets purchase intent so it
+ * doesn't compete with the editorial guide (`/products/naem-moo` etc.) for the
+ * same "<product> บัวใหญ่" phrase, and states only facts the checkout always
+ * offers: rounds, PromptPay, pickup, and postal delivery when a fee is set.
+ * Price stays out on purpose — Google can keep a title for days after an admin
+ * price change, and the page itself shows the live price.
+ */
+export function productPageMeta(product: CatalogProduct, storeName: string, context: Pick<CatalogueContext, "shippingFee">) {
+  const name = displayProductName(product.name);
+  // "รอข้อมูลหน่วยขาย" is the catalogue's placeholder, not a unit to advertise;
+  // a unit the name already states ("แคปหมู แบบ 1 กิโลกรัม") isn't repeated.
+  const rawUnit = product.unit.trim();
+  const unit = rawUnit.startsWith("รอข้อมูล") || name.includes(rawUnit) ? "" : rawUnit;
+  const fulfilment = context.shippingFee === null ? "รับเองที่หน้าร้าน" : "รับเองที่หน้าร้านหรือส่งไปรษณีย์";
+  return {
+    title: `${name} สั่งออนไลน์ | ${storeName} บัวใหญ่`,
+    description: `สั่ง${name}${unit ? ` ขนาด ${unit}` : ""} จาก${storeName} อ.บัวใหญ่ จ.นครราชสีมา สั่งตามรอบขาย โอนผ่านพร้อมเพย์ ${fulfilment} ดูราคาล่าสุดและรูปสินค้าได้ในหน้านี้`,
+  };
+}
+
 function validPrice(price: number | null): price is number {
   return price !== null && Number.isFinite(price) && price > 0;
 }

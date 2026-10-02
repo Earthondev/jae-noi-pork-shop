@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { catalogueJsonLd, productJsonLdNode, productPageJsonLd, productPath, productOrderState, catalogueSitemap } from '../lib/catalogue-seo.ts';
+import { catalogueJsonLd, productJsonLdNode, productPageJsonLd, productPageMeta, productPath, productOrderState, catalogueSitemap } from '../lib/catalogue-seo.ts';
 import { guideJsonLd, PRODUCT_GUIDES, SITE_URL } from '../lib/seo.ts';
 
 const product = { id: 'PORKRIND1', name: 'กากหมูโบราณ', unit: '1 กล่อง', detail: 'ทอดสด', image: '/images/products/product-placeholder.svg', price: 220, status: 'เปิดขาย', category: 'กากหมู', badge: '', updatedAt: '2026-09-10T07:00:00.000Z' };
@@ -75,4 +75,19 @@ test('editorial guides contain breadcrumbs without selling a fixed-price product
     assert.equal(data.itemListElement[2].item, `${SITE_URL}/products/${guide.slug}`);
     assert.equal(data.offers, undefined);
   }
+});
+
+test('product page snippets target ordering with live facts and no price', () => {
+  const meta = productPageMeta(product, 'เจ๊น้อย เขียงหมูตะคร้อ', context);
+  assert.equal(meta.title, 'กากหมูโบราณ (แคปหมูติดมัน) สั่งออนไลน์ | เจ๊น้อย เขียงหมูตะคร้อ บัวใหญ่');
+  assert.match(meta.description, /^สั่งกากหมูโบราณ \(แคปหมูติดมัน\) ขนาด 1 กล่อง จากเจ๊น้อย เขียงหมูตะคร้อ อ\.บัวใหญ่/);
+  assert.match(meta.description, /พร้อมเพย์ รับเองที่หน้าร้านหรือส่งไปรษณีย์/);
+  assert.doesNotMatch(`${meta.title} ${meta.description}`, /220|บาท/);
+
+  const pickupOnly = productPageMeta({ ...product, unit: 'รอข้อมูลหน่วยขาย' }, 'ร้าน', { shippingFee: null });
+  assert.doesNotMatch(pickupOnly.description, /ไปรษณีย์|รอข้อมูล|ขนาด/);
+  assert.match(pickupOnly.description, /รับเองที่หน้าร้าน/);
+
+  const unitInName = productPageMeta({ ...product, name: 'แคปหมู แบบ 1 กิโลกรัม', unit: '1 กิโลกรัม' }, 'ร้าน', context);
+  assert.match(unitInName.description, /^สั่งแคปหมู แบบ 1 กิโลกรัม จากร้าน/);
 });

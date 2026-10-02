@@ -7,7 +7,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getPublicStorefront } from "../../../../db/public-storefront";
 import { displayProductName } from "../../../../lib/product-catalog";
-import { productOrderState, productPageJsonLd, productPath } from "../../../../lib/catalogue-seo";
+import { productOrderState, productPageJsonLd, productPageMeta, productPath } from "../../../../lib/catalogue-seo";
 import { SITE_URL } from "../../../../lib/seo";
 import { SeoPageNav } from "../../../_components/shop/seo-page-nav";
 import { CatalogueShipping } from "../../../_components/shop/catalogue-shipping";
@@ -27,8 +27,7 @@ async function loadProduct(params: Props["params"]) {
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { product, storefront } = await loadProduct(params);
   const name = displayProductName(product.name);
-  const title = `${name} บัวใหญ่ | ${storefront.content.storeName}`;
-  const description = `${name}${product.unit ? ` ขนาด ${product.unit}` : ""} จาก${storefront.content.storeName} อ.บัวใหญ่ จ.นครราชสีมา ดูราคา รูปสินค้า ค่าจัดส่ง และสถานะรอบขาย`;
+  const { title, description } = productPageMeta(product, storefront.content.storeName, storefront);
   const url = `${SITE_URL}${productPath(product.id)}`;
   return {
     title, description,
