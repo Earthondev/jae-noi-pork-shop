@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { useRef } from "react";
+import { useEffect, useRef } from "react";
 
 export type SiteHeaderProps = Readonly<{
   cartCount: number;
@@ -25,6 +25,34 @@ export function SiteHeader({
 }: SiteHeaderProps) {
   const categoryMenuRef = useRef<HTMLDetailsElement>(null);
   const hasCategoryMenu = categories.length >= 3;
+
+  // A native <details> only closes from its own summary, so the popover would
+  // otherwise stay open over the products while the sticky header carries it
+  // down the page. Close it like a menu: outside press, Escape, or focus leaving.
+  useEffect(() => {
+    const menu = categoryMenuRef.current;
+    if (!menu) return;
+    const close = () => menu.removeAttribute("open");
+    const onPointerDown = (event: PointerEvent) => {
+      if (menu.open && event.target instanceof Node && !menu.contains(event.target)) close();
+    };
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key !== "Escape" || !menu.open) return;
+      close();
+      menu.querySelector("summary")?.focus();
+    };
+    const onFocusOut = (event: FocusEvent) => {
+      if (event.relatedTarget instanceof Node && !menu.contains(event.relatedTarget)) close();
+    };
+    document.addEventListener("pointerdown", onPointerDown);
+    menu.addEventListener("keydown", onKeyDown);
+    menu.addEventListener("focusout", onFocusOut);
+    return () => {
+      document.removeEventListener("pointerdown", onPointerDown);
+      menu.removeEventListener("keydown", onKeyDown);
+      menu.removeEventListener("focusout", onFocusOut);
+    };
+  }, [hasCategoryMenu]);
 
   function selectCategory(category: string) {
     onSelectCategory(category);

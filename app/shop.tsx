@@ -285,22 +285,44 @@ export function Shop({ initialStorefront }: ShopProps) {
     if (!cartOpen) return;
     const drawer = drawerRef.current;
     const previousFocus = document.activeElement instanceof HTMLElement ? document.activeElement : null;
-    const focusable = () => Array.from(drawer?.querySelectorAll<HTMLElement>('button:not([disabled]), a[href], input:not([disabled]), textarea:not([disabled]), select:not([disabled]), [tabindex]:not([tabindex="-1"])') ?? []);
+    const focusable = () => Array.from(drawer?.querySelectorAll<HTMLElement>('button:not([disabled]), a[href], input:not([disabled]), textarea:not([disabled]), select:not([disabled]), [tabindex]:not([tabindex="-1"])') ?? [])
+      .filter((element) => {
+        if (element.getClientRects().length === 0) return false;
+        // A radio group is one Tab stop: its checked option, else its first.
+        if (!(element instanceof HTMLInputElement) || element.type !== "radio" || !element.name) return true;
+        const group = Array.from(drawer?.querySelectorAll<HTMLInputElement>(`input[type="radio"][name="${CSS.escape(element.name)}"]`) ?? []);
+        return element === (group.find((radio) => radio.checked) ?? group[0]);
+      });
     focusable()[0]?.focus();
     document.body.style.overflow = "hidden";
+    let lastTabWasBackward = false;
+    // Tab is moved explicitly rather than left to the browser: Safari's default
+    // order skips buttons and links, so it stepped past the dialog's last
+    // control and out to the browser chrome, where no focus event fires.
     function handleKey(event: KeyboardEvent) {
       if (event.key === "Escape") setCartOpen(false);
       if (event.key !== "Tab") return;
+      lastTabWasBackward = event.shiftKey;
       const elements = focusable();
       if (elements.length === 0) return;
-      const first = elements[0];
-      const last = elements[elements.length - 1];
-      if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last.focus(); }
-      if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first.focus(); }
+      event.preventDefault();
+      const current = elements.findIndex((element) => element === document.activeElement || element.contains(document.activeElement));
+      const step = event.shiftKey ? -1 : 1;
+      const next = current === -1 ? (event.shiftKey ? elements.length - 1 : 0) : (current + step + elements.length) % elements.length;
+      elements[next].focus();
+    }
+    // Backstop for focus that leaves by another route (e.g. a portal-rendered
+    // control taking focus): return it to the matching end of the dialog.
+    function handleFocusIn(event: FocusEvent) {
+      if (!drawer || !(event.target instanceof Node) || drawer.contains(event.target)) return;
+      const elements = focusable();
+      (lastTabWasBackward ? elements[elements.length - 1] : elements[0])?.focus();
     }
     document.addEventListener("keydown", handleKey);
+    document.addEventListener("focusin", handleFocusIn);
     return () => {
       document.removeEventListener("keydown", handleKey);
+      document.removeEventListener("focusin", handleFocusIn);
       document.body.style.overflow = "";
       previousFocus?.focus();
     };
@@ -329,6 +351,10 @@ export function Shop({ initialStorefront }: ShopProps) {
 
   const cartItems = storefront.products.filter((product) => (quantities[product.id] ?? 0) > 0);
   const cartCount = cartItems.reduce((sum, product) => sum + (quantities[product.id] ?? 0), 0);
+  // On mobile the floating cart carries the "added" confirmation itself, so the
+  // separate toast is only announced, not stacked on top of it (CSS hides the
+  // pill from 720px up, where the toast stays visible).
+  const showFloatingCart = cartCount > 0 && !cartOpen && nearProducts;
   const subtotal = useMemo(
     () =>
       storefront.products.reduce(
@@ -486,6 +512,7 @@ export function Shop({ initialStorefront }: ShopProps) {
           __html: catalogueJsonLd(storefront.products, storefront),
         }} />
       )}
+      <a className="skip-link" href="#main-content">ข้ามไปเนื้อหาหลัก</a>
       <SiteHeader
         cartCount={cartCount}
         onOpenCart={() => setCartOpen(true)}
@@ -640,7 +667,7 @@ export function Shop({ initialStorefront }: ShopProps) {
         />
       )}
       {cartFeedback && !cartOpen && (
-        <div className="cart-feedback" role="status" aria-live="polite">
+        <div className={`cart-feedback${showFloatingCart ? " is-merged" : ""}`} role="status" aria-live="polite">
           <span aria-hidden="true">✓</span>
           <span>{cartFeedback}</span>
           <button type="button" onClick={() => setCartOpen(true)}>ดูตะกร้า</button>
@@ -659,8 +686,8 @@ export function Shop({ initialStorefront }: ShopProps) {
           <button type="button" className="storefront-notice-close" onClick={() => storefront.setNotice(null)} aria-label="ปิดข้อความแจ้งเตือน">×</button>
         </div>
       )}
-      {cartCount > 0 && !cartOpen && nearProducts && (
-        <button className="floating-cart" type="button" onClick={() => setCartOpen(true)} aria-label={`เปิดตะกร้า มีสินค้า ${cartCount} ชิ้น รวมค่าสินค้า ${subtotal} บาท`}>
+      {showFloatingCart && (
+        <button className={`floating-cart${cartFeedback ? " has-feedback" : ""}`} type="button" onClick={() => setCartOpen(true)} aria-label={`เปิดตะกร้า มีสินค้า ${cartCount} ชิ้น รวมค่าสินค้า ${subtotal} บาท`}>
           <span className="floating-cart-icon" aria-hidden="true">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
               <path d="M4 5h2l1.6 9.3a2 2 0 0 0 2 1.7h7.8a2 2 0 0 0 1.9-1.5L21 8H7" />
@@ -670,7 +697,9 @@ export function Shop({ initialStorefront }: ShopProps) {
           </span>
           <span className="floating-cart-copy">
             <strong key={cartCount}>ตะกร้า · {cartCount} ชิ้น</strong>
-            <small key={subtotal}>รวมสินค้า {subtotal.toLocaleString("th-TH")} บาท</small>
+            <small key={cartFeedback ? `added-${cartCount}` : subtotal}>
+              {cartFeedback ? "✓ เพิ่มลงตะกร้าแล้ว" : `รวมสินค้า ${subtotal.toLocaleString("th-TH")} บาท`}
+            </small>
           </span>
           <span className="floating-cart-arrow" aria-hidden="true">ดูตะกร้า →</span>
         </button>

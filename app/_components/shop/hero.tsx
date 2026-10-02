@@ -50,7 +50,7 @@ export function Hero({ storeLoading, orderingOpen, rounds, nextRound, content, s
 
   return (
     <>
-      <section className="hero" id="top">
+      <section className="hero" id="main-content" tabIndex={-1}>
         <div className="hero-photo" aria-hidden="true">
           <Image
             className="hero-photo-img"
@@ -58,6 +58,9 @@ export function Hero({ storeLoading, orderingOpen, rounds, nextRound, content, s
             alt=""
             width={1100}
             height={846}
+            // Measured render widths: 68vw capped at 460px on phones, 46vw on
+            // tablets, 81vw from the 1024px desktop layout up.
+            sizes="(min-width: 1024px) 82vw, (min-width: 720px) 47vw, min(68vw, 460px)"
             priority
           />
         </div>

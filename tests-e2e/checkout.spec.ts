@@ -316,6 +316,15 @@ test("keeps hero and category navigation responsive at the configured breakpoint
     viewport.width >= 1024 ? "50% 60%" : "100% 0%",
   );
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+  // The LCP image declares its real rendered width, so phones don't fetch the
+  // desktop-sized file (an empty `sizes` defaults to 100vw).
+  const heroRequest = await page.locator(".hero-photo-img").evaluate((image: HTMLImageElement) => {
+    const width = new URL(image.currentSrc, location.href).searchParams.get("w");
+    return { sizes: image.sizes, renderedDevicePx: image.getBoundingClientRect().width * devicePixelRatio, requested: Number(width) };
+  });
+  expect(heroRequest.sizes).not.toBe("");
+  // 640w is the smallest srcset candidate, so it is the floor at DPR 1.
+  if (viewport.width < 1024) expect(heroRequest.requested).toBeLessThanOrEqual(Math.max(640, heroRequest.renderedDevicePx * 1.6));
 
   const categoryMenu = page.locator(".category-menu > summary");
   if (viewport.width >= 960) {
@@ -327,6 +336,84 @@ test("keeps hero and category navigation responsive at the configured breakpoint
     await expect(categoryMenu).toBeHidden();
     await expect(page.locator(".categories-container")).toBeVisible();
   }
+});
+
+test("keeps loading spinners turning under reduced motion while stopping decoration", async ({ page }) => {
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  const timing = await page.evaluate(() => {
+    const button = document.createElement("button");
+    button.className = "submit-order";
+    button.innerHTML = '<svg class="spin" viewBox="0 0 10 10"></svg>';
+    document.body.appendChild(button);
+    const spinner = getComputedStyle(button.querySelector("svg")!);
+    const glow = getComputedStyle(document.querySelector(".hero")!, "::before");
+    return { spinnerIterations: spinner.animationIterationCount, glowAnimation: glow.animationName };
+  });
+  expect(timing.spinnerIterations).toBe("infinite");
+  expect(timing.glowAnimation).toBe("none");
+});
+
+test("keeps storefront and cart tap targets at least 44px on touch layouts", async ({ page }) => {
+  const viewport = page.viewportSize();
+  test.skip(!viewport || viewport.width > 500, "touch-size assertion");
+  await addFirstProductToCart(page);
+  // Layout size (offsetWidth/Height) so a control mid-transition isn't
+  // under-measured; inline heading links and inputs wrapped by a tappable
+  // label are exempt (WCAG 2.5.8 inline / enlarged-target exceptions).
+  const undersized = await page.evaluate(() => [...document.querySelectorAll<HTMLElement>("a, button, summary, select, textarea, input")]
+    .filter((element) => element.getClientRects().length > 0 && !element.closest(".sr-only, .skip-link"))
+    .filter((element) => !(element.matches("h3 a")) && !(element instanceof HTMLInputElement && element.closest("label")))
+    .filter((element) => element.offsetWidth < 44 || element.offsetHeight < 44)
+    .map((element) => `${element.offsetWidth}x${element.offsetHeight} ${element.className || element.tagName} "${(element.getAttribute("aria-label") ?? element.textContent ?? "").trim().slice(0, 24)}"`));
+  expect(undersized).toEqual([]);
+});
+
+test("offers a skip link that jumps keyboard focus past the header", async ({ page, browserName }) => {
+  // WebKit's default Tab order skips links entirely (Safari's preference).
+  test.skip(browserName === "webkit", "Safari only tabs to links with its keyboard-navigation setting on");
+  await page.waitForLoadState("networkidle");
+  await page.locator("body").focus();
+  await page.keyboard.press("Tab");
+  const skip = page.getByRole("link", { name: "ข้ามไปเนื้อหาหลัก" });
+  await expect(skip).toBeFocused();
+  await expect(skip).toBeInViewport();
+  await page.keyboard.press("Enter");
+  await expect(page.locator("#main-content")).toBeFocused();
+  await page.keyboard.press("Tab");
+  expect(await page.evaluate(() => !!document.activeElement?.closest(".site-header"))).toBe(false);
+});
+
+test("keeps keyboard focus inside the open cart dialog in both directions", async ({ page }) => {
+  await addFirstProductToCart(page);
+  const dialog = page.locator("#cart-dialog");
+  await expect(dialog).toBeVisible();
+  for (const key of ["Tab", "Shift+Tab"]) {
+    for (let press = 0; press < 30; press += 1) {
+      await page.keyboard.press(key);
+      expect(await page.evaluate(() => !!document.activeElement?.closest("#cart-dialog")), `${key} #${press + 1} left the dialog`).toBe(true);
+    }
+  }
+});
+
+test("closes the header category menu on Escape and on an outside press", async ({ page }) => {
+  const viewport = page.viewportSize();
+  test.skip(!viewport || viewport.width < 960, "the category menu only exists at desktop widths");
+
+  // <details> toggles natively before hydration, but the close handlers are
+  // attached by React — wait for the client bundle before exercising them.
+  await page.waitForLoadState("networkidle");
+  const menu = page.locator(".category-menu");
+  const summary = menu.locator("summary");
+  await summary.click();
+  await expect(menu).toHaveAttribute("open", "");
+  await page.keyboard.press("Escape");
+  await expect(menu).not.toHaveAttribute("open");
+  await expect(summary).toBeFocused();
+
+  await summary.click();
+  await expect(menu).toHaveAttribute("open", "");
+  await page.locator(".hero h1").click();
+  await expect(menu).not.toHaveAttribute("open");
 });
 
 test("keeps the unsaved-changes affordance and payment summary usable on a small viewport", async ({ page }) => {

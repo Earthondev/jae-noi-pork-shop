@@ -1,3 +1,4 @@
+import Image from "next/image";
 import Link from "next/link";
 import { QRCodeCanvas } from "qrcode.react";
 import { useEffect, useRef, useState } from "react";
@@ -481,8 +482,9 @@ export function CartDrawer({ drawerRef, onClose, cart, checkout, storefront, ord
                     <div className="cart-line-product">
                       <span className="cart-line-image">
                         {product.image ? (
-                          // eslint-disable-next-line @next/next/no-img-element
-                          <img src={product.image} alt="" loading="lazy" decoding="async" />
+                          // Optimized like the product card: the raw upload is ~1280px, far
+                          // more than this 62px thumbnail needs.
+                          <Image src={product.image} alt="" width={128} height={128} sizes="62px" />
                         ) : (
                           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
                             <path d="M5 8h14l1 12H4L5 8Z" /><path d="M8 8V6.5a4 4 0 0 1 8 0V8" />
@@ -610,9 +612,9 @@ export function CartDrawer({ drawerRef, onClose, cart, checkout, storefront, ord
                       <span aria-hidden="true">⌖</span> เปิดแผนที่ / นำทาง <span aria-hidden="true">↗</span>
                     </a>
                   )}
-                  <label>ชื่อผู้รับ<span className="req" aria-hidden="true">*</span><input name="customerName" required autoComplete="name" placeholder="ชื่อ–นามสกุล" value={checkout.customerName} onChange={(event) => checkout.onChange("customerName", event.target.value)} /></label>
+                  <label><span className="label-text">ชื่อผู้รับ<span className="req" aria-hidden="true">*</span></span><input name="customerName" required autoComplete="name" placeholder="ชื่อ–นามสกุล" value={checkout.customerName} onChange={(event) => checkout.onChange("customerName", event.target.value)} /></label>
                   <label>
-                    เบอร์โทร<span className="req" aria-hidden="true">*</span><input name="phone" required inputMode="tel" autoComplete="tel" pattern="0[0-9]{8,9}" maxLength={10} title="กรอกเบอร์โทร 9-10 หลัก เริ่มต้นด้วย 0" placeholder="08x-xxx-xxxx" aria-describedby="phone-help" value={checkout.phone} onChange={(event) => checkout.onChange("phone", event.target.value.replace(/\D/g, "").slice(0, 10))} />
+                    <span className="label-text">เบอร์โทร<span className="req" aria-hidden="true">*</span></span><input name="phone" required inputMode="tel" autoComplete="tel" pattern="0[0-9]{8,9}" maxLength={10} title="กรอกเบอร์โทร 9-10 หลัก เริ่มต้นด้วย 0" placeholder="08x-xxx-xxxx" aria-describedby="phone-help" value={checkout.phone} onChange={(event) => checkout.onChange("phone", event.target.value.replace(/\D/g, "").slice(0, 10))} />
                     <small className="field-help" id="phone-help">ใช้เบอร์นี้ติดตามสถานะออเดอร์ภายหลัง</small>
                   </label>
                   {storefront.fulfilment === "postal" && (

@@ -1,4 +1,33 @@
-const FLY_DURATION_MS = 1_080;
+// Adding to cart is a repeated action: the cart should acknowledge the tap
+// within well under a second, not after a long ceremonial arc.
+const FLY_DURATION_MS = 640;
+
+/**
+ * Paints the card's on-screen image into a small canvas. The card image is
+ * already decoded, so this is synchronous: the flight starts on the tap and
+ * can never fly an empty box while a fresh <img> clone waits on decode().
+ */
+function snapshotImage(sourceImage: HTMLImageElement, size: number): HTMLCanvasElement | null {
+  if (!sourceImage.complete || sourceImage.naturalWidth === 0) return null;
+  const scale = Math.min(window.devicePixelRatio || 1, 2);
+  const canvas = document.createElement("canvas");
+  canvas.width = canvas.height = Math.round(size * scale);
+  const context = canvas.getContext("2d");
+  if (!context) return null;
+  // object-fit: cover, centred. Scale the whole image into an oversized
+  // destination rather than cropping a source rect: with srcset, naturalWidth
+  // is density-corrected and does not match the bitmap pixels a source rect
+  // is measured in, so only the aspect ratio is trustworthy.
+  const aspect = sourceImage.naturalWidth / sourceImage.naturalHeight;
+  const drawWidth = aspect >= 1 ? canvas.height * aspect : canvas.width;
+  const drawHeight = aspect >= 1 ? canvas.height : canvas.width / aspect;
+  try {
+    context.drawImage(sourceImage, (canvas.width - drawWidth) / 2, (canvas.height - drawHeight) / 2, drawWidth, drawHeight);
+  } catch {
+    return null;
+  }
+  return canvas;
+}
 
 /** Adds a decorative product flight while leaving cart state to the caller. */
 export function animateFlyToCart(sourceImage: HTMLImageElement, targetButton: HTMLElement): void {
@@ -6,6 +35,8 @@ export function animateFlyToCart(sourceImage: HTMLImageElement, targetButton: HT
   if (!sourceImage.isConnected || !targetButton.isConnected || typeof Element.prototype.animate !== "function") return;
 
   const itemSize = 56;
+  const snapshot = snapshotImage(sourceImage, itemSize);
+  if (!snapshot) return;
 
   const outer = document.createElement("div");
   outer.className = "flying-item-outer";
@@ -13,10 +44,7 @@ export function animateFlyToCart(sourceImage: HTMLImageElement, targetButton: HT
 
   const inner = document.createElement("div");
   inner.className = "flying-item-inner";
-  const image = document.createElement("img");
-  image.src = sourceImage.currentSrc || sourceImage.src;
-  image.alt = "";
-  inner.appendChild(image);
+  inner.appendChild(snapshot);
   outer.appendChild(inner);
 
   const startFlight = () => {
@@ -69,9 +97,5 @@ export function animateFlyToCart(sourceImage: HTMLImageElement, targetButton: HT
     yAnimation.oncancel = cleanup;
   };
 
-  if (typeof image.decode === "function") {
-    void image.decode().then(startFlight).catch(() => outer.remove());
-  } else {
-    startFlight();
-  }
+  startFlight();
 }
