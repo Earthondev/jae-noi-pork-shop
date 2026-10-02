@@ -112,8 +112,10 @@ truth. The previous note that the site had zero indexed pages is obsolete.
   product facts accurate. Results vary by location and personalization.
 - A Google local result displayed the Website link as `http://jaenoishop.com/`,
   and in September the `http://` homepage still drew 25 impressions as its own
-  row. The site 308-redirects it to HTTPS correctly; the remaining fix is the
-  verified Business Profile's website field, which only the owner can edit.
+  row. The site 308-redirects it to HTTPS correctly. The owner changed the
+  verified Business Profile's website field to `https://jaenoishop.com` on
+  2026-10-02; profile edits and the http row can take days to weeks to fade,
+  so judge it from October onward, not from the September numbers.
 - Since 2026-10-02 the HTML verification file answers 200 at its exact path
   (`html_handling: "none"` in `vite.config.ts`); before that Cloudflare
   307-redirected it to an extension-less URL.
