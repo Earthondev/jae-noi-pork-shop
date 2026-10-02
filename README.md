@@ -390,4 +390,3 @@ account และ database ด้วยตนเอง
 - [docs/monitoring.md](./docs/monitoring.md) — Sentry, quota และ incident response
 - [docs/slipok-integration.md](./docs/slipok-integration.md) — สถานะ SlipOK และวิธีปิดกลับ
 - [CLAUDE.md](./CLAUDE.md) — ข้อควรระวังตอน deploy, custom domain และการทำงานพร้อมกันหลาย agent
-- [figma-plugin/README.md](./figma-plugin/README.md) — เครื่องมือช่วยบันทึกและทบทวน UX/UI ใน Figma
