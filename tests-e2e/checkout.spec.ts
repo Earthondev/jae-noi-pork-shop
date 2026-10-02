@@ -42,7 +42,17 @@ const OPEN_ROUND = {
  * payment summary.
  */
 
+// 1×1 transparent PNG. Under full-suite load the dev image optimizer can leave
+// /media/ (R2-backed) requests pending indefinitely, which keeps the "load"
+// event from firing and hangs page.reload(). Nothing here asserts on pixels.
+const BLANK_PNG = Buffer.from(
+  "89504e470d0a1a0a0000000d4948445200000001000000010806000000" +
+  "1f15c4890000000b49444154789c6360000200000500017a5eab3f0000000049454e44ae426082",
+  "hex",
+);
+
 test.beforeEach(async ({ page }) => {
+  await page.route("**/_vinext/image?**", (route) => route.fulfill({ status: 200, contentType: "image/png", body: BLANK_PNG }));
   const payload = await readStorefrontSnapshot(page);
   await page.route("**/api/storefront", (route) => route.fulfill({
     status: 200,
@@ -299,15 +309,20 @@ test("keeps hero and category navigation responsive at the configured breakpoint
   if (!viewport) throw new Error("viewport is required");
 
   // Renamed in 7dd4dfa ("Replace hero photo card with a bleeding
-  // product-spread image") — object-position: right top resolves to this.
-  await expect(page.locator(".hero-photo-img")).toHaveCSS("object-position", "100% 0%");
+  // product-spread image") — object-position: right top resolves to "100% 0%".
+  // 069173d re-frames it to "center 60%" from the 1024px breakpoint up.
+  await expect(page.locator(".hero-photo-img")).toHaveCSS(
+    "object-position",
+    viewport.width >= 1024 ? "50% 60%" : "100% 0%",
+  );
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
 
   const categoryMenu = page.locator(".category-menu > summary");
   if (viewport.width >= 960) {
     await expect(categoryMenu).toBeVisible();
     await expect(categoryMenu).toHaveAttribute("aria-label", "เปิดเมนูหมวดสินค้า");
-    await expect(page.locator(".hero")).toHaveCSS("align-items", "start");
+    // 069173d vertically centres the hero from 1024px up; 720–1023px keeps start.
+    await expect(page.locator(".hero")).toHaveCSS("align-items", viewport.width >= 1024 ? "center" : "start");
   } else {
     await expect(categoryMenu).toBeHidden();
     await expect(page.locator(".categories-container")).toBeVisible();

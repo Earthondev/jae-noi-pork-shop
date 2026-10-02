@@ -1,11 +1,18 @@
 import { expect, test } from "@playwright/test";
 
 test("mobile round form keeps save visible and explains a duplicate delivery date", async ({ page }) => {
+  const viewport = page.viewportSize();
+  // .admin-round-quick-save only exists below the 800px breakpoint.
+  test.skip(!viewport || viewport.width >= 800, "mobile-only assertion");
   await page.goto("/admin?tab=rounds");
-  await page.getByRole("button", { name: "เพิ่มรอบ", exact: true }).click();
-
   const quickSave = page.locator(".admin-round-quick-save");
-  await expect(quickSave).toBeVisible();
+  // The button is in the SSR markup before React attaches its onClick, so a
+  // click that lands pre-hydration is silently dropped. Retry until the form
+  // opens; opening it is idempotent.
+  await expect(async () => {
+    await page.getByRole("button", { name: "เพิ่มรอบ", exact: true }).click();
+    await expect(quickSave).toBeVisible({ timeout: 1_000 });
+  }).toPass();
   await expect(page.locator(".admin-round-product-grid")).toHaveCount(0);
   await expect(page.locator(".admin-round-all-summary")).toContainText("เปิดขายสินค้าที่พร้อมขายครบทั้ง");
 
