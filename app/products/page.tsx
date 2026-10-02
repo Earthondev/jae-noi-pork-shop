@@ -25,7 +25,7 @@ export const metadata: Metadata = {
     url: PAGE_URL,
     type: "website",
     locale: "th_TH",
-    images: [{ url: "/og.png", width: 1536, height: 909, alt: "เมนูแหนมหมู ไส้กรอกอีสาน และแคปหมู เจ๊น้อย เขียงหมูตะคร้อ" }],
+    images: [{ url: "/og.jpg", width: 1200, height: 630, alt: "เมนูแหนมหมู ไส้กรอกอีสาน และแคปหมู เจ๊น้อย เขียงหมูตะคร้อ" }],
   },
 };
 

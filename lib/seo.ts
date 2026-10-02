@@ -120,7 +120,7 @@ export function shopJsonLd(storefront?: StorefrontData | null): string {
     name: storefront?.content.storeName ?? SHOP.name,
     legalName: SHOP.legalName,
     url: SITE_URL,
-    image: `${SITE_URL}/og.png`,
+    image: `${SITE_URL}/og.jpg`,
     // Organization/LocalBusiness logo — Google's Merchant and Knowledge Panel
     // surfaces read this field specifically, separately from `image` above.
     logo: new URL(storefront?.content.storeLogoUrl ?? "/images/products/jae-noi-shop-logo.jpg", SITE_URL).href,

@@ -18,7 +18,7 @@ export const metadata: Metadata = {
     url: PAGE_URL,
     type: "article",
     locale: "th_TH",
-    images: [{ url: "/og.png", width: 1536, height: 909, alt: "วิธีสั่งแหนมหมูออนไลน์จากเจ๊น้อย เขียงหมูตะคร้อ" }],
+    images: [{ url: "/og.jpg", width: 1200, height: 630, alt: "วิธีสั่งแหนมหมูออนไลน์จากเจ๊น้อย เขียงหมูตะคร้อ" }],
   },
 };
 

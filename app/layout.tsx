@@ -33,8 +33,8 @@ export async function generateMetadata(): Promise<Metadata> {
       shortcut: "/favicon-shop-v2.ico",
       apple: [{ url: "/apple-touch-icon-v2.png", sizes: "180x180", type: "image/png" }],
     },
-    openGraph: { title, description, type: "website", locale: "th_TH", images: [{ url: "/og.png", width: 1536, height: 909, alt: "เจ๊น้อย เขียงหมูตะคร้อ อร่อยถึงเครื่อง สั่งง่ายถึงบ้าน" }] },
-    twitter: { card: "summary_large_image", title, description, images: ["/og.png"] },
+    openGraph: { title, description, type: "website", locale: "th_TH", images: [{ url: "/og.jpg", width: 1200, height: 630, alt: "เจ๊น้อย เขียงหมูตะคร้อ อร่อยถึงเครื่อง สั่งง่ายถึงบ้าน" }] },
+    twitter: { card: "summary_large_image", title, description, images: ["/og.jpg"] },
   };
 }
 
