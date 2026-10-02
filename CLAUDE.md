@@ -61,11 +61,24 @@ owner shared https://share.google/xImLwlrVykUpT5klZ for sameAs; the map reads
 live settings. Admin forms, product IDs and checkout remain the source of
 business rules.
 
-### Current search status (verified 2026-09-25)
+### Current search status (verified 2026-10-02)
 
 Use the live Search Console property `sc-domain:jaenoishop.com` as the source of
 truth. The previous note that the site had zero indexed pages is obsolete.
 
+- The Performance report for 2026-09-01 through 2026-09-30 shows 6 clicks, 90
+  impressions, 6.7% CTR and average position 5.1 (August: 4 / 64 / 6.2% / 4.5).
+  The page table's clicks sum to the aggregate this time. Average position
+  slipped because product item pages started appearing at positions 8–10, not
+  because existing pages fell. Top pages by impressions: `/products` (2 clicks,
+  35 impressions), `/` (2, 27), `http://jaenoishop.com/` (1, 25),
+  `/products/item/NAEM250` (0, 21, position 9.8), `/products/sai-krok-isan`
+  (0, 12), `/products/kaep-moo` (0, 10), `/products/naem-moo` (1, 9). Mobile and
+  desktop each had 3 clicks (mobile position 3.5, desktop 7.1); all clicks came
+  from Thailand, while the US contributed 14 impressions.
+- The September query table exposed only `เขียงหมูใกล้ฉัน`, `ขายเนื้อใกล้ฉัน`,
+  `เขียงเนื้อใกล้ฉัน` (position 1, one impression each) and `njm072bl`. As
+  before, low-volume queries are omitted, so this is not a complete list.
 - The Performance report for 2026-08-01 through 2026-08-31 shows 4 clicks, 64
   impressions, 6.2% CTR and average position 4.5. These are Google Search
   clicks, not unique visitors, sessions, orders or revenue. The page table's
@@ -73,13 +86,14 @@ truth. The previous note that the site had zero indexed pages is obsolete.
   total and flag the page breakdown as inconsistent.
 - The query table for August exposed `ร้านเขียงหมู` (2 impressions, 0 clicks).
   Low-volume queries may be omitted, so this is not a complete query list.
-- The indexing report was last updated 2026-09-21 and showed 9 indexed pages
-  and 8 not indexed. Its 8-page total is a report snapshot, not a post-deploy
-  crawl result.
-- `https://jaenoishop.com/sitemap.xml` was resubmitted on 2026-09-25. Search
-  Console accepted it; the last-read date still showed 2026-09-21, with 13
-  discovered pages. Wait for Google to process the resubmission before judging
-  post-deploy indexing changes.
+- The indexing report was last updated 2026-09-21 (still the latest snapshot
+  on 2026-10-02) and showed 9 indexed pages and 8 not indexed: 2 page with
+  redirect, 1 alternate page with proper canonical, 4 discovered – currently
+  not indexed, 1 crawled – currently not indexed. It predates the processed
+  sitemap resubmission, so it is not a post-deploy crawl result.
+- `https://jaenoishop.com/sitemap.xml` was resubmitted on 2026-09-25 and Google
+  has since processed it (last read 2026-09-25, status success, 13 discovered
+  pages).
 - Merchant listings and Product reports were last updated 2026-09-23 and showed
   14 valid items and 0 invalid items. The Merchant listings report listed
   non-critical recommendations for `deliveryTime`, `hasMerchantReturnPolicy`
@@ -96,9 +110,13 @@ truth. The previous note that the site had zero indexed pages is obsolete.
   and general information, with no shop result in the results inspected. Focus
   near-term content on purchase-intent and local phrases while keeping the
   product facts accurate. Results vary by location and personalization.
-- A Google local result displayed the Website link as `http://jaenoishop.com/`.
-  If editing the verified Business Profile, check that its website field uses
-  the canonical HTTPS URL.
+- A Google local result displayed the Website link as `http://jaenoishop.com/`,
+  and in September the `http://` homepage still drew 25 impressions as its own
+  row. The site 308-redirects it to HTTPS correctly; the remaining fix is the
+  verified Business Profile's website field, which only the owner can edit.
+- Since 2026-10-02 the HTML verification file answers 200 at its exact path
+  (`html_handling: "none"` in `vite.config.ts`); before that Cloudflare
+  307-redirected it to an extension-less URL.
 
 Search Console reports can lag behind deployment by several days. Distinguish
 report data dates from current live page behavior, and use URL Inspection or a
