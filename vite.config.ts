@@ -143,7 +143,12 @@ export default defineConfig(async ({ command }) => {
     // and falls back to a 307 at the untouched source file when it is missing —
     // which is why every product photo was being delivered full-size and
     // unconverted even though the optimizer was wired up correctly.
-    assets: { binding: "ASSETS" },
+    //
+    // `html_handling: "none"` serves `.html` assets at their exact path. The
+    // default (`auto-trailing-slash`) 307-redirected the Search Console
+    // verification file to an extension-less URL; that file is the only HTML
+    // asset (every page is rendered by the Worker), so nothing else changes.
+    assets: { binding: "ASSETS", html_handling: "none" as const },
   };
 
   // Wrangler snapshots its log path while the Cloudflare plugin is imported.
