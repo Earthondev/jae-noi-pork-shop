@@ -68,7 +68,7 @@ export function SiteHeader({
         </span>
         <span className="brand-copy">
           <span className="brand-name">{storeName}</span>
-          <span className="brand-tagline">ของอร่อยจากตะคร้อ · ทำสดทุกวัน</span>
+          <span className="brand-tagline">ของอร่อยจากตะคร้อ · ทำสดใหม่ รับออเดอร์เป็นรอบ</span>
         </span>
       </a>
       <nav className={hasCategoryMenu ? "has-category-menu" : undefined} aria-label="เมนูหลัก">

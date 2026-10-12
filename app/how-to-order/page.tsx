@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { SeoPageNav } from "../_components/shop/seo-page-nav";
-import { SITE_URL, SHOP } from "../../lib/seo";
+import { SITE_URL, SHOP, jsonLd } from "../../lib/seo";
 
 const PAGE_URL = `${SITE_URL}/how-to-order`;
 const PAGE_TITLE = "วิธีสั่งแหนมหมูออนไลน์และการจัดส่ง | เจ๊น้อย เขียงหมูตะคร้อ";
@@ -22,37 +22,44 @@ export const metadata: Metadata = {
   },
 };
 
-const faqJsonLd = JSON.stringify({
+// One list feeds both the visible answers and the FAQPage JSON-LD, so what an
+// assistant quotes is always what a customer can read on the page.
+const faqs = [
+  {
+    question: "สั่งแหนมหมูออนไลน์จากเจ๊น้อยอย่างไร",
+    answer: "เข้าเว็บไซต์ เลือกสินค้าในรอบพรีออเดอร์ กรอกข้อมูลจัดส่ง เลือกวิธีรับสินค้า ชำระเงินตามยอดออเดอร์ และแนบสลิปในขั้นตอนสั่งซื้อ",
+  },
+  {
+    question: "เจ๊น้อยส่งแหนมหมูไปต่างจังหวัดหรือไม่",
+    answer: "ร้านมีตัวเลือกจัดส่งไปรษณีย์ทั่วไทยเมื่อรอบนั้นเปิดรับออเดอร์ โดยค่าจัดส่งและรายละเอียดจะแสดงในขั้นตอนสั่งซื้อ",
+  },
+  {
+    question: "รับสินค้าเองที่ร้านได้หรือไม่",
+    answer: "ระบบจะแสดงตัวเลือกรับเองหน้าร้านเมื่อรอบพรีออเดอร์นั้นเปิดให้รับสินค้าเอง",
+  },
+  {
+    question: "ถ้าสั่งแล้วจะติดตามออเดอร์ได้ที่ไหน",
+    answer: "กรอกแค่เบอร์โทรที่ใช้ตอนสั่งซื้อที่หน้าติดตามออเดอร์ เพื่อตรวจสอบสถานะล่าสุด ไม่ต้องจำเลขออเดอร์",
+    link: { href: "/track", text: "หน้าติดตามออเดอร์" },
+  },
+] as const;
+
+const faqJsonLd = jsonLd({
   "@context": "https://schema.org",
   "@type": "FAQPage",
   "@id": `${PAGE_URL}#faq`,
-  mainEntity: [
-    {
-      "@type": "Question",
-      name: "สั่งแหนมหมูออนไลน์จากเจ๊น้อยอย่างไร",
-      acceptedAnswer: {
-        "@type": "Answer",
-        text: "เข้าเว็บไซต์เจ๊น้อย เลือกสินค้าที่ต้องการในรอบพรีออเดอร์ กรอกข้อมูลจัดส่ง เลือกวิธีรับสินค้า ชำระเงินตามยอดออเดอร์ และแนบสลิปในขั้นตอนสั่งซื้อ",
-      },
-    },
-    {
-      "@type": "Question",
-      name: "เจ๊น้อยส่งแหนมหมูไปต่างจังหวัดหรือไม่",
-      acceptedAnswer: {
-        "@type": "Answer",
-        text: "ร้านมีตัวเลือกจัดส่งไปรษณีย์ทั่วไทยเมื่อรอบนั้นเปิดรับออเดอร์ โดยค่าจัดส่งและรายละเอียดจะแสดงในขั้นตอนสั่งซื้อ",
-      },
-    },
-    {
-      "@type": "Question",
-      name: "รับสินค้าเองที่ร้านได้หรือไม่",
-      acceptedAnswer: {
-        "@type": "Answer",
-        text: "ระบบจะแสดงตัวเลือกรับเองหน้าร้านเมื่อรอบพรีออเดอร์นั้นเปิดให้รับสินค้าเอง",
-      },
-    },
-  ],
+  mainEntity: faqs.map((faq) => ({
+    "@type": "Question",
+    name: faq.question,
+    acceptedAnswer: { "@type": "Answer", text: faq.answer },
+  })),
 });
+
+function FaqAnswer({ faq }: { faq: (typeof faqs)[number] }) {
+  if (!("link" in faq)) return <p>{faq.answer}</p>;
+  const [before, after] = faq.answer.split(faq.link.text);
+  return <p>{before}<Link href={faq.link.href}>{faq.link.text}</Link>{after}</p>;
+}
 
 const steps = [
   { number: "1", title: "เลือกสินค้า", text: "เลือกแหนมหมู ไส้กรอกอีสาน หรือแคปหมูที่ต้องการจากหน้าสินค้า แล้วเพิ่มจำนวนลงตะกร้า" },
@@ -107,22 +114,12 @@ export default function HowToOrderPage() {
             <h2 id="faq-title">ข้อมูลการสั่งและการรับสินค้า</h2>
           </div>
           <div className="seo-faq-list">
-            <details open>
-              <summary>สั่งแหนมหมูออนไลน์จากเจ๊น้อยอย่างไร</summary>
-              <p>เข้าเว็บไซต์ เลือกสินค้าในรอบพรีออเดอร์ กรอกข้อมูลจัดส่ง เลือกวิธีรับสินค้า ชำระเงินตามยอดออเดอร์ และแนบสลิปในขั้นตอนสั่งซื้อ</p>
-            </details>
-            <details>
-              <summary>เจ๊น้อยส่งแหนมหมูไปต่างจังหวัดหรือไม่</summary>
-              <p>ร้านมีตัวเลือกจัดส่งไปรษณีย์ทั่วไทยเมื่อรอบนั้นเปิดรับออเดอร์ โดยค่าจัดส่งและรายละเอียดจะแสดงในขั้นตอนสั่งซื้อ</p>
-            </details>
-            <details>
-              <summary>รับสินค้าเองที่ร้านได้หรือไม่</summary>
-              <p>ระบบจะแสดงตัวเลือกรับเองหน้าร้านเมื่อรอบพรีออเดอร์นั้นเปิดให้รับสินค้าเอง</p>
-            </details>
-            <details>
-              <summary>ถ้าสั่งแล้วจะติดตามออเดอร์ได้ที่ไหน</summary>
-              <p>กรอกแค่เบอร์โทรที่ใช้ตอนสั่งซื้อที่ <Link href="/track">หน้าติดตามออเดอร์</Link> เพื่อตรวจสอบสถานะล่าสุด ไม่ต้องจำเลขออเดอร์</p>
-            </details>
+            {faqs.map((faq, index) => (
+              <details key={faq.question} open={index === 0}>
+                <summary>{faq.question}</summary>
+                <FaqAnswer faq={faq} />
+              </details>
+            ))}
           </div>
         </section>
 

@@ -24,7 +24,7 @@ test("the title and description carry the products, the shop and the place", () 
 
 test("store schema describes the business without a second product price source", () => {
   const data = JSON.parse(shopJsonLd());
-  assert.equal(data["@type"], "Store");
+  assert.equal(data["@type"], "ButcherShop");
   assert.equal(data.url, SITE_URL);
   assert.equal(data.telephone, SHOP.phonePrimary);
   assert.equal(data.address.postalCode, "30120");
@@ -48,6 +48,7 @@ test("robots.txt opens the shop and closes the pages holding customer data", asy
   assert.match(robots, /^Sitemap: https:\/\/jaenoishop\.com\/sitemap\.xml$/m);
   // Blocking crawlers is the opposite of the goal here.
   assert.doesNotMatch(robots, /^Disallow: \/$/m);
+  assert.match(robots, /^Content-Signal: search=yes, ai-input=yes$/m);
 });
 
 test("keywords stay unique and cover the shop's own products", () => {

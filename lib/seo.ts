@@ -100,9 +100,32 @@ export function breadcrumbs(name: string, url: string) {
   };
 }
 
+/**
+ * A guide is an article *about* one product line, published by the shop. The
+ * WebPage node names `#store` as publisher so assistants credit the shop rather than
+ * treating the guide as an anonymous recipe page. Still no Product or Offer.
+ */
 export function guideJsonLd(slug: string, name?: string): string {
   const guide = productGuide(slug);
-  return jsonLd({ "@context": "https://schema.org", ...breadcrumbs(name ?? guide.name, `${SITE_URL}/products/${slug}`) });
+  const url = `${SITE_URL}/products/${slug}`;
+  const label = name ?? guide.name;
+  return jsonLd({
+    "@context": "https://schema.org",
+    "@graph": [
+      {
+        "@type": "WebPage",
+        "@id": `${url}#webpage`,
+        url,
+        name: label,
+        inLanguage: "th",
+        primaryImageOfPage: new URL(guide.image, SITE_URL).href,
+        about: { "@type": "Thing", name: guide.name },
+        publisher: { "@id": `${SITE_URL}/#store` },
+        breadcrumb: { "@id": `${url}#breadcrumb` },
+      },
+      { "@id": `${url}#breadcrumb`, ...breadcrumbs(label, url) },
+    ],
+  });
 }
 
 /**
@@ -115,7 +138,9 @@ export function shopJsonLd(storefront?: StorefrontData | null): string {
   const sameAs = [...sameAsLinks().filter((url) => url !== SHOP_LINKS.googleMaps), ...(map ? [map] : [])];
   return jsonLd({
     "@context": "https://schema.org",
-    "@type": "Store",
+    // ButcherShop is schema.org's Store subtype for "เขียงหมู" — the phrase
+    // people search with ("เขียงหมูใกล้ฉัน").
+    "@type": "ButcherShop",
     "@id": `${SITE_URL}/#store`,
     name: storefront?.content.storeName ?? SHOP.name,
     legalName: SHOP.legalName,

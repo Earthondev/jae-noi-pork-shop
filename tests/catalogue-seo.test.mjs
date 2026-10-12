@@ -71,9 +71,13 @@ test('sitemap tracks the visible catalogue and real modification date without re
 test('editorial guides contain breadcrumbs without selling a fixed-price product', () => {
   for (const guide of PRODUCT_GUIDES) {
     const data = JSON.parse(guideJsonLd(guide.slug));
-    assert.equal(data['@type'], 'BreadcrumbList');
-    assert.equal(data.itemListElement[2].item, `${SITE_URL}/products/${guide.slug}`);
-    assert.equal(data.offers, undefined);
+    const page = data['@graph'].find((node) => node['@type'] === 'WebPage');
+    const crumbs = data['@graph'].find((node) => node['@type'] === 'BreadcrumbList');
+    assert.equal(page.url, `${SITE_URL}/products/${guide.slug}`);
+    assert.equal(page.publisher['@id'], `${SITE_URL}/#store`);
+    assert.equal(page.breadcrumb['@id'], crumbs['@id']);
+    assert.equal(crumbs.itemListElement[2].item, `${SITE_URL}/products/${guide.slug}`);
+    assert.ok(data['@graph'].every((node) => node['@type'] !== 'Product' && node.offers === undefined));
   }
 });
 
