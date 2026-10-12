@@ -77,7 +77,7 @@ export function Hero({ storeLoading, orderingOpen, rounds, nextRound, content, s
                 <circle cx="9.3" cy="11" r="0.7" fill="currentColor" />
                 <circle cx="14.7" cy="11" r="0.7" fill="currentColor" />
               </svg>
-              แหนมหมูและของอร่อยจากตะคร้อ · ทำสดทุกวัน
+              แหนมหมูและของอร่อยจากตะคร้อ · ทำสดใหม่ รับออเดอร์เป็นรอบ
             </p>
             <h1>
               {content.heroTitle}<br />

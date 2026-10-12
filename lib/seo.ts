@@ -102,7 +102,14 @@ export function breadcrumbs(name: string, url: string) {
 
 export function guideJsonLd(slug: string, name?: string): string {
   const guide = productGuide(slug);
-  return jsonLd({ "@context": "https://schema.org", ...breadcrumbs(name ?? guide.name, `${SITE_URL}/products/${slug}`) });
+  const url = `${SITE_URL}/products/${slug}`;
+  return jsonLd({
+    "@context": "https://schema.org",
+    "@graph": [
+      { "@id": `${url}#breadcrumb`, ...breadcrumbs(name ?? guide.name, url) },
+      { "@type": "WebPage", "@id": `${url}#webpage`, name: name ?? guide.name, url, about: { "@id": `${SITE_URL}/#store` } },
+    ],
+  });
 }
 
 /**
@@ -115,7 +122,7 @@ export function shopJsonLd(storefront?: StorefrontData | null): string {
   const sameAs = [...sameAsLinks().filter((url) => url !== SHOP_LINKS.googleMaps), ...(map ? [map] : [])];
   return jsonLd({
     "@context": "https://schema.org",
-    "@type": "Store",
+    "@type": "ButcherShop",
     "@id": `${SITE_URL}/#store`,
     name: storefront?.content.storeName ?? SHOP.name,
     legalName: SHOP.legalName,
